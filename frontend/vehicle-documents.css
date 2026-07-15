@@ -4,6 +4,29 @@
   color: #0b2148;
 }
 
+.sidebar-link[data-page="vehicleDocuments"] svg {
+  width: 20px !important;
+  height: 20px !important;
+  flex: 0 0 20px !important;
+  position: static !important;
+  transform: none !important;
+}
+
+.vehicle-docs .search-box > svg {
+  width: 18px !important;
+  height: 18px !important;
+  flex: 0 0 18px !important;
+}
+
+.vehicle-docs .btn svg,
+.vehicle-actions .btn svg {
+  width: 18px !important;
+  height: 18px !important;
+  flex: 0 0 18px !important;
+  position: static !important;
+  transform: none !important;
+}
+
 .vehicle-hero {
   padding: 24px;
   border: 1px solid #dbe5f1;
