@@ -9,7 +9,9 @@
       warning: '<path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
       shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/>',
       plus: '<path d="M12 5v14M5 12h14"/>',
-      search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>'
+      search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+      download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>',
+      paperclip: '<path d="m21.4 11.6-8.7 8.7a6 6 0 0 1-8.5-8.5l9.3-9.3a4 4 0 0 1 5.7 5.7l-9.3 9.3a2 2 0 0 1-2.8-2.8l8.7-8.7"/>'
     };
     return '<svg style="width:1.25rem;height:1.25rem;flex:0 0 1.25rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (icons[name] || icons.doc) + '</svg>';
   }
@@ -86,25 +88,43 @@
     var alertDays = ((db().settings || {}).expiration_alert_days || 30);
     return vehicleDocs().filter(function (doc) {
       var d = days(doc.expiration_date);
-      return d != null && d <= alertDays + 30;
+      return d !== null && d !== undefined && d <= alertDays + 30;
     }).sort(function (a, b) { return days(a.expiration_date) - days(b.expiration_date); });
+  }
+
+  function documentPreviewItems() {
+    var queue = queueItems();
+    if (queue.length) {
+      return { title: 'Fila de vencimentos', hint: 'Prioridade autom&aacute;tica por prazo.', items: queue, isQueue: true };
+    }
+    var docs = vehicleDocs().slice().sort(function (a, b) {
+      var ad = days(a.expiration_date);
+      var bd = days(b.expiration_date);
+      if (ad == null && bd == null) return 0;
+      if (ad == null) return 1;
+      if (bd == null) return -1;
+      return ad - bd;
+    }).slice(0, 5);
+    return { title: 'Documentos cadastrados', hint: 'Sem vencimento pr&oacute;ximo; exibindo os documentos ativos.', items: docs, isQueue: false };
   }
 
   function metricCard(label, value, iconName, tone) {
     return '<section class="vehicle-kpi" style="--tone:' + tone + '"><div class="vehicle-kpi-icon">' + icon(iconName) + '</div><div><span>' + label + '</span><strong>' + value + '</strong></div></section>';
   }
 
-  function queueRow(doc) {
+  function queueRow(doc, isQueue) {
     var d = days(doc.expiration_date);
     var status = statusOf(doc.expiration_date, ((db().settings || {}).expiration_alert_days || 30));
-    var tone = status === 'vencido' ? '#dc2626' : status === 'vencendo' ? '#d97706' : '#1269ff';
+    var tone = status === 'vencido' ? '#dc2626' : status === 'vencendo' ? '#d97706' : '#168844';
     var label = d == null ? 'Sem prazo' : (d < 0 ? Math.abs(d) + ' dias vencido' : d + ' dias');
-    return '<div class="vehicle-queue-item"><div class="vehicle-queue-icon" style="--tone:' + tone + '">' + icon(status === 'vencido' ? 'warning' : 'calendar') + '</div><div><div class="vehicle-title">' + esc(doc.title || doc.document_type) + '</div><div class="vehicle-sub">' + vehicleName(doc.equipment_id) + ' &bull; vence em ' + fmt(doc.expiration_date) + '</div></div>' + chip(status, label) + '</div>';
+    if (!isQueue && status === 'valido') label = doc.file_url ? 'PDF anexado' : 'Cadastrado';
+    return '<div class="vehicle-queue-item"><div class="vehicle-queue-icon" style="--tone:' + tone + '">' + icon(status === 'vencido' ? 'warning' : status === 'valido' ? 'shield' : 'calendar') + '</div><div><div class="vehicle-title">' + esc(doc.title || doc.document_type) + '</div><div class="vehicle-sub">' + vehicleName(doc.equipment_id) + ' &bull; validade ' + fmt(doc.expiration_date) + '</div></div>' + chip(status, label) + '</div>';
   }
 
   function tableRow(doc) {
     var status = statusOf(doc.expiration_date, ((db().settings || {}).expiration_alert_days || 30));
-    return '<tr data-doc-type="' + esc(doc.document_type || '') + '" data-doc-status="' + status + '"><td><b>' + esc(doc.document_type || '-') + '</b><div class="vehicle-sub">' + esc(doc.title || '-') + '</div></td><td>' + vehicleName(doc.equipment_id) + '</td><td class="font-mono text-xs">' + esc(doc.document_number || '-') + '</td><td>' + fmt(doc.issue_date) + '</td><td>' + fmt(doc.expiration_date) + '</td><td>' + chip(status) + '</td><td><div class="flex gap-1"><button class="btn btn-outline btn-sm" onclick="openVehicleDoc(\'' + esc(doc.id) + '\')">Editar</button>' + (typeof canAdmin === 'function' && canAdmin() ? '<button class="btn btn-sm text-imec-red" onclick="deleteVehicleDoc(\'' + esc(doc.id) + '\')">Excluir</button>' : '') + '</div></td></tr>';
+    var file = doc.file_url ? '<a class="vehicle-download" href="' + esc(doc.file_url) + '" target="_blank" download>' + icon('download') + 'Baixar PDF</a>' : '<span class="vehicle-no-file">Sem anexo</span>';
+    return '<tr data-doc-type="' + esc(doc.document_type || '') + '" data-doc-status="' + status + '"><td><b>' + esc(doc.document_type || '-') + '</b><div class="vehicle-sub">' + esc(doc.title || '-') + '</div></td><td>' + vehicleName(doc.equipment_id) + '</td><td class="font-mono text-xs">' + esc(doc.document_number || '-') + '</td><td>' + fmt(doc.issue_date) + '</td><td>' + fmt(doc.expiration_date) + '</td><td>' + chip(status) + '</td><td>' + file + '</td><td><div class="flex gap-1"><button class="btn btn-outline btn-sm" onclick="openVehicleDoc(\'' + esc(doc.id) + '\')">Editar</button>' + (typeof canAdmin === 'function' && canAdmin() ? '<button class="btn btn-sm text-imec-red" onclick="deleteVehicleDoc(\'' + esc(doc.id) + '\')">Excluir</button>' : '') + '</div></td></tr>';
   }
 
   function vehicleOptions(selected) {
@@ -117,20 +137,21 @@
 
   function renderVehicleDocuments() {
     var docs = vehicleDocs();
-    var queue = queueItems();
+    var preview = documentPreviewItems();
     var activeVehicles = vehicles().filter(function (eq) { return (eq.status || 'ativo') === 'ativo'; });
     var expired = docs.filter(function (doc) { return statusOf(doc.expiration_date, ((db().settings || {}).expiration_alert_days || 30)) === 'vencido'; }).length;
     var expiring = docs.filter(function (doc) { return statusOf(doc.expiration_date, ((db().settings || {}).expiration_alert_days || 30)) === 'vencendo'; }).length;
     return '<div class="vehicle-docs fade-in"><section class="vehicle-hero"><div><p class="vehicle-kicker">Controle de frota</p><h2>Documentos de Ve&iacute;culos</h2><p>Fila premium para IPVA, licenciamento, CRLV, seguro, ANTT e documentos com vencimento.</p></div><div class="vehicle-actions"><button class="btn btn-outline" onclick="navigate(\'equipment\')">Ver equipamentos</button><button class="btn btn-primary" onclick="openVehicleDoc()">' + icon('plus') + 'Novo documento</button></div></section>'
       + '<div class="vehicle-kpis">' + metricCard('Ve&iacute;culos ativos', activeVehicles.length, 'car', '#1269ff') + metricCard('Documentos', docs.length, 'doc', '#1269ff') + metricCard('Vencendo', expiring, 'calendar', '#d97706') + metricCard('Vencidos', expired, 'warning', '#dc2626') + '</div>'
-      + '<div class="vehicle-grid"><section class="vehicle-section"><div class="vehicle-section-head"><div><h2>Fila de vencimentos</h2><p>Prioridade autom&aacute;tica por prazo.</p></div></div><div class="vehicle-queue">' + (queue.length ? queue.map(queueRow).join('') : '<div class="vehicle-empty">Nenhum documento pr&oacute;ximo do vencimento.</div>') + '</div></section>'
-      + '<section class="vehicle-section"><div class="vehicle-section-head"><div><h2>Controle documental</h2><p>Consulte, filtre e atualize os documentos da frota.</p></div><button class="btn btn-outline btn-sm" onclick="exportVehicleDocsCSV()">Exportar CSV</button></div><div class="vehicle-filterbar"><div class="search-box flex-1 min-w-[240px]">' + icon('search') + '<input class="input" id="vehicleDocSearch" placeholder="Buscar ve&iacute;culo, placa ou documento..." onkeyup="filterVehicleDocs()"></div><select class="input w-auto" id="vehicleDocStatus" onchange="filterVehicleDocs()"><option value="">Todos os status</option><option value="vencido">Vencidos</option><option value="vencendo">Vencendo</option><option value="valido">V&aacute;lidos</option></select></div><div class="vehicle-table-wrap"><table class="vehicle-table" id="vehicleDocsTable"><thead><tr><th>Documento</th><th>Ve&iacute;culo</th><th>N&uacute;mero</th><th>Emiss&atilde;o</th><th>Vencimento</th><th>Status</th><th>A&ccedil;&otilde;es</th></tr></thead><tbody>' + (docs.length ? docs.map(tableRow).join('') : '<tr><td colspan="7"><div class="vehicle-empty">Cadastre o primeiro IPVA ou licenciamento.</div></td></tr>') + '</tbody></table></div></section></div></div>';
+      + '<div class="vehicle-grid"><section class="vehicle-section"><div class="vehicle-section-head"><div><h2>' + preview.title + '</h2><p>' + preview.hint + '</p></div></div><div class="vehicle-queue">' + (preview.items.length ? preview.items.map(function (doc) { return queueRow(doc, preview.isQueue); }).join('') : '<div class="vehicle-empty">Nenhum documento de ve&iacute;culo cadastrado ainda.</div>') + '</div></section>'
+      + '<section class="vehicle-section"><div class="vehicle-section-head"><div><h2>Controle documental</h2><p>Consulte, filtre e atualize os documentos da frota.</p></div><button class="btn btn-outline btn-sm" onclick="exportVehicleDocsCSV()">Exportar CSV</button></div><div class="vehicle-filterbar"><div class="search-box flex-1 min-w-[240px]">' + icon('search') + '<input class="input" id="vehicleDocSearch" placeholder="Buscar ve&iacute;culo, placa ou documento..." onkeyup="filterVehicleDocs()"></div><select class="input w-auto" id="vehicleDocStatus" onchange="filterVehicleDocs()"><option value="">Todos os status</option><option value="vencido">Vencidos</option><option value="vencendo">Vencendo</option><option value="valido">V&aacute;lidos</option></select></div><div class="vehicle-table-wrap"><table class="vehicle-table" id="vehicleDocsTable"><thead><tr><th>Documento</th><th>Ve&iacute;culo</th><th>N&uacute;mero</th><th>Emiss&atilde;o</th><th>Vencimento</th><th>Status</th><th>Anexo</th><th>A&ccedil;&otilde;es</th></tr></thead><tbody>' + (docs.length ? docs.map(tableRow).join('') : '<tr><td colspan="8"><div class="vehicle-empty">Cadastre o primeiro IPVA ou licenciamento.</div></td></tr>') + '</tbody></table></div></section></div></div>';
   }
 
   window.openVehicleDoc = function (id) {
     var doc = id ? vehicleDocs().find(function (item) { return same(item.id, id); }) : null;
     var type = doc ? doc.document_type : 'Licenciamento';
     var selectedType = function (value) { return type === value ? ' selected' : ''; };
+    var currentFile = doc && doc.file_url ? '<div class="vehicle-file-current">' + icon('paperclip') + '<div><strong>PDF anexado</strong><span>O arquivo atual ser&aacute; mantido se voc&ecirc; n&atilde;o enviar outro.</span></div><a href="' + esc(doc.file_url) + '" target="_blank" download>Baixar</a></div>' : '<div class="vehicle-file-current vehicle-file-empty">' + icon('paperclip') + '<div><strong>Nenhum PDF anexado</strong><span>Anexe o IPVA, licenciamento, CRLV ou outro documento em PDF.</span></div></div>';
     var html = '<div class="p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">' + (doc ? 'Editar' : 'Novo') + ' documento de ve&iacute;culo</h2><p class="text-sm text-slate-500 mb-5">Controle IPVA, licenciamento e demais documentos da frota.</p><form onsubmit="saveVehicleDoc(event,\'' + (id || '') + '\')"><div class="grid md:grid-cols-2 gap-4">'
       + '<div><label class="label">Ve&iacute;culo *</label><select class="input" id="vehEquipment" required>' + vehicleOptions(doc && doc.equipment_id) + '</select></div>'
       + '<div><label class="label">Tipo *</label><select class="input" id="vehType" required><option' + selectedType('IPVA') + '>IPVA</option><option' + selectedType('Licenciamento') + '>Licenciamento</option><option' + selectedType('CRLV') + '>CRLV</option><option' + selectedType('Seguro') + '>Seguro</option><option' + selectedType('ANTT') + '>ANTT</option><option' + selectedType('Tac&oacute;grafo') + '>Tac&oacute;grafo</option><option' + selectedType('Outro') + '>Outro</option></select></div>'
@@ -138,6 +159,7 @@
       + '<div><label class="label">Respons&aacute;vel</label><input class="input" id="vehResponsible" value="' + esc(doc && doc.responsible_name) + '"></div>'
       + '<div><label class="label">Data de emiss&atilde;o</label><input type="date" class="input" id="vehIssue" value="' + (typeof inputDate === 'function' ? inputDate(doc && doc.issue_date) : '') + '"></div>'
       + '<div><label class="label">Data de vencimento *</label><input type="date" class="input" id="vehExp" value="' + (typeof inputDate === 'function' ? inputDate(doc && doc.expiration_date) : '') + '" required></div>'
+      + '<div class="md:col-span-2"><label class="label">PDF do documento</label>' + currentFile + '<input type="file" class="input vehicle-file-input" id="vehFile" accept="application/pdf,.pdf"><p class="vehicle-file-hint">Aceita PDF at&eacute; 10 MB. Depois de salvar, o arquivo aparecer&aacute; para baixar na tabela.</p></div>'
       + '<div class="md:col-span-2"><label class="label">Observa&ccedil;&otilde;es</label><textarea class="input" rows="3" id="vehNotes">' + esc(doc && doc.notes) + '</textarea></div>'
       + '</div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" type="submit">Salvar documento</button></div></form></div>';
     if (typeof openModal === 'function') openModal(html);
@@ -148,6 +170,14 @@
     var equipmentId = document.getElementById('vehEquipment').value;
     var type = document.getElementById('vehType').value;
     var exp = document.getElementById('vehExp').value;
+    var existingDoc = id ? vehicleDocs().find(function (item) { return same(item.id, id); }) : null;
+    var fileInput = document.getElementById('vehFile');
+    var fileUrl = existingDoc && existingDoc.file_url ? existingDoc.file_url : '';
+    var file = fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+    if (file && !(/\.pdf$/i.test(file.name) || file.type === 'application/pdf')) {
+      showToast('Envie o documento em PDF.', 'error');
+      return;
+    }
     var data = {
       equipment_id: equipmentId,
       document_type: type,
@@ -160,6 +190,13 @@
       notes: document.getElementById('vehNotes').value
     };
     try {
+      if (file) {
+        var fd = new FormData();
+        fd.append('file', file);
+        var uploaded = await API.upload(fd);
+        fileUrl = uploaded.url;
+      }
+      data.file_url = fileUrl;
       if (id) await API.equipmentDocs.update(id, data);
       else await API.equipmentDocs.create(data);
       await refreshData();

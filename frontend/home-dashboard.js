@@ -352,12 +352,21 @@
     var expiring = 0;
     var valid = 0;
     var queue = [];
+    var recent = [];
     docs.forEach(function (doc) {
       var remaining = daysUntil(doc.expiration_date);
       var status = calcLocalStatus(doc.expiration_date, metrics.alertDays);
       if (status === 'vencido') expired += 1;
       else if (status === 'vencendo') expiring += 1;
       else valid += 1;
+      recent.push({
+        title: doc.document_type || doc.title || 'Documento',
+        vehicle: vehicleMap[String(doc.equipment_id)] ? vehicleMap[String(doc.equipment_id)].name + (vehicleMap[String(doc.equipment_id)].plate ? ' - ' + vehicleMap[String(doc.equipment_id)].plate : '') : 'Ve&iacute;culo',
+        date: doc.expiration_date,
+        days: remaining,
+        status: status,
+        file: doc.file_url || ''
+      });
       if (remaining != null && remaining <= metrics.alertDays + 30) {
         queue.push({
           title: doc.document_type || doc.title || 'Documento',
@@ -369,20 +378,29 @@
       }
     });
     queue.sort(function (a, b) { return a.days - b.days; });
+    recent.sort(function (a, b) {
+      var ad = dateValue(a.date);
+      var bd = dateValue(b.date);
+      return (ad ? ad.getTime() : 0) - (bd ? bd.getTime() : 0);
+    });
     var score = docs.length ? Math.max(0, Math.round((valid / docs.length) * 100)) : 100;
-    return { vehicles: vehicles, docs: docs, expired: expired, expiring: expiring, valid: valid, queue: queue.slice(0, 4), score: score };
+    return { vehicles: vehicles, docs: docs, expired: expired, expiring: expiring, valid: valid, queue: queue.slice(0, 4), recent: recent.slice(0, 4), score: score };
   }
 
   function vehicleDocDashboard(db, metrics) {
     var summary = vehicleDocsSummary(db, metrics);
-    var queue = summary.queue.length ? summary.queue.map(function (item) {
-      var critical = item.status === 'vencido' || item.days <= 7;
-      var tone = critical ? '#e51d2a' : '#f59e0b';
-      var soft = critical ? '#ffe1e4' : '#fff3d8';
-      var label = item.days == null ? '--' : (item.days < 0 ? Math.abs(item.days) + 'd vencido' : item.days + ' dias');
-      return '<div class="home-vehicle-row"><div class="home-vehicle-row-icon" style="--tone:' + tone + ';--soft:' + soft + '">' + icon(critical ? 'warning' : 'calendar') + '</div><div><div class="home-row-title">' + esc(item.title) + '</div><div class="home-row-sub">' + item.vehicle + ' &bull; ' + formatDate(item.date) + '</div></div><span class="home-chip" style="--tone:' + tone + ';--soft:' + soft + '">' + label + '</span></div>';
-    }).join('') : '<div class="home-empty">Nenhum IPVA ou licenciamento pr&oacute;ximo do vencimento.</div>';
-    return '<section class="home-card home-panel home-vehicle-dashboard"><div class="home-panel-header"><div><div class="home-panel-title">' + icon('car') + 'Dashboard de Documentos de Ve&iacute;culos</div><p>IPVA, licenciamento, CRLV, seguro e ANTT na fila de controle.</p></div><button class="text-blue-600 font-bold text-sm" onclick="navigate(\'vehicleDocuments\')">Abrir m&oacute;dulo</button></div><div class="home-vehicle-grid"><div class="home-vehicle-score"><span>Regularidade da frota</span><strong>' + summary.score + '%</strong><div class="home-vehicle-bar"><i style="width:' + summary.score + '%"></i></div></div><div class="home-vehicle-mini"><span>Ve&iacute;culos</span><strong>' + num(summary.vehicles.length) + '</strong></div><div class="home-vehicle-mini warn"><span>Vencendo</span><strong>' + num(summary.expiring) + '</strong></div><div class="home-vehicle-mini danger"><span>Vencidos</span><strong>' + num(summary.expired) + '</strong></div></div><div class="home-vehicle-list">' + queue + '</div></section>';
+    var rows = summary.queue.length ? summary.queue : summary.recent;
+    var listTitle = summary.queue.length ? 'Pr&oacute;ximos vencimentos' : 'Documentos cadastrados';
+    var queue = rows.length ? rows.map(function (item) {
+      var critical = item.status === 'vencido' || (item.days !== null && item.days !== undefined && item.days <= 7);
+      var validDoc = item.status === 'valido';
+      var tone = critical ? '#e51d2a' : validDoc ? '#168844' : '#f59e0b';
+      var soft = critical ? '#ffe1e4' : validDoc ? '#dcfce7' : '#fff3d8';
+      var label = item.days == null ? 'Sem prazo' : (item.days < 0 ? Math.abs(item.days) + 'd vencido' : item.days + ' dias');
+      if (!summary.queue.length && validDoc) label = 'Cadastrado';
+      return '<div class="home-vehicle-row"><div class="home-vehicle-row-icon" style="--tone:' + tone + ';--soft:' + soft + '">' + icon(critical ? 'warning' : validDoc ? 'shield' : 'calendar') + '</div><div><div class="home-row-title">' + esc(item.title) + '</div><div class="home-row-sub">' + item.vehicle + ' &bull; validade ' + formatDate(item.date) + '</div></div><span class="home-chip" style="--tone:' + tone + ';--soft:' + soft + '">' + label + '</span></div>';
+    }).join('') : '<div class="home-empty">Nenhum documento de ve&iacute;culo cadastrado ainda.</div>';
+    return '<section class="home-card home-panel home-vehicle-dashboard"><div class="home-panel-header"><div><div class="home-panel-title">' + icon('car') + 'Dashboard de Documentos de Ve&iacute;culos</div><p>' + listTitle + ' de IPVA, licenciamento, CRLV, seguro e ANTT.</p></div><button class="text-blue-600 font-bold text-sm" onclick="navigate(\'vehicleDocuments\')">Abrir m&oacute;dulo</button></div><div class="home-vehicle-grid"><div class="home-vehicle-score"><span>Regularidade da frota</span><strong>' + summary.score + '%</strong><div class="home-vehicle-bar"><i style="width:' + summary.score + '%"></i></div></div><div class="home-vehicle-mini"><span>Ve&iacute;culos</span><strong>' + num(summary.vehicles.length) + '</strong></div><div class="home-vehicle-mini warn"><span>Vencendo</span><strong>' + num(summary.expiring) + '</strong></div><div class="home-vehicle-mini danger"><span>Vencidos</span><strong>' + num(summary.expired) + '</strong></div></div><div class="home-vehicle-list">' + queue + '</div></section>';
   }
 
   function actionCard(label, iconName, click) {
