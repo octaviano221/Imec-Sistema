@@ -340,6 +340,157 @@
     return '<div class="home-toolbar"><button class="home-tool-button" type="button">' + icon('calendar') + '<span>&Uacute;ltimos 30 dias</span></button><button class="home-tool-button" type="button" onclick="navigate(\'reports\')">' + icon('download') + '<span>Exportar relat&oacute;rio</span></button></div>';
   }
 
+  function allAlertItems(db, metrics) {
+    var items = [];
+    buildAlerts(db).forEach(function (alert) {
+      items.push({
+        title: alert.title,
+        sub: alert.sub,
+        date: alert.date || '',
+        tag: alert.tag,
+        kind: alert.kind || 'proximo',
+        type: alert.sub && alert.sub.indexOf('ASO') >= 0 ? 'aso' : 'nr',
+        tone: alert.tone,
+        soft: alert.soft,
+        icon: alert.icon
+      });
+    });
+    buildDue(db, metrics).forEach(function (due) {
+      var critical = due.days != null && due.days <= 7;
+      var type = String(due.type || '').toLowerCase();
+      items.push({
+        title: due.title,
+        sub: due.sub,
+        date: formatDate(due.date),
+        tag: due.days == null ? 'Conferir' : (due.days < 0 ? 'Vencido' : due.days + ' dias'),
+        kind: critical || due.days < 0 ? 'critico' : 'proximo',
+        type: type === 'aso' ? 'aso' : 'nr',
+        tone: critical || due.days < 0 ? '#e51d2a' : '#f59e0b',
+        soft: critical || due.days < 0 ? '#ffe1e4' : '#fff3d8',
+        icon: due.icon || 'alert'
+      });
+    });
+    var epiOpen = (db.epi_deliveries || []).filter(function (epi) {
+      return !epi.return_date && !epi.returned_at && !epi.devolution_date;
+    }).slice(0, 4);
+    epiOpen.forEach(function (epi) {
+      items.push({
+        title: 'EPI entregue sem devolu\u00e7\u00e3o registrada',
+        sub: (epi.employee_name || 'Funcion\u00e1rio') + ' - ' + (epi.epi_name || 'EPI'),
+        date: formatDate(epi.delivery_date),
+        tag: 'EPI',
+        kind: 'proximo',
+        type: 'epi',
+        tone: '#1269ff',
+        soft: '#eaf2ff',
+        icon: 'shield'
+      });
+    });
+    var vehicleIds = (db.equipment || []).filter(function (eq) {
+      var text = ((eq.type || '') + ' ' + (eq.name || '')).toLowerCase();
+      return !!eq.plate || /veiculo|carro|caminh|munck|van|pickup|utilitario|utilit/.test(text);
+    }).reduce(function (acc, eq) {
+      acc[String(eq.id)] = eq.name + (eq.plate ? ' - ' + eq.plate : '');
+      return acc;
+    }, {});
+    (db.equipment_documents || []).forEach(function (doc) {
+      var docText = String((doc.document_type || '') + ' ' + (doc.title || '')).toLowerCase();
+      if (!vehicleIds[String(doc.equipment_id)] && !/ipva|licenciamento|crlv|seguro|antt|tacografo/.test(docText)) return;
+      var remaining = daysUntil(doc.expiration_date);
+      if (remaining == null || remaining > metrics.alertDays + 30) return;
+      var criticalVehicle = remaining < 0 || remaining <= 7;
+      items.push({
+        title: (doc.document_type || 'Documento') + ' de ve&iacute;culo ' + (remaining < 0 ? 'vencido' : 'a vencer'),
+        sub: vehicleIds[String(doc.equipment_id)] || doc.title || 'Ve&iacute;culo',
+        date: formatDate(doc.expiration_date),
+        tag: remaining < 0 ? 'Vencido' : remaining + ' dias',
+        kind: criticalVehicle ? 'critico' : 'proximo',
+        type: 'veiculos',
+        tone: criticalVehicle ? '#e51d2a' : '#f59e0b',
+        soft: criticalVehicle ? '#ffe1e4' : '#fff3d8',
+        icon: 'calendar'
+      });
+    });
+    return items.length ? items : [
+      { title: 'Certificados e ASOs pr&oacute;ximos do vencimento', sub: 'Acompanhe os prazos dos documentos', date: '', tag: 'Aten&ccedil;&atilde;o', kind: 'proximo', type: 'nr', tone: '#f59e0b', soft: '#fff3d8', icon: 'alert' },
+      { title: 'Funcion&aacute;rios sem ficha de EPI completa', sub: 'Regularizar assinatura e entrega', date: '', tag: 'EPI', kind: 'proximo', type: 'epi', tone: '#1269ff', soft: '#eaf2ff', icon: 'shield' }
+    ];
+  }
+
+  function reportAlertRow(item) {
+    return '<div class="reports-alert-row" data-alert-kind="' + esc(item.kind || 'proximo') + '" data-alert-type="' + esc(item.type || 'geral') + '">'
+      + '<div class="home-alert-icon" style="--tone:' + item.tone + ';--soft:' + item.soft + '">' + icon(item.icon || 'alert') + '</div>'
+      + '<div class="min-w-0"><div class="home-row-title">' + item.title + '</div><div class="home-row-sub">' + item.sub + '</div></div>'
+      + '<div class="home-row-date">' + (item.date || '--') + '</div>'
+      + '<span class="home-chip" style="--tone:' + item.tone + ';--soft:' + item.soft + '">' + item.tag + '</span>'
+      + '</div>';
+  }
+
+  window.filterReportAlerts = function (kind, button) {
+    var root = button && button.closest ? button.closest('.reports-alerts, .home-alert-modal') : document;
+    root.querySelectorAll('.home-tab-button').forEach(function (tab) {
+      tab.classList.toggle('active', tab === button);
+    });
+    root.querySelectorAll('.reports-alert-row').forEach(function (row) {
+      var rowKind = row.getAttribute('data-alert-kind');
+      var rowType = row.getAttribute('data-alert-type');
+      var show = kind === 'todos' || rowKind === kind || rowType === kind;
+      row.style.display = show ? '' : 'none';
+    });
+  };
+
+  window.openHomeAlertCenter = function () {
+    var db = localDb();
+    var metrics = resolveMetrics(db);
+    var items = allAlertItems(db, metrics);
+    var html = '<div class="home-alert-modal p-6"><div class="reports-modal-head"><div><p class="reports-kicker">Central operacional</p><h2>Todos os alertas</h2><p>Confer&ecirc;ncia r&aacute;pida de vencimentos, pend&ecirc;ncias e itens que precisam de a&ccedil;&atilde;o.</p></div><button class="btn btn-outline btn-sm" onclick="closeModal()">Fechar</button></div>'
+      + '<div class="home-tabs reports-tabs"><button type="button" class="home-tab-button active" onclick="filterReportAlerts(\'todos\', this)">Todos</button><button type="button" class="home-tab-button" onclick="filterReportAlerts(\'critico\', this)">Cr&iacute;ticos</button><button type="button" class="home-tab-button" onclick="filterReportAlerts(\'proximo\', this)">Pr&oacute;ximos</button><button type="button" class="home-tab-button" onclick="filterReportAlerts(\'nr\', this)">NR</button><button type="button" class="home-tab-button" onclick="filterReportAlerts(\'aso\', this)">ASO</button><button type="button" class="home-tab-button" onclick="filterReportAlerts(\'epi\', this)">EPI</button><button type="button" class="home-tab-button" onclick="filterReportAlerts(\'veiculos\', this)">Ve&iacute;culos</button></div>'
+      + '<div class="reports-alert-list">' + items.map(reportAlertRow).join('') + '</div>'
+      + '<div class="reports-modal-actions"><button class="btn btn-outline" onclick="closeModal();navigate(\'reports\');setTimeout(function(){generateReport(\'rpt_pending_center\')},180)">Gerar relat&oacute;rio de pend&ecirc;ncias</button><button class="btn btn-primary" onclick="closeModal();navigate(\'reports\')">Abrir Central de Relat&oacute;rios</button></div></div>';
+    if (typeof openModal === 'function') openModal(html);
+  };
+
+  function reportMiniCard(label, value, iconName, tone, hint) {
+    return '<section class="reports-mini-card" style="--tone:' + tone + '"><div>' + icon(iconName) + '</div><span>' + label + '</span><strong>' + value + '</strong><small>' + hint + '</small></section>';
+  }
+
+  function reportCard(id, title, desc, iconName, tag) {
+    return '<button type="button" class="reports-card" onclick="generateReport(\'' + id + '\')"><div class="reports-card-icon">' + icon(iconName) + '</div><div><span>' + tag + '</span><h3>' + title + '</h3><p>' + desc + '</p></div><b>Gerar agora &rsaquo;</b></button>';
+  }
+
+  function reportNavCard(page, title, desc, iconName, tag) {
+    return '<button type="button" class="reports-card" onclick="navigate(\'' + page + '\')"><div class="reports-card-icon">' + icon(iconName) + '</div><div><span>' + tag + '</span><h3>' + title + '</h3><p>' + desc + '</p></div><b>Abrir m&oacute;dulo &rsaquo;</b></button>';
+  }
+
+  function renderReportsPage() {
+    var db = localDb();
+    var metrics = resolveMetrics(db);
+    var items = allAlertItems(db, metrics);
+    var critical = items.filter(function (item) { return item.kind === 'critico'; }).length;
+    var expiring = items.filter(function (item) { return item.kind === 'proximo'; }).length;
+    return '<div class="reports-dashboard fade-in">'
+      + '<section class="reports-hero home-card"><div><p class="reports-kicker">Relat&oacute;rios executivos</p><h2>Central de auditoria e alertas</h2><p>Uma tela para acompanhar pend&ecirc;ncias, gerar documentos para cliente e conferir o que precisa de regulariza&ccedil;&atilde;o.</p></div><div class="reports-hero-actions"><button class="btn btn-outline" onclick="openHomeAlertCenter()">Ver alertas</button><button class="btn btn-primary" onclick="generateReport(\'rpt_compliance_summary\')">Resumo gerencial</button></div></section>'
+      + '<div class="reports-kpis">'
+      + reportMiniCard('Alertas cr&iacute;ticos', num(critical), 'warning', '#e51d2a', 'exigem a&ccedil;&atilde;o')
+      + reportMiniCard('Pr&oacute;ximos prazos', num(expiring), 'calendar', '#f59e0b', 'vencendo')
+      + reportMiniCard('Funcion&aacute;rios ativos', num(metrics.activeEmployees || 0), 'users', '#1269ff', 'base atual')
+      + reportMiniCard('Conformidade', (metrics.score || 0) + '%', 'shield', '#18a957', 'vis&atilde;o geral')
+      + '</div>'
+      + '<section class="reports-alerts home-card"><div class="reports-section-head"><div><h2>Central de Alertas</h2><p>Filtre por prioridade ou tipo antes de gerar o relat&oacute;rio.</p></div><div class="home-tabs reports-tabs"><button type="button" class="home-tab-button active" onclick="filterReportAlerts(\'todos\', this)">Todos</button><button type="button" class="home-tab-button" onclick="filterReportAlerts(\'critico\', this)">Cr&iacute;ticos</button><button type="button" class="home-tab-button" onclick="filterReportAlerts(\'proximo\', this)">Pr&oacute;ximos</button><button type="button" class="home-tab-button" onclick="filterReportAlerts(\'nr\', this)">NR</button><button type="button" class="home-tab-button" onclick="filterReportAlerts(\'aso\', this)">ASO</button><button type="button" class="home-tab-button" onclick="filterReportAlerts(\'epi\', this)">EPI</button><button type="button" class="home-tab-button" onclick="filterReportAlerts(\'veiculos\', this)">Ve&iacute;culos</button></div></div><div class="reports-alert-list">' + items.map(reportAlertRow).join('') + '</div></section>'
+      + '<section class="reports-section"><div class="reports-section-head"><div><h2>Pacote de relat&oacute;rios</h2><p>Modelos prontos para auditoria, obra, vencimentos e gest&atilde;o interna.</p></div><button class="btn btn-outline btn-sm" onclick="window.print()">Imprimir tela</button></div><div class="reports-card-grid">'
+      + reportCard('rpt_pending_center', 'Pend&ecirc;ncias por prioridade', 'NR, ASO, EPI e documentos vencidos ou pr&oacute;ximos.', 'warning', 'Auditoria')
+      + reportCard('rpt_compliance_summary', 'Resumo gerencial', 'Indicadores consolidados para apresentar ao cliente.', 'chart', 'Executivo')
+      + reportCard('rpt_project_status', 'Obras e documentos', 'Status das obras, ART, APR, rigging e controles vinculados.', 'building', 'Opera&ccedil;&otilde;es')
+      + reportCard('rpt_emps', 'Funcion&aacute;rios ativos', 'Lista completa da equipe ativa com fun&ccedil;&atilde;o e setor.', 'users', 'Pessoas')
+      + reportCard('rpt_certs', 'Certificados emitidos', 'Hist&oacute;rico completo de certificados e validade.', 'certificate', 'NR')
+      + reportCard('rpt_nr_expiring', 'NRs a vencer', 'Treinamentos pr&oacute;ximos do vencimento para planejamento.', 'calendar', 'Vencimentos')
+      + reportCard('rpt_nr_expired', 'NRs vencidas', 'Itens fora do prazo para a&ccedil;&atilde;o imediata.', 'alert', 'Cr&iacute;tico')
+      + reportCard('rpt_aso_expired', 'ASOs vencidos', 'Exames m&eacute;dicos vencidos por colaborador.', 'heart', 'Sa&uacute;de')
+      + reportCard('rpt_eq_expired', 'Equipamentos com laudo vencido', 'Equipamentos que exigem regulariza&ccedil;&atilde;o.', 'crane', 'Equipamentos')
+      + reportNavCard('vehicleDocuments', 'Documentos de ve&iacute;culos', 'Fila de IPVA, licenciamento, CRLV, seguro e ANTT.', 'certificate', 'Frota')
+      + '</div></section><div id="reportOutput" class="mt-6"></div></div>';
+  }
+
   function renderDashboard() {
     var db = localDb();
     var metrics = resolveMetrics(db);
@@ -354,7 +505,7 @@
       + kpiCard({ label: 'Obras Ativas', value: metrics.activeProjects || 3, change: '0', hint: 'vs. m\u00eas anterior', icon: 'building', tone: '#1269ff', soft: '#eaf2ff', spark: 'bars' })
       + '</div>'
       + '<div class="home-grid-main">'
-      + '<section class="home-card home-panel"><div class="home-panel-header"><div class="home-panel-title">' + icon('warning') + 'Central de Alertas</div><div class="home-tabs"><button type="button" class="home-tab-button active" onclick="filterHomeAlerts(\'todos\', this)">Todos</button><button type="button" class="home-tab-button" onclick="filterHomeAlerts(\'critico\', this)">Cr&iacute;ticos</button><button type="button" class="home-tab-button" onclick="filterHomeAlerts(\'proximo\', this)">Pr&oacute;ximos</button></div></div><div class="home-list">' + alerts.map(alertRow).join('') + '<div class="home-row" style="justify-content:center"><button class="text-blue-600 font-bold text-sm" onclick="navigate(\'reports\')">Ver todos os alertas &rsaquo;</button></div></div></section>'
+      + '<section class="home-card home-panel"><div class="home-panel-header"><div class="home-panel-title">' + icon('warning') + 'Central de Alertas</div><div class="home-tabs"><button type="button" class="home-tab-button active" onclick="filterHomeAlerts(\'todos\', this)">Todos</button><button type="button" class="home-tab-button" onclick="filterHomeAlerts(\'critico\', this)">Cr&iacute;ticos</button><button type="button" class="home-tab-button" onclick="filterHomeAlerts(\'proximo\', this)">Pr&oacute;ximos</button></div></div><div class="home-list">' + alerts.map(alertRow).join('') + '<div class="home-row" style="justify-content:center"><button class="text-blue-600 font-bold text-sm" onclick="openHomeAlertCenter()">Ver todos os alertas &rsaquo;</button></div></div></section>'
       + '<section class="home-card home-panel"><div class="home-panel-header"><div class="home-panel-title">' + icon('calendar') + 'Pr&oacute;ximos Vencimentos</div><button class="text-blue-600 font-bold text-sm" onclick="navigate(\'reports\')">Ver todos</button></div>' + dueTable(due) + '</section>'
       + '</div>'
       + '<div class="home-chart-grid">'
@@ -367,7 +518,7 @@
       + actionCard('Emitir certificado', 'certificate', 'editCertificate()')
       + actionCard('Cadastrar funcion&aacute;rio', 'users', 'editEmployee()')
       + actionCard('Nova obra', 'crane', 'editProject()')
-      + actionCard('Gerar relat&oacute;rio', 'report', "navigate('reports')")
+      + actionCard('Docs. ve&iacute;culos', 'certificate', "navigate('vehicleDocuments')")
       + '</div></section></div>'
       + '</div>';
   }
@@ -386,6 +537,21 @@
     homeDashboardRenderer.__execPatched = true;
     homeDashboardRenderer.__suiteTools = true;
     renderers.dashboard = homeDashboardRenderer;
+
+    var homeReportsRenderer = async function () {
+      enhanceTopbar();
+      var title = document.getElementById('pageTitle');
+      var subtitle = document.getElementById('pageSubtitle');
+      if (title) title.textContent = 'Relat\u00f3rios Executivos';
+      if (subtitle) subtitle.textContent = 'Central de alertas, auditoria e exporta\u00e7\u00f5es';
+      return renderReportsPage();
+    };
+    homeReportsRenderer.__homeReports = true;
+    homeReportsRenderer.__premium = true;
+    homeReportsRenderer.__execPatched = true;
+    homeReportsRenderer.__suiteTools = true;
+    renderers.reports = homeReportsRenderer;
+
     if (typeof currentPage !== 'undefined' && currentPage === 'dashboard' && typeof renderPage === 'function') {
       [80, 360, 900].forEach(function (delay) {
         setTimeout(function () {
@@ -394,6 +560,18 @@
             if (currentPage === 'dashboard') renderPage();
           } catch (err) {
             console.warn('Nao foi possivel atualizar o dashboard executivo.', err);
+          }
+        }, delay);
+      });
+    }
+    if (typeof currentPage !== 'undefined' && currentPage === 'reports' && typeof renderPage === 'function') {
+      [80, 360, 900].forEach(function (delay) {
+        setTimeout(function () {
+          try {
+            if (renderers.reports !== homeReportsRenderer) renderers.reports = homeReportsRenderer;
+            if (currentPage === 'reports') renderPage();
+          } catch (err) {
+            console.warn('Nao foi possivel atualizar os relatorios executivos.', err);
           }
         }, delay);
       });

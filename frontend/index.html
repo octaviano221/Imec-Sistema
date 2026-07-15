@@ -393,8 +393,10 @@ const API = {
     delete: (id) => apiFetch('/api/equipment/' + id, { method: 'DELETE' })
   },
   equipmentDocs: {
-    list: (eqId) => apiFetch('/api/equipment-documents?equipment_id=' + eqId),
-    create: (d) => apiFetch('/api/equipment-documents', { method: 'POST', body: JSON.stringify(d) })
+    list: (eqId) => apiFetch('/api/equipment-documents' + (eqId ? '?equipment_id=' + eqId : '')),
+    create: (d) => apiFetch('/api/equipment-documents', { method: 'POST', body: JSON.stringify(d) }),
+    update: (id, d) => apiFetch('/api/equipment-documents/' + id, { method: 'PUT', body: JSON.stringify(d) }),
+    delete: (id) => apiFetch('/api/equipment-documents/' + id, { method: 'DELETE' })
   },
   clients: {
     list: () => apiFetch('/api/clients'),
@@ -432,13 +434,14 @@ let _cache = {};
 
 async function refreshData() {
   try {
-    const [employees, trainings, certificates, medicalExams, epiRecords, equipment, clients, projects, technicalDocs, competency, settings, dashboard] = await Promise.all([
+    const [employees, trainings, certificates, medicalExams, epiRecords, equipment, equipmentDocs, clients, projects, technicalDocs, competency, settings, dashboard] = await Promise.all([
       API.employees.list(), API.trainings.list(), API.certificates.list(),
       API.medicalExams.list(), API.epi.list(), API.equipment.list(),
+      API.equipmentDocs.list(),
       API.clients.list(), API.projects.list(), API.technicalDocuments.list(),
       API.competency.list(), API.settings.get(), API.dashboard.get()
     ]);
-    _cache = { employees, trainings, certificates, medical_exams: medicalExams, epi_records: epiRecords, equipment, equipment_documents: [], clients, projects, technical_documents: technicalDocs, competency_requirements: competency, settings, dashboard };
+    _cache = { employees, trainings, certificates, medical_exams: medicalExams, epi_records: epiRecords, equipment, equipment_documents: equipmentDocs, clients, projects, technical_documents: technicalDocs, competency_requirements: competency, settings, dashboard };
   } catch (err) { console.error('Refresh error:', err); }
 }
 
@@ -469,7 +472,7 @@ function canAccess(page) {
   if (u.role==='admin') return true;
   if (u.role==='client') return ['dashboard','projects','documents'].includes(page);
   if (u.role==='viewer') return true;
-  const p = {'engenharia':['dashboard','employees','trainings','certificates','idcards','equipment','cranes','clients','projects','documents','matrix','reports','settings'],'rh':['dashboard','employees','trainings','certificates','idcards','aso','epi','reports','settings']};
+  const p = {'engenharia':['dashboard','employees','trainings','certificates','idcards','equipment','cranes','vehicleDocuments','clients','projects','documents','matrix','reports','settings'],'rh':['dashboard','employees','trainings','certificates','idcards','aso','epi','vehicleDocuments','reports','settings']};
   return (p[u.role]||[]).includes(page);
 }
 
