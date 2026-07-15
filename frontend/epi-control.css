@@ -1,0 +1,253 @@
+.epi-suite {
+  display: grid;
+  gap: 18px;
+}
+
+.epi-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid #dbe7f5;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #ffffff, #f3f8ff);
+  box-shadow: 0 18px 40px rgba(8, 40, 77, .08);
+}
+
+.epi-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.epi-tab {
+  border: 1px solid #dbe7f5;
+  border-radius: 999px;
+  padding: 9px 14px;
+  background: #fff;
+  color: #475569;
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.epi-tab.active {
+  color: #fff;
+  border-color: #0b6fe8;
+  background: #0b6fe8;
+}
+
+.epi-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.epi-kpi {
+  padding: 16px;
+  border: 1px solid #e5edf7;
+  border-radius: 18px;
+  background: #fff;
+}
+
+.epi-kpi span {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.epi-kpi b {
+  display: block;
+  margin-top: 6px;
+  color: #08284d;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.epi-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.epi-signature-pad {
+  width: 100%;
+  height: 170px;
+  border: 1px dashed #94a3b8;
+  border-radius: 14px;
+  background: #fff;
+  touch-action: none;
+}
+
+.epi-print-sheet {
+  max-width: 1080px;
+  margin: 0 auto;
+  background: #fff;
+  color: #111827;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, .12);
+}
+
+.epi-print-header {
+  display: grid;
+  grid-template-columns: 170px 1fr 210px;
+  border-bottom: 2px solid #111827;
+}
+
+.epi-print-logo,
+.epi-print-company,
+.epi-print-term {
+  padding: 10px;
+  border-right: 1px solid #111827;
+}
+
+.epi-print-term {
+  border-right: 0;
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.epi-print-logo img {
+  max-width: 132px;
+  max-height: 62px;
+  object-fit: contain;
+}
+
+.epi-print-company h2 {
+  margin: 0;
+  color: #08284d;
+  font-size: 18px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.epi-print-title {
+  padding: 9px 10px;
+  border-bottom: 1px solid #111827;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.epi-print-worker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border-bottom: 1px solid #111827;
+}
+
+.epi-print-worker div {
+  padding: 7px 10px;
+  border-right: 1px solid #111827;
+  font-size: 12px;
+}
+
+.epi-print-worker div:nth-child(2n) {
+  border-right: 0;
+}
+
+.epi-print-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.epi-print-table th,
+.epi-print-table td {
+  border: 1px solid #111827;
+  padding: 6px;
+  font-size: 11px;
+  vertical-align: top;
+}
+
+.epi-print-table th {
+  background: #f1f5f9;
+  text-transform: uppercase;
+}
+
+.epi-print-sign-img {
+  max-width: 120px;
+  max-height: 42px;
+}
+
+.epi-term {
+  padding: 16px;
+  border-top: 2px solid #111827;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.epi-term h3 {
+  margin: 0 0 8px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.epi-term-lines {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 34px;
+  margin-top: 34px;
+}
+
+.epi-term-lines div {
+  border-top: 1px solid #111827;
+  padding-top: 7px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+@media (max-width: 900px) {
+  .epi-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .epi-print-header,
+  .epi-print-worker {
+    grid-template-columns: 1fr;
+  }
+
+  .epi-print-logo,
+  .epi-print-company,
+  .epi-print-term,
+  .epi-print-worker div {
+    border-right: 0;
+    border-bottom: 1px solid #111827;
+  }
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .epi-print-sheet,
+  .epi-print-sheet * {
+    visibility: visible;
+  }
+
+  .epi-print-sheet {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: none;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .epi-no-print {
+    display: none !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+}

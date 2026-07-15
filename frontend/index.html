@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IMEC Compliance Industrial</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+tailwind.config={theme:{extend:{colors:{
+'imec-dark':'#0B2D5B','imec-blue':'#145DA0','imec-red':'#D92525',
+'imec-gray':'#F4F6F8','imec-green':'#1E9E55','imec-orange':'#F59E0B',
+'imec-navy':'#091F3E','imec-light':'#E8EDF3'
+},fontFamily:{'display':['Outfit','sans-serif'],'body':['DM Sans','sans-serif']}}}}
+</script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{-webkit-font-smoothing:antialiased}
+#appShell{min-height:100dvh}
+#sidebar{height:100dvh;max-height:100dvh;overflow:hidden}
+#sidebar>div:first-child,#sidebar>div:last-child{flex:0 0 auto}
+#sidebar nav{min-height:0;overscroll-behavior:contain;scrollbar-gutter:stable}
+.sidebar-link svg{flex:0 0 auto}
+.sidebar-link{min-width:0}
+.sidebar-link:not(button){white-space:normal}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:#f1f1f1;border-radius:3px}
+::-webkit-scrollbar-thumb{background:#145DA0;border-radius:3px}
+.sidebar-link{display:flex;align-items:center;gap:12px;padding:10px 20px;color:#94a3b8;font-size:14px;font-weight:500;border-radius:8px;margin:2px 12px;transition:all .2s;cursor:pointer;text-decoration:none}
+.sidebar-link:hover{background:rgba(255,255,255,.08);color:#e2e8f0}
+.sidebar-link.active{background:linear-gradient(135deg,#145DA0,#0B6FE8);color:#fff;box-shadow:0 4px 12px rgba(20,93,160,.3)}
+.sidebar-section{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:#475569;padding:16px 24px 6px;font-weight:600}
+@media(max-height:780px) and (min-width:769px){
+.sidebar-link{padding:8px 16px;font-size:13px;margin:1px 10px;gap:10px}
+.sidebar-section{padding:10px 22px 4px;font-size:10px}
+#sidebar>div:first-child{padding:14px 18px}
+#sidebar>div:last-child{padding:10px 12px}
+}
+@media(max-height:640px) and (min-width:769px){
+#sidebar>div:last-child .flex{display:none}
+.sidebar-link{padding:7px 14px}
+}
+.card{background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.06);border:1px solid #e5e7eb;transition:all .2s}
+.card:hover{box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.stat-card{position:relative;overflow:hidden}
+.stat-card::after{content:'';position:absolute;top:-20px;right:-20px;width:80px;height:80px;border-radius:50%;opacity:.08}
+.stat-card.blue::after{background:#145DA0}
+.stat-card.red::after{background:#D92525}
+.stat-card.green::after{background:#1E9E55}
+.stat-card.orange::after{background:#F59E0B}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer;transition:all .2s;border:none;text-decoration:none}
+.btn-primary{background:linear-gradient(135deg,#145DA0,#0B6FE8);color:#fff;box-shadow:0 2px 8px rgba(20,93,160,.25)}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(20,93,160,.35)}
+.btn-danger{background:linear-gradient(135deg,#D92525,#ef4444);color:#fff}
+.btn-success{background:linear-gradient(135deg,#1E9E55,#22c55e);color:#fff}
+.btn-outline{background:transparent;border:2px solid #e5e7eb;color:#374151}
+.btn-outline:hover{border-color:#145DA0;color:#145DA0}
+.btn-sm{padding:6px 14px;font-size:12px;border-radius:8px}
+.badge{display:inline-flex;align-items:center;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600}
+.badge-green{background:#dcfce7;color:#166534}
+.badge-red{background:#fee2e2;color:#991b1b}
+.badge-orange{background:#fef3c7;color:#92400e}
+.badge-blue{background:#dbeafe;color:#1e40af}
+.badge-gray{background:#f3f4f6;color:#374151}
+.input{width:100%;padding:10px 14px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;transition:border-color .2s;background:#fff}
+.input:focus{outline:none;border-color:#145DA0;box-shadow:0 0 0 3px rgba(20,93,160,.1)}
+.label{display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px}
+.table-container{overflow-x:auto;border-radius:12px;border:1px solid #e5e7eb;background:#fff}
+table{width:100%;border-collapse:collapse}
+th{background:#f8fafc;padding:12px 16px;text-align:left;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;border-bottom:2px solid #e5e7eb}
+td{padding:12px 16px;font-size:14px;color:#374151;border-bottom:1px solid #f1f5f9}
+tr:hover td{background:#f8fafc}
+.tab{padding:10px 20px;font-size:14px;font-weight:600;color:#64748b;cursor:pointer;border-bottom:3px solid transparent;transition:all .2s}
+.tab:hover{color:#145DA0}
+.tab.active{color:#145DA0;border-bottom-color:#145DA0}
+.alert-item{display:flex;align-items:flex-start;gap:12px;padding:14px 18px;border-radius:12px;margin-bottom:8px;border-left:4px solid}
+.alert-critical{background:#fef2f2;border-left-color:#D92525}
+.alert-warning{background:#fffbeb;border-left-color:#F59E0B}
+.alert-normal{background:#f0fdf4;border-left-color:#1E9E55}
+.login-bg{position:relative;overflow:hidden}
+.login-bg::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(4,15,32,.94) 0%,rgba(9,31,62,.82) 42%,rgba(9,31,62,.28) 100%),url('assets/imec-industrial-hero.png') center/cover no-repeat}
+.login-panel{border:1px solid rgba(255,255,255,.18);box-shadow:0 24px 80px rgba(2,8,23,.35)}
+.grid-pattern{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);background-size:60px 60px}
+.fade-in{animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.slide-in{animation:slideIn .3s ease}
+@keyframes slideIn{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
+.pulse-dot{width:8px;height:8px;border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.id-card{width:340px;min-height:200px;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.12);position:relative}
+.id-card-header{background:linear-gradient(135deg,#0B2D5B,#145DA0);padding:16px 20px;color:#fff}
+.id-card-body{padding:16px 20px;background:#fff}
+@media(max-width:768px){
+#sidebar{transform:translateX(-100%);width:min(86vw,280px)}
+#sidebar.open{transform:translateX(0)}
+#mainContent{margin-left:0!important}
+#topbar{height:auto;min-height:64px;padding:10px 14px}
+}
+.search-box{position:relative}
+.search-box input{padding-left:40px}
+.search-box svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#9ca3af}
+.progress-bar{height:6px;border-radius:3px;background:#e5e7eb;overflow:hidden}
+.progress-fill{height:100%;border-radius:3px;transition:width .5s ease}
+.loading-spinner{display:flex;align-items:center;justify-content:center;padding:60px 20px}
+.spinner{width:40px;height:40px;border:4px solid #e5e7eb;border-top-color:#145DA0;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.btn:disabled{opacity:.6;cursor:not-allowed;transform:none!important}
+</style>
+</head>
+<body class="font-body bg-imec-gray min-h-screen">
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" class="login-bg min-h-screen flex items-center justify-center bg-imec-navy p-4">
+<div class="grid-pattern"></div>
+<div class="relative z-10 w-full max-w-md">
+  <div class="text-center mb-8">
+    <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-white/10 backdrop-blur mb-4 border border-white/20">
+      <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+    </div>
+    <h1 class="font-display text-3xl font-bold text-white mb-1">IMEC Compliance</h1>
+    <p class="text-blue-200/70 text-sm font-medium">Industrial Compliance Management</p>
+  </div>
+  <div class="login-panel bg-white/95 backdrop-blur rounded-2xl shadow-2xl p-8">
+    <h2 class="font-display text-xl font-bold text-imec-dark mb-6">Acesso ao Sistema</h2>
+    <form id="loginForm" onsubmit="handleLogin(event)">
+      <div class="mb-4">
+        <label class="label">E-mail</label>
+        <input type="email" id="loginEmail" class="input" placeholder="seu@email.com" required>
+      </div>
+      <div class="mb-6">
+        <label class="label">Senha</label>
+        <input type="password" id="loginPassword" class="input" placeholder="Digite sua senha" required>
+      </div>
+      <button type="submit" id="loginBtn" class="btn btn-primary w-full justify-center py-3 text-base">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>
+        Entrar
+      </button>
+    </form>
+  </div>
+  <p class="text-center text-blue-200/40 text-xs mt-6">IMEC Solu&ccedil;&otilde;es Industriais &copy; 2026 &mdash; v1.0</p>
+</div>
+</div>
+
+<!-- MAIN APP -->
+<div id="appShell" class="hidden min-h-screen flex">
+<!-- SIDEBAR -->
+<aside id="sidebar" class="w-64 bg-imec-dark min-h-screen fixed left-0 top-0 z-40 flex flex-col transition-transform duration-300">
+<div class="p-5 border-b border-white/10">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-imec-blue to-blue-400 flex items-center justify-center">
+        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+      </div>
+      <div>
+        <h2 class="font-display text-white font-bold text-sm leading-tight">IMEC Compliance</h2>
+        <p class="text-blue-300/60 text-xs">Industrial v1.0</p>
+      </div>
+    </div>
+  </div>
+  <nav class="flex-1 py-3 overflow-y-auto">
+    <div class="sidebar-section">Principal</div>
+    <a class="sidebar-link active" data-page="dashboard" onclick="navigate('dashboard')">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+      Dashboard
+    </a>
+    <div class="sidebar-section">Pessoas</div>
+    <a class="sidebar-link" data-page="employees" onclick="navigate('employees')">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      Funcion&aacute;rios
+    </a>
+    <a class="sidebar-link" data-page="trainings" onclick="navigate('trainings')">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.668 18.477 18.072 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+      NRs / Treinamentos
+    </a>
+    <a class="sidebar-link" data-page="certificates" onclick="navigate('certificates')">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+      Certificados
+    </a>
+    <a class="sidebar-link" data-page="idcards" onclick="navigate('idcards')">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0"/></svg>
+      Carteirinhas
+    </a>
+    <a class="sidebar-link" data-page="aso" onclick="navigate('aso')">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+      ASO
+    </a>
+    <a class="sidebar-link" data-page="epi" onclick="navigate('epi')">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+      EPI
+    </a>
+    <div class="sidebar-section">Equipamentos</div>
+    <a class="sidebar-link" data-page="equipment" onclick="navigate('equipment')">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+      Equipamentos
+    </a>
+    <a class="sidebar-link" data-page="cranes" onclick="navigate('cranes')">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+      Guindastes / Munck
+    </a>
+    <div class="sidebar-section">Opera&ccedil;&otilde;es</div>
+    <a class="sidebar-link" data-page="clients" onclick="navigate('clients')">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+      Clientes
+    </a>
+    <a class="sidebar-link" data-page="projects" onclick="navigate('projects')">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+      Obras
+    </a>
+    <a class="sidebar-link" data-page="documents" onclick="navigate('documents')">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      ART / APR / Rigging
+    </a>
+    <a class="sidebar-link" data-page="matrix" onclick="navigate('matrix')">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+      Matriz de Compet&ecirc;ncia
+    </a>
+    <div class="sidebar-section">Sistema</div>
+    <a class="sidebar-link" data-page="reports" onclick="navigate('reports')">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      Relat&oacute;rios
+    </a>
+    <a class="sidebar-link" data-page="settings" onclick="navigate('settings')">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      Configura&ccedil;&otilde;es
+    </a>
+  </nav>
+  <div class="p-4 border-t border-white/10">
+    <div class="flex items-center gap-3 mb-3">
+      <div class="w-8 h-8 rounded-full bg-imec-blue flex items-center justify-center text-white text-xs font-bold" id="sidebarAvatar">AD</div>
+      <div class="flex-1 min-w-0">
+        <p class="text-white text-sm font-semibold truncate" id="sidebarUserName">Administrador</p>
+        <p class="text-blue-300/50 text-xs truncate" id="sidebarUserRole">Admin</p>
+      </div>
+    </div>
+    <button onclick="handleLogout()" class="sidebar-link w-full text-red-400 hover:text-red-300 hover:bg-red-500/10">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+      Sair
+    </button>
+  </div>
+</aside>
+
+<!-- MAIN CONTENT -->
+<main id="mainContent" class="flex-1 ml-64 min-h-screen">
+<header id="topbar" class="bg-white shadow-sm h-16 flex items-center justify-between px-6 sticky top-0 z-30">
+<div class="flex items-center gap-4">
+    <button onclick="toggleSidebar()" class="md:hidden p-2 rounded-lg hover:bg-gray-100">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+    <div>
+      <h1 class="font-display text-lg font-bold text-imec-dark" id="pageTitle">Dashboard</h1>
+      <p class="text-xs text-gray-400" id="pageSubtitle">Vis&atilde;o geral do sistema</p>
+    </div>
+  </div>
+  <div class="flex items-center gap-3">
+    <div class="relative">
+      <button onclick="toggleNotifPanel()" class="p-2 rounded-lg hover:bg-gray-100 relative">
+        <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+        <span class="absolute -top-1 -right-1 w-5 h-5 bg-imec-red text-white text-xs rounded-full flex items-center justify-center font-bold" id="notifBadge">0</span>
+      </button>
+    </div>
+    <a href="#" onclick="openPublicConsult()" class="btn btn-outline btn-sm">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      Consultar Certificado
+    </a>
+    <div class="w-9 h-9 rounded-full bg-imec-blue flex items-center justify-center text-white text-sm font-bold cursor-pointer" id="topAvatar">AD</div>
+  </div>
+</header>
+<div id="pageContent" class="p-6"></div>
+</main>
+</div>
+
+<!-- PUBLIC VERIFICATION PAGE -->
+<div id="publicPage" class="hidden min-h-screen bg-imec-gray">
+<div class="min-h-screen flex items-center justify-center p-4">
+    <div class="public-page-wrap w-full">
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-imec-dark mb-4">
+          <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        </div>
+        <h1 class="font-display text-2xl font-bold text-imec-dark">IMEC Compliance Industrial</h1>
+        <p class="text-gray-500 text-sm">Valida&ccedil;&atilde;o de Certificados</p>
+      </div>
+      <div id="publicResult"></div>
+      <div id="publicConsultForm" class="card p-8">
+        <h2 class="font-display text-lg font-bold text-imec-dark mb-4">Consultar Certificado</h2>
+        <p class="text-sm text-gray-500 mb-6">Digite o c&oacute;digo do certificado ou escaneie o QR Code para verificar sua autenticidade.</p>
+        <form onsubmit="handlePublicConsult(event)">
+          <div class="mb-4">
+            <label class="label">C&oacute;digo do Certificado</label>
+            <input type="text" id="publicCodeInput" class="input" placeholder="Ex: IMEC-NR11-2026-000001" required>
+          </div>
+          <button type="submit" class="btn btn-primary w-full justify-center">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            Verificar Autenticidade
+          </button>
+        </form>
+        <div class="mt-6 pt-4 border-t border-gray-100 text-center">
+          <p class="text-xs text-gray-400">IMEC Solu&ccedil;&otilde;es Industriais &copy; 2026</p>
+          <p class="text-xs text-gray-300 mt-1">Este documento possui autentica&ccedil;&atilde;o digital por QR Code.</p>
+        </div>
+      </div>
+      <div class="text-center mt-4">
+        <button onclick="closePublicPage()" class="text-sm text-imec-blue hover:underline">&larr; Voltar ao sistema</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div id="modalOverlay" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+<div id="modalContent" class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"></div>
+</div>
+
+<!-- TOAST -->
+<div id="toastContainer" class="fixed top-4 right-4 z-[100] flex flex-col gap-2"></div>
+
+<script>
+const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ? 'http://localhost:3000' : window.location.origin;
+
+function getToken() { return sessionStorage.getItem('imec_token'); }
+function setToken(t) { sessionStorage.setItem('imec_token', t); }
+function clearToken() { sessionStorage.removeItem('imec_token'); sessionStorage.removeItem('imec_user'); }
+
+async function apiFetch(endpoint, options = {}) {
+  const token = getToken();
+  const headers = { ...(options.headers || {}) };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  if (!(options.body instanceof FormData) && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+  try {
+    const res = await fetch(API_BASE + endpoint, { ...options, headers });
+    if (res.status === 401) {
+      clearToken();
+      document.getElementById('appShell').classList.add('hidden');
+      document.getElementById('publicPage').classList.add('hidden');
+      document.getElementById('loginScreen').classList.remove('hidden');
+      showToast('Sess\u00e3o expirada. Fa\u00e7a login novamente.', 'error');
+      throw new Error('Unauthorized');
+    }
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: 'Erro na requisi\u00e7\u00e3o' }));
+      throw new Error(err.message || 'HTTP ' + res.status);
+    }
+    if (res.status === 204) return null;
+    return await res.json();
+  } catch (err) {
+    if (err.message === 'Unauthorized') throw err;
+    console.error('API Error [' + endpoint + ']:', err);
+    throw err;
+  }
+}
+
+const API = {
+  auth: { login: (email, password) => apiFetch('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }) },
+  employees: {
+    list: () => apiFetch('/api/employees'),
+    create: (d) => apiFetch('/api/employees', { method: 'POST', body: JSON.stringify(d) }),
+    update: (id, d) => apiFetch('/api/employees/' + id, { method: 'PUT', body: JSON.stringify(d) }),
+    delete: (id) => apiFetch('/api/employees/' + id, { method: 'DELETE' })
+  },
+  trainings: {
+    list: () => apiFetch('/api/trainings'),
+    create: (d) => apiFetch('/api/trainings', { method: 'POST', body: JSON.stringify(d) }),
+    update: (id, d) => apiFetch('/api/trainings/' + id, { method: 'PUT', body: JSON.stringify(d) }),
+    delete: (id) => apiFetch('/api/trainings/' + id, { method: 'DELETE' })
+  },
+  certificates: {
+    list: () => apiFetch('/api/certificates'),
+    create: (d) => apiFetch('/api/certificates', { method: 'POST', body: JSON.stringify(d) }),
+    update: (id, d) => apiFetch('/api/certificates/' + id, { method: 'PUT', body: JSON.stringify(d) }),
+    cancel: (id) => apiFetch('/api/certificates/' + id + '/cancel', { method: 'POST' }),
+    delete: (id) => apiFetch('/api/certificates/' + id, { method: 'DELETE' }),
+    verify: (token) => fetch(API_BASE + '/api/certificates/verify/' + encodeURIComponent(token)).then(r => r.ok ? r.json() : Promise.reject(r)),
+    consult: (code) => fetch(API_BASE + '/api/certificates/consult/' + encodeURIComponent(code)).then(r => r.ok ? r.json() : Promise.reject(r))
+  },
+  medicalExams: {
+    list: () => apiFetch('/api/medical-exams'),
+    create: (d) => apiFetch('/api/medical-exams', { method: 'POST', body: JSON.stringify(d) }),
+    update: (id, d) => apiFetch('/api/medical-exams/' + id, { method: 'PUT', body: JSON.stringify(d) }),
+    delete: (id) => apiFetch('/api/medical-exams/' + id, { method: 'DELETE' })
+  },
+  epi: {
+    list: () => apiFetch('/api/epi'),
+    create: (d) => apiFetch('/api/epi', { method: 'POST', body: JSON.stringify(d) }),
+    update: (id, d) => apiFetch('/api/epi/' + id, { method: 'PUT', body: JSON.stringify(d) }),
+    delete: (id) => apiFetch('/api/epi/' + id, { method: 'DELETE' })
+  },
+  equipment: {
+    list: () => apiFetch('/api/equipment'),
+    create: (d) => apiFetch('/api/equipment', { method: 'POST', body: JSON.stringify(d) }),
+    update: (id, d) => apiFetch('/api/equipment/' + id, { method: 'PUT', body: JSON.stringify(d) }),
+    delete: (id) => apiFetch('/api/equipment/' + id, { method: 'DELETE' })
+  },
+  equipmentDocs: {
+    list: (eqId) => apiFetch('/api/equipment-documents?equipment_id=' + eqId),
+    create: (d) => apiFetch('/api/equipment-documents', { method: 'POST', body: JSON.stringify(d) })
+  },
+  clients: {
+    list: () => apiFetch('/api/clients'),
+    create: (d) => apiFetch('/api/clients', { method: 'POST', body: JSON.stringify(d) }),
+    update: (id, d) => apiFetch('/api/clients/' + id, { method: 'PUT', body: JSON.stringify(d) }),
+    delete: (id) => apiFetch('/api/clients/' + id, { method: 'DELETE' })
+  },
+  projects: {
+    list: () => apiFetch('/api/projects'),
+    create: (d) => apiFetch('/api/projects', { method: 'POST', body: JSON.stringify(d) }),
+    update: (id, d) => apiFetch('/api/projects/' + id, { method: 'PUT', body: JSON.stringify(d) }),
+    delete: (id) => apiFetch('/api/projects/' + id, { method: 'DELETE' })
+  },
+  technicalDocuments: {
+    list: () => apiFetch('/api/technical-documents'),
+    create: (d) => apiFetch('/api/technical-documents', { method: 'POST', body: JSON.stringify(d) }),
+    update: (id, d) => apiFetch('/api/technical-documents/' + id, { method: 'PUT', body: JSON.stringify(d) }),
+    delete: (id) => apiFetch('/api/technical-documents/' + id, { method: 'DELETE' })
+  },
+  competency: {
+    list: () => apiFetch('/api/competency'),
+    create: (d) => apiFetch('/api/competency', { method: 'POST', body: JSON.stringify(d) }),
+    update: (id, d) => apiFetch('/api/competency/' + id, { method: 'PUT', body: JSON.stringify(d) })
+  },
+  settings: {
+    get: () => apiFetch('/api/settings'),
+    update: (d) => apiFetch('/api/settings', { method: 'PUT', body: JSON.stringify(d) })
+  },
+  auditLogs: { list: () => apiFetch('/api/audit-logs') },
+  dashboard: { get: () => apiFetch('/api/dashboard') },
+  upload: (fd) => apiFetch('/api/upload', { method: 'POST', body: fd })
+};
+
+let _cache = {};
+
+async function refreshData() {
+  try {
+    const [employees, trainings, certificates, medicalExams, epiRecords, equipment, clients, projects, technicalDocs, competency, settings, dashboard] = await Promise.all([
+      API.employees.list(), API.trainings.list(), API.certificates.list(),
+      API.medicalExams.list(), API.epi.list(), API.equipment.list(),
+      API.clients.list(), API.projects.list(), API.technicalDocuments.list(),
+      API.competency.list(), API.settings.get(), API.dashboard.get()
+    ]);
+    _cache = { employees, trainings, certificates, medical_exams: medicalExams, epi_records: epiRecords, equipment, equipment_documents: [], clients, projects, technical_documents: technicalDocs, competency_requirements: competency, settings, dashboard };
+  } catch (err) { console.error('Refresh error:', err); }
+}
+
+function getDB() { return _cache; }
+
+function today() { return new Date().toISOString().split('T')[0]; }
+function addMonths(ds, m) { const d = new Date(ds); d.setMonth(d.getMonth() + m); return d.toISOString().split('T')[0]; }
+function daysUntil(ds) { const now = new Date(); now.setHours(0,0,0,0); const d = new Date(ds); d.setHours(0,0,0,0); return Math.ceil((d - now) / 86400000); }
+function formatDate(d) { if (!d) return '\u2014'; const clean = String(d).split('T')[0].slice(0,10); const p = clean.split('-'); return p.length===3 ? p[2]+'/'+p[1]+'/'+p[0] : String(d); }
+function formatCPF(c) { return c ? String(c).replace(/\D/g,'').replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : ''; }
+function inputDate(d) { return d ? String(d).split('T')[0].slice(0,10) : ''; }
+function sameId(a,b) { return String(a) === String(b); }
+function maskCPF(c) { return c ? '***.***.***-' + c.slice(-2) : ''; }
+function calcStatus(exp, ad) { if (!exp) return 'valido'; const d = daysUntil(exp); if (d < 0) return 'vencido'; if (d <= (ad||30)) return 'vencendo'; return 'valido'; }
+function statusBadge(s) {
+  const m = {'valido':'<span class="badge badge-green">V\u00e1lido</span>','vencendo':'<span class="badge badge-orange">Vencendo</span>','vencido':'<span class="badge badge-red">Vencido</span>','cancelado':'<span class="badge badge-red">Cancelado</span>','ativo':'<span class="badge badge-green">Ativo</span>','afastado':'<span class="badge badge-orange">Afastado</span>','desligado':'<span class="badge badge-gray">Desligado</span>','em_andamento':'<span class="badge badge-blue">Em Andamento</span>','planejada':'<span class="badge badge-gray">Planejada</span>','concluida':'<span class="badge badge-green">Conclu\u00edda</span>','paralisada':'<span class="badge badge-orange">Paralisada</span>','cancelada':'<span class="badge badge-red">Cancelada</span>','manutencao':'<span class="badge badge-orange">Manuten\u00e7\u00e3o</span>','inativo':'<span class="badge badge-gray">Inativo</span>','apto':'<span class="badge badge-green">Apto</span>','inapto':'<span class="badge badge-red">Inapto</span>','apto_restricao':'<span class="badge badge-orange">Apto c/ Restri\u00e7\u00e3o</span>','inapto_result':'<span class="badge badge-red">Inapto</span>'};
+  return m[s] || '<span class="badge badge-gray">'+s+'</span>';
+}
+function statusLabel(s) { const m = {'valido':'V\u00e1lido','vencendo':'Vencendo','vencido':'Vencido','cancelado':'Cancelado','ativo':'Ativo','afastado':'Afastado','desligado':'Desligado'}; return m[s]||s; }
+function roleLabel(r) { const m = {admin:'Administrador',engenharia:'Engenharia',rh:'RH / Seguran\u00e7a',viewer:'Visualizador',client:'Cliente'}; return m[r]||r; }
+
+function getUser() { const r = sessionStorage.getItem('imec_user'); return r ? JSON.parse(r) : null; }
+function setUser(u) { sessionStorage.setItem('imec_user', JSON.stringify(u)); }
+function canEdit() { const u = getUser(); return u && (u.role==='admin'||u.role==='engenharia'||u.role==='rh'); }
+function canAdmin() { const u = getUser(); return u && u.role==='admin'; }
+function canAccess(page) {
+  const u = getUser(); if (!u) return false;
+  if (u.role==='admin') return true;
+  if (u.role==='client') return ['dashboard','projects','documents'].includes(page);
+  if (u.role==='viewer') return true;
+  const p = {'engenharia':['dashboard','employees','trainings','certificates','idcards','equipment','cranes','clients','projects','documents','matrix','reports','settings'],'rh':['dashboard','employees','trainings','certificates','idcards','aso','epi','reports','settings']};
+  return (p[u.role]||[]).includes(page);
+}
+
+async function handleLogin(e) {
+  e.preventDefault();
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="width:20px;height:20px;border-width:2px"></div> Entrando...';
+  try {
+    const result = await API.auth.login(document.getElementById('loginEmail').value, document.getElementById('loginPassword').value);
+    setToken(result.token); setUser(result.user);
+    await showApp();
+    showToast('Bem-vindo, ' + result.user.name + '!', 'success');
+  } catch (err) { showToast(err.message || 'E-mail ou senha inv\u00e1lidos', 'error'); }
+  finally { btn.disabled = false; btn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg> Entrar'; }
+}
+
+function handleLogout() { clearToken(); document.getElementById('appShell').classList.add('hidden'); document.getElementById('loginScreen').classList.remove('hidden'); }
+
+async function showApp() {
+  const user = getUser(); if (!user) return;
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('publicPage').classList.add('hidden');
+  document.getElementById('appShell').classList.remove('hidden');
+  document.getElementById('sidebarUserName').textContent = user.name;
+  document.getElementById('sidebarUserRole').textContent = roleLabel(user.role);
+  const ini = user.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+  document.getElementById('sidebarAvatar').textContent = ini;
+  document.getElementById('topAvatar').textContent = ini;
+  await refreshData();
+  navigate('dashboard');
+}
+
+let currentPage = 'dashboard';
+async function navigate(page) {
+  if (!canAccess(page)) { showToast('Acesso negado', 'error'); return; }
+  currentPage = page;
+  document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+  const link = document.querySelector('.sidebar-link[data-page="'+page+'"]');
+  if (link) link.classList.add('active');
+  updateNotifBadge();
+  await renderPage();
+}
+function updateNotifBadge() { const d = getDB(); document.getElementById('notifBadge').textContent = d.dashboard ? (d.dashboard.alerts||[]).length : 0; }
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+function showPageLoading() { document.getElementById('pageContent').innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>'; }
+
+function showToast(msg, type) {
+  type = type || 'info';
+  const c = document.getElementById('toastContainer');
+  const colors = {success:'bg-imec-green',error:'bg-imec-red',info:'bg-imec-blue',warning:'bg-imec-orange'};
+  const div = document.createElement('div');
+  div.className = (colors[type]||colors.info)+' text-white px-5 py-3 rounded-xl shadow-lg text-sm font-medium fade-in max-w-sm';
+  div.textContent = msg; c.appendChild(div);
+  setTimeout(() => { div.style.opacity = '0'; setTimeout(() => div.remove(), 300); }, 3500);
+}
+
+function openModal(html) { document.getElementById('modalContent').innerHTML = html; document.getElementById('modalOverlay').classList.remove('hidden'); }
+function closeModal() { document.getElementById('modalOverlay').classList.add('hidden'); }
+document.getElementById('modalOverlay').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+
+function openPublicConsult() { document.getElementById('appShell').classList.add('hidden'); document.getElementById('publicPage').classList.remove('hidden'); document.getElementById('publicConsultForm').classList.remove('hidden'); document.getElementById('publicResult').innerHTML = ''; }
+function closePublicPage() { const u = getUser(); if (u) { document.getElementById('publicPage').classList.add('hidden'); document.getElementById('appShell').classList.remove('hidden'); } else { document.getElementById('publicPage').classList.add('hidden'); document.getElementById('loginScreen').classList.remove('hidden'); } }
+
+async function showPublicVerification(token) {
+  document.getElementById('loginScreen').classList.add('hidden'); document.getElementById('appShell').classList.add('hidden'); document.getElementById('publicPage').classList.remove('hidden'); document.getElementById('publicConsultForm').classList.add('hidden');
+  const result = document.getElementById('publicResult');
+  result.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+  try {
+    const data = await API.certificates.verify(token);
+    if (!data || !data.certificate) { result.innerHTML = '<div class="card p-8 text-center"><div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4"><svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg></div><h2 class="font-display text-xl font-bold text-gray-800 mb-2">Certificado n\u00e3o encontrado</h2><p class="text-gray-500 text-sm">Este certificado n\u00e3o foi localizado na base oficial da IMEC.</p></div>'; return; }
+    const cert = data.certificate;
+    const ad = (_cache.settings && _cache.settings.expiration_alert_days) || 30;
+    const status = cert.status === 'cancelado' ? 'cancelado' : calcStatus(cert.expiration_date, ad);
+    let sc, st, si, sb;
+    if (status==='valido') { sc='text-imec-green'; st='Certificado V\u00e1lido'; sb='bg-green-50 border-imec-green'; si='<svg class="w-10 h-10 text-imec-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'; }
+    else if (status==='vencendo') { sc='text-imec-orange'; st='Certificado Vencendo'; sb='bg-orange-50 border-imec-orange'; si='<svg class="w-10 h-10 text-imec-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>'; }
+    else if (status==='vencido') { sc='text-imec-red'; st='Certificado Vencido'; sb='bg-red-50 border-imec-red'; si='<svg class="w-10 h-10 text-imec-red" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'; }
+    else { sc='text-imec-red'; st='Certificado Cancelado'; sb='bg-red-50 border-imec-red'; si='<svg class="w-10 h-10 text-imec-red" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>'; }
+    result.innerHTML = '<div class="card p-8 '+sb+' border-l-4"><div class="flex items-center gap-4 mb-6">'+si+'<div><h2 class="font-display text-2xl font-bold '+sc+'">'+st+'</h2><p class="text-gray-500 text-sm">IMEC Compliance Industrial</p></div></div><div class="grid grid-cols-2 gap-4 text-sm"><div><span class="text-gray-500 block">Funcion\u00e1rio</span><span class="font-semibold text-gray-800">'+(cert.employee_name||'N/A')+'</span></div><div><span class="text-gray-500 block">Treinamento</span><span class="font-semibold text-gray-800">'+(cert.training_name||'N/A')+'</span></div><div><span class="text-gray-500 block">C\u00f3digo</span><span class="font-semibold text-gray-800 font-mono text-xs">'+cert.certificate_code+'</span></div><div><span class="text-gray-500 block">Carga Hor\u00e1ria</span><span class="font-semibold text-gray-800">'+cert.workload+'h</span></div><div><span class="text-gray-500 block">Emiss\u00e3o</span><span class="font-semibold text-gray-800">'+formatDate(cert.issue_date)+'</span></div><div><span class="text-gray-500 block">Validade</span><span class="font-semibold text-gray-800">'+formatDate(cert.expiration_date)+'</span></div><div><span class="text-gray-500 block">Empresa Emissora</span><span class="font-semibold text-gray-800">'+(cert.issuer_company||'')+'</span></div><div><span class="text-gray-500 block">Instrutor</span><span class="font-semibold text-gray-800">'+(cert.instructor_name||'')+'</span></div><div><span class="text-gray-500 block">Resp. T\u00e9cnico</span><span class="font-semibold text-gray-800">'+(cert.technical_responsible||'')+'</span></div></div><div class="mt-6 pt-4 border-t border-gray-200 text-center"><p class="text-xs text-gray-400 italic">"Este documento possui autentica\u00e7\u00e3o digital por QR Code."</p></div></div>';
+  } catch (err) { result.innerHTML = '<div class="card p-8 text-center"><div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4"><svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg></div><h2 class="font-display text-xl font-bold text-gray-800 mb-2">Certificado n\u00e3o encontrado</h2><p class="text-gray-500 text-sm">Este certificado n\u00e3o foi localizado na base oficial da IMEC.</p></div>'; }
+}
+
+async function handlePublicConsult(e) {
+  e.preventDefault();
+  const code = document.getElementById('publicCodeInput').value.trim();
+  const result = document.getElementById('publicResult');
+  result.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+  try {
+    const data = await API.certificates.consult(code);
+    if (data && data.certificate && data.certificate.verification_token) { showPublicVerification(data.certificate.verification_token); }
+    else { result.innerHTML = '<div class="card p-8 text-center"><div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4"><svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg></div><h2 class="font-display text-xl font-bold text-gray-800 mb-2">Certificado n\u00e3o encontrado</h2><p class="text-gray-500 text-sm">Este certificado n\u00e3o foi localizado na base oficial da IMEC.</p></div>'; }
+  } catch (err) { result.innerHTML = '<div class="card p-8 text-center"><div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4"><svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg></div><h2 class="font-display text-xl font-bold text-gray-800 mb-2">Certificado n\u00e3o encontrado</h2><p class="text-gray-500 text-sm">Este certificado n\u00e3o foi localizado na base oficial da IMEC.</p></div>'; }
+}
+
+async function renderPage() {
+  const titles = {dashboard:['Dashboard','Vis\u00e3o geral do sistema'],employees:['Funcion\u00e1rios','Gest\u00e3o de colaboradores'],trainings:['NRs / Treinamentos','Tipos de treinamento e NRs'],certificates:['Certificados','Certificados e valida\u00e7\u00f5es'],idcards:['Carteirinhas','Carteirinhas digitais'],aso:['ASO','Atestados de Sa\u00fade Ocupacional'],epi:['EPI','Equipamentos de Prote\u00e7\u00e3o Individual'],equipment:['Equipamentos','Gest\u00e3o de equipamentos'],cranes:['Guindastes / Munck','Guindastes e cami\u00f5es Munck'],clients:['Clientes','Base de clientes'],projects:['Obras','Obras e servi\u00e7os'],documents:['ART / APR / Rigging','Documentos t\u00e9cnicos'],matrix:['Matriz de Compet\u00eancia','An\u00e1lise de aptid\u00e3o'],reports:['Relat\u00f3rios','Relat\u00f3rios e exporta\u00e7\u00f5es'],settings:['Configura\u00e7\u00f5es','Configura\u00e7\u00f5es do sistema']};
+  const t = titles[currentPage] || ['',''];
+  document.getElementById('pageTitle').textContent = t[0];
+  document.getElementById('pageSubtitle').textContent = t[1];
+  const c = document.getElementById('pageContent');
+  if (renderers[currentPage]) { c.innerHTML = '<div class="fade-in">' + await renderers[currentPage]() + '</div>'; }
+  else { c.innerHTML = '<div class="fade-in"><p>P\u00e1gina em constru\u00e7\u00e3o</p></div>'; }
+}
+const renderers = {};
+
+window.addEventListener('DOMContentLoaded', async function() {
+  const hash = window.location.hash;
+  const verifyPath = window.location.pathname.match(/\/verificar\/([^/?#]+)/);
+  if (verifyPath) { await showPublicVerification(decodeURIComponent(verifyPath[1])); return; }
+  if (hash.startsWith('#/verificar/')) { await showPublicVerification(hash.replace('#/verificar/', '')); return; }
+  if (hash.startsWith('#/consultar')) { openPublicConsult(); return; }
+  if (getToken() && getUser()) { await showApp(); } else { document.getElementById('loginScreen').classList.remove('hidden'); }
+});
+
+renderers.dashboard = async function() {
+  const db = getDB(); const d = db.dashboard || {}; const alerts = d.alerts || []; const projects = db.projects || []; const clients = db.clients || [];
+  return '<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">'
+  +'<div class="card stat-card blue p-5"><div class="flex items-center justify-between mb-2"><span class="text-xs font-semibold text-gray-500 uppercase">Funcion\u00e1rios Ativos</span><div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center"><svg class="w-4 h-4 text-imec-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div></div><p class="text-3xl font-display font-bold text-imec-dark">'+(d.active_employees||0)+'</p></div>'
+  +'<div class="card stat-card green p-5"><div class="flex items-center justify-between mb-2"><span class="text-xs font-semibold text-gray-500 uppercase">NRs V\u00e1lidas</span><div class="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center"><svg class="w-4 h-4 text-imec-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div></div><p class="text-3xl font-display font-bold text-imec-green">'+(d.valid_certificates||0)+'</p></div>'
+  +'<div class="card stat-card orange p-5"><div class="flex items-center justify-between mb-2"><span class="text-xs font-semibold text-gray-500 uppercase">NRs Vencendo</span><div class="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center"><svg class="w-4 h-4 text-imec-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01"/></svg></div></div><p class="text-3xl font-display font-bold text-imec-orange">'+(d.expiring_certificates||0)+'</p></div>'
+  +'<div class="card stat-card red p-5"><div class="flex items-center justify-between mb-2"><span class="text-xs font-semibold text-gray-500 uppercase">NRs Vencidas</span><div class="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center"><svg class="w-4 h-4 text-imec-red" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div></div><p class="text-3xl font-display font-bold text-imec-red">'+(d.expired_certificates||0)+'</p></div>'
+  +'<div class="card stat-card p-5"><div class="flex items-center justify-between mb-2"><span class="text-xs font-semibold text-gray-500 uppercase">ASOs Vencidos</span></div><p class="text-3xl font-display font-bold '+((d.expired_aso||0)>0?'text-imec-red':'text-imec-dark')+'">'+(d.expired_aso||0)+'</p></div>'
+  +'<div class="card stat-card p-5"><div class="flex items-center justify-between mb-2"><span class="text-xs font-semibold text-gray-500 uppercase">Equipamentos</span></div><p class="text-3xl font-display font-bold text-imec-dark">'+(d.total_equipment||0)+'</p></div>'
+  +'<div class="card stat-card p-5"><div class="flex items-center justify-between mb-2"><span class="text-xs font-semibold text-gray-500 uppercase">Guindastes/Munck</span></div><p class="text-3xl font-display font-bold text-imec-dark">'+(d.total_cranes||0)+'</p></div>'
+  +'<div class="card stat-card p-5"><div class="flex items-center justify-between mb-2"><span class="text-xs font-semibold text-gray-500 uppercase">Laudos Vencidos</span></div><p class="text-3xl font-display font-bold '+((d.expired_laudos||0)>0?'text-imec-red':'text-imec-dark')+'">'+(d.expired_laudos||0)+'</p></div>'
+  +'<div class="card stat-card p-5"><div class="flex items-center justify-between mb-2"><span class="text-xs font-semibold text-gray-500 uppercase">Obras Ativas</span></div><p class="text-3xl font-display font-bold text-imec-blue">'+(d.active_projects||0)+'</p></div>'
+  +'<div class="card stat-card p-5"><div class="flex items-center justify-between mb-2"><span class="text-xs font-semibold text-gray-500 uppercase">Certificados Emitidos</span></div><p class="text-3xl font-display font-bold text-imec-dark">'+(d.total_certificates||0)+'</p></div>'
+  +'<div class="card stat-card p-5"><div class="flex items-center justify-between mb-2"><span class="text-xs font-semibold text-gray-500 uppercase">Cert. Cancelados</span></div><p class="text-3xl font-display font-bold '+((d.cancelled_certificates||0)>0?'text-imec-red':'text-imec-dark')+'">'+(d.cancelled_certificates||0)+'</p></div>'
+  +'<div class="card stat-card p-5"><div class="flex items-center justify-between mb-2"><span class="text-xs font-semibold text-gray-500 uppercase">Clientes</span></div><p class="text-3xl font-display font-bold text-imec-dark">'+clients.length+'</p></div>'
+  +'</div>'
+  +'<div class="grid md:grid-cols-2 gap-6"><div class="card p-6"><h3 class="font-display text-lg font-bold text-imec-dark mb-4 flex items-center gap-2"><svg class="w-5 h-5 text-imec-red" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg> Painel de Alertas</h3><div class="max-h-96 overflow-y-auto">'
+  +(alerts.length===0?'<p class="text-gray-400 text-sm text-center py-8">Nenhum alerta pendente</p>':alerts.map(function(a){return '<div class="alert-item '+(a.level==='critical'?'alert-critical':'alert-warning')+'"><div class="pulse-dot mt-1.5 '+(a.level==='critical'?'bg-imec-red':'bg-imec-orange')+'"></div><div class="flex-1"><p class="text-sm font-medium text-gray-800">'+a.msg+'</p><p class="text-xs text-gray-400 mt-1">'+a.type+'</p></div><span class="badge '+(a.level==='critical'?'badge-red':'badge-orange')+'">'+(a.level==='critical'?'Cr\u00edtico':'Aten\u00e7\u00e3o')+'</span></div>';}).join(''))
+  +'</div></div><div class="card p-6"><h3 class="font-display text-lg font-bold text-imec-dark mb-4 flex items-center gap-2"><svg class="w-5 h-5 text-imec-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg> Obras em Andamento</h3><div class="space-y-3">'
+  +(projects.filter(function(p){return p.status==='em_andamento';}).map(function(p){return '<div class="flex items-center gap-4 p-3 bg-gray-50 rounded-xl"><div class="w-10 h-10 rounded-lg bg-imec-blue/10 flex items-center justify-center"><svg class="w-5 h-5 text-imec-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5"/></svg></div><div class="flex-1 min-w-0"><p class="text-sm font-semibold text-gray-800 truncate">'+p.name+'</p><p class="text-xs text-gray-400">'+(p.client_name||'')+'</p></div><span class="badge badge-blue">Em Andamento</span></div>';}).join('')||'<p class="text-gray-400 text-sm text-center py-8">Nenhuma obra em andamento</p>')
+  +'</div></div></div>'
+  +'<div class="card p-6 mt-6"><h3 class="font-display text-lg font-bold text-imec-dark mb-4">Bem-vindo ao IMEC Compliance Industrial</h3><p class="text-sm text-gray-600 leading-relaxed">O IMEC Compliance Industrial foi desenvolvido para centralizar a gest\u00e3o de treinamentos, certificados, documentos t\u00e9cnicos, equipamentos e vencimentos, garantindo maior controle, rastreabilidade e seguran\u00e7a nas opera\u00e7\u00f5es industriais.</p></div>';
+};
+
+renderers.employees = async function() {
+  const db = getDB(); const ad = (db.settings&&db.settings.expiration_alert_days)||30;
+  let h = '<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div class="flex items-center gap-3 flex-1"><div class="search-box flex-1 max-w-md"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input type="text" class="input" placeholder="Buscar funcion\u00e1rio..." id="empSearch" onkeyup="filterTable(\'empTable\',\'empSearch\')"></div><select class="input w-auto" id="empStatusFilter" onchange="filterTableByStatus(\'empTable\',\'empStatusFilter\',4)"><option value="">Todos</option><option value="ativo">Ativo</option><option value="afastado">Afastado</option><option value="desligado">Desligado</option></select></div>'+(canEdit()?'<button class="btn btn-primary" onclick="editEmployee()"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>Novo Funcion\u00e1rio</button>':'')+'</div>';
+  h += '<div class="table-container"><table id="empTable"><thead><tr><th>Nome</th><th>CPF</th><th>Fun\u00e7\u00e3o</th><th>Setor</th><th>Status</th><th>NRs</th><th>A\u00e7\u00f5es</th></tr></thead><tbody>';
+  (db.employees||[]).forEach(function(emp) {
+    const certs = (db.certificates||[]).filter(function(c){return sameId(c.employee_id, emp.id);});
+    const vN = certs.filter(function(c){return c.status!=='cancelado'&&calcStatus(c.expiration_date,ad)==='valido';}).length;
+    const tN = certs.filter(function(c){return c.status!=='cancelado';}).length;
+    const ini = emp.full_name.split(' ').map(function(w){return w[0];}).join('').substring(0,2);
+    h += '<tr data-status="'+emp.status+'"><td><div class="flex items-center gap-3"><div class="w-9 h-9 rounded-full bg-imec-blue/10 flex items-center justify-center text-imec-blue font-bold text-xs">'+ini+'</div><div><p class="font-semibold text-gray-800">'+emp.full_name+'</p><p class="text-xs text-gray-400">'+(emp.email||'')+'</p></div></div></td><td class="font-mono text-sm">'+formatCPF(emp.cpf)+'</td><td>'+(emp.role_position||'')+'</td><td>'+(emp.department||'')+'</td><td>'+statusBadge(emp.status)+'</td><td><span class="text-sm font-semibold">'+vN+'/'+tN+'</span> <span class="text-xs text-gray-400">v\u00e1lidas</span></td><td><div class="flex items-center gap-1"><button class="btn btn-outline btn-sm" onclick="viewEmployee(\''+emp.id+'\')" title="Ver"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button>'+(canEdit()?'<button class="btn btn-outline btn-sm" onclick="editEmployee(\''+emp.id+'\')" title="Editar"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>':'')+(canAdmin()?'<button class="btn btn-sm text-imec-red hover:bg-red-50" onclick="deleteRecord(\'employees\',\''+emp.id+'\',\''+emp.full_name+'\')" title="Excluir"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>':'')+'</div></td></tr>';
+  });
+  h += '</tbody></table></div>'; return h;
+};
+
+function editEmployee(id) {
+  const db = getDB(); const emp = id ? (db.employees||[]).find(function(e){return sameId(e.id, id);}) : null;
+  openModal('<div class="p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-6">'+(emp?'Editar':'Novo')+' Funcion\u00e1rio</h2><form onsubmit="saveEmployee(event,\''+(id||'')+'\')"><div class="grid md:grid-cols-2 gap-4"><div><label class="label">Nome Completo *</label><input type="text" class="input" id="empName" value="'+(emp?emp.full_name:'')+'" required></div><div><label class="label">CPF *</label><input type="text" class="input" id="empCPF" value="'+(emp?emp.cpf:'')+'" required placeholder="00000000000"></div><div><label class="label">RG</label><input type="text" class="input" id="empRG" value="'+(emp?emp.rg:'')+'"></div><div><label class="label">Data de Nascimento</label><input type="date" class="input" id="empBirth" value="'+(emp?inputDate(emp.birth_date):'')+'"></div><div><label class="label">Telefone</label><input type="text" class="input" id="empPhone" value="'+(emp?emp.phone:'')+'"></div><div><label class="label">E-mail</label><input type="email" class="input" id="empEmail" value="'+(emp?emp.email:'')+'"></div><div class="md:col-span-2"><label class="label">Endere\u00e7o</label><input type="text" class="input" id="empAddress" value="'+(emp?emp.address:'')+'"></div><div><label class="label">Fun\u00e7\u00e3o/Cargo</label><input type="text" class="input" id="empRole" value="'+(emp?emp.role_position:'')+'"></div><div><label class="label">Setor</label><input type="text" class="input" id="empDept" value="'+(emp?emp.department:'')+'"></div><div><label class="label">Data de Admiss\u00e3o</label><input type="date" class="input" id="empAdmission" value="'+(emp?inputDate(emp.admission_date):'')+'"></div><div><label class="label">Status</label><select class="input" id="empStatus"><option value="ativo"'+(emp&&emp.status==='ativo'?' selected':'')+'>Ativo</option><option value="afastado"'+(emp&&emp.status==='afastado'?' selected':'')+'>Afastado</option><option value="desligado"'+(emp&&emp.status==='desligado'?' selected':'')+'>Desligado</option></select></div><div class="md:col-span-2"><label class="label">Observa\u00e7\u00f5es</label><textarea class="input" rows="2" id="empNotes">'+(emp?emp.notes:'')+'</textarea></div></div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Salvar</button></div></form></div>');
+}
+
+async function saveEmployee(e, id) {
+  e.preventDefault();
+  const data = {full_name:document.getElementById('empName').value,cpf:document.getElementById('empCPF').value,rg:document.getElementById('empRG').value,birth_date:document.getElementById('empBirth').value,phone:document.getElementById('empPhone').value,email:document.getElementById('empEmail').value,address:document.getElementById('empAddress').value,role_position:document.getElementById('empRole').value,department:document.getElementById('empDept').value,admission_date:document.getElementById('empAdmission').value,status:document.getElementById('empStatus').value,notes:document.getElementById('empNotes').value};
+  try { if (id) await API.employees.update(id, data); else await API.employees.create(data); await refreshData(); closeModal(); await renderPage(); showToast(id?'Funcion\u00e1rio atualizado!':'Funcion\u00e1rio cadastrado!','success'); } catch (err) { showToast('Erro: '+err.message,'error'); }
+}
+
+async function viewEmployee(id) {
+  const db = getDB(); const emp = (db.employees||[]).find(function(e){return sameId(e.id, id);}); if (!emp) return;
+  const ad = (db.settings&&db.settings.expiration_alert_days)||30;
+  const certs = (db.certificates||[]).filter(function(c){return sameId(c.employee_id, id);});
+  const asos = (db.medical_exams||[]).filter(function(m){return sameId(m.employee_id, id);});
+  const epis = (db.epi_records||[]).filter(function(e){return sameId(e.employee_id, id);});
+  const ini = emp.full_name.split(' ').map(function(w){return w[0];}).join('').substring(0,2);
+  let nrsH = '<div id="empTabNRs" class="hidden"><div class="table-container"><table><thead><tr><th>Treinamento</th><th>C\u00f3digo</th><th>Emiss\u00e3o</th><th>Validade</th><th>Status</th></tr></thead><tbody>';
+  certs.forEach(function(c) { const t = (db.trainings||[]).find(function(tr){return sameId(tr.id, c.training_id);}); const st = c.status==='cancelado'?'cancelado':calcStatus(c.expiration_date,ad); nrsH += '<tr><td>'+(t?t.name:'N/A')+'</td><td class="font-mono text-xs">'+(t?t.code:'')+'</td><td>'+formatDate(c.issue_date)+'</td><td>'+formatDate(c.expiration_date)+'</td><td>'+statusBadge(st)+'</td></tr>'; });
+  nrsH += '</tbody></table></div></div>';
+  let asoH = '<div id="empTabASO" class="hidden"><div class="table-container"><table><thead><tr><th>Tipo</th><th>Emiss\u00e3o</th><th>Validade</th><th>M\u00e9dico</th><th>Resultado</th></tr></thead><tbody>';
+  asos.forEach(function(a) { asoH += '<tr><td>'+a.exam_type+'</td><td>'+formatDate(a.issue_date)+'</td><td>'+formatDate(a.expiration_date)+'</td><td>'+a.doctor_name+'</td><td>'+statusBadge(a.aptitude_result)+'</td></tr>'; });
+  asoH += '</tbody></table></div></div>';
+  let epiH = '<div id="empTabEPI" class="hidden"><div class="table-container"><table><thead><tr><th>EPI</th><th>CA</th><th>Qtd</th><th>Entrega</th><th>Troca Prevista</th></tr></thead><tbody>';
+  epis.forEach(function(ep) { epiH += '<tr><td>'+ep.epi_name+'</td><td>'+ep.ca_number+'</td><td>'+ep.quantity+'</td><td>'+formatDate(ep.delivery_date)+'</td><td>'+formatDate(ep.replacement_date)+'</td></tr>'; });
+  epiH += '</tbody></table></div></div>';
+  openModal('<div class="p-6"><div class="flex items-center gap-4 mb-6"><div class="w-14 h-14 rounded-2xl bg-imec-blue/10 flex items-center justify-center text-imec-blue font-bold text-lg">'+ini+'</div><div><h2 class="font-display text-xl font-bold text-imec-dark">'+emp.full_name+'</h2><p class="text-sm text-gray-500">'+(emp.role_position||'')+' \u2014 '+(emp.department||'')+'</p></div><div class="ml-auto">'+statusBadge(emp.status)+'</div></div><div class="flex border-b border-gray-200 mb-4 overflow-x-auto"><div class="tab active" onclick="switchEmpTab(this,\'empTabGeneral\')">Dados Gerais</div><div class="tab" onclick="switchEmpTab(this,\'empTabNRs\')">NRs / Treinamentos</div><div class="tab" onclick="switchEmpTab(this,\'empTabASO\')">ASO</div><div class="tab" onclick="switchEmpTab(this,\'empTabEPI\')">EPI</div></div><div id="empTabGeneral" class="grid md:grid-cols-2 gap-4 text-sm"><div><span class="text-gray-500">Nome:</span> <strong>'+emp.full_name+'</strong></div><div><span class="text-gray-500">CPF:</span> <strong>'+formatCPF(emp.cpf)+'</strong></div><div><span class="text-gray-500">RG:</span> <strong>'+(emp.rg||'\u2014')+'</strong></div><div><span class="text-gray-500">Nascimento:</span> <strong>'+formatDate(emp.birth_date)+'</strong></div><div><span class="text-gray-500">Telefone:</span> <strong>'+(emp.phone||'\u2014')+'</strong></div><div><span class="text-gray-500">E-mail:</span> <strong>'+(emp.email||'\u2014')+'</strong></div><div class="md:col-span-2"><span class="text-gray-500">Endere\u00e7o:</span> <strong>'+(emp.address||'\u2014')+'</strong></div><div><span class="text-gray-500">Fun\u00e7\u00e3o:</span> <strong>'+(emp.role_position||'\u2014')+'</strong></div><div><span class="text-gray-500">Setor:</span> <strong>'+(emp.department||'\u2014')+'</strong></div><div><span class="text-gray-500">Admiss\u00e3o:</span> <strong>'+formatDate(emp.admission_date)+'</strong></div><div><span class="text-gray-500">Status:</span> '+statusBadge(emp.status)+'</div>'+(emp.notes?'<div class="md:col-span-2"><span class="text-gray-500">Obs:</span> <strong>'+emp.notes+'</strong></div>':'')+'</div>'+nrsH+asoH+epiH+'<div class="flex justify-end mt-6"><button class="btn btn-outline" onclick="closeModal()">Fechar</button></div></div>');
+}
+function switchEmpTab(el, tabId) { el.parentElement.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');}); el.classList.add('active'); ['empTabGeneral','empTabNRs','empTabASO','empTabEPI'].forEach(function(id){var tab=document.getElementById(id);if(tab)tab.classList.toggle('hidden',id!==tabId);}); }
+
+function filterTable(tid, iid) { var f=document.getElementById(iid).value.toLowerCase(); document.getElementById(tid).querySelectorAll('tbody tr').forEach(function(r){r.style.display=r.textContent.toLowerCase().includes(f)?'':'none';}); }
+function filterTableByStatus(tid, sid, ci) { var v=document.getElementById(sid).value; document.getElementById(tid).querySelectorAll('tbody tr').forEach(function(r){if(!v){r.style.display='';return;}r.style.display=r.getAttribute('data-status')===v?'':'none';}); }
+
+async function deleteRecord(collection, id, name) {
+  if (!confirm('Tem certeza que deseja excluir "'+name+'"?')) return;
+  try {
+    var map = {'employees':API.employees.delete,'trainings':API.trainings.delete,'certificates':API.certificates.delete,'medical_exams':API.medicalExams.delete,'epi_records':API.epi.delete,'equipment':API.equipment.delete,'clients':API.clients.delete,'projects':API.projects.delete,'technical_documents':API.technicalDocuments.delete};
+    var fn = map[collection]; if (fn) await fn(id);
+    await refreshData(); await renderPage(); showToast('Registro exclu\u00eddo','success');
+  } catch (err) { showToast('Erro: '+err.message,'error'); }
+}
+
+renderers.trainings = async function() {
+  const db = getDB();
+  let h = '<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div class="search-box flex-1 max-w-md"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input type="text" class="input" placeholder="Buscar treinamento..." id="trainSearch" onkeyup="filterTable(\'trainTable\',\'trainSearch\')"></div>'+(canEdit()?'<button class="btn btn-primary" onclick="editTraining()"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>Novo Treinamento</button>':'')+'</div>';
+  h += '<div class="table-container"><table id="trainTable"><thead><tr><th>C\u00f3digo</th><th>Nome</th><th>Categoria</th><th>Carga Hor\u00e1ria</th><th>Validade (meses)</th><th>Reciclagem</th><th>Status</th><th>A\u00e7\u00f5es</th></tr></thead><tbody>';
+  (db.trainings||[]).forEach(function(t) { h += '<tr><td><span class="font-mono text-sm font-semibold text-imec-blue">'+t.code+'</span></td><td class="font-semibold">'+t.name+'</td><td><span class="badge badge-blue">'+t.category+'</span></td><td>'+t.default_workload+'h</td><td>'+(t.default_validity_months||'\u2014')+'</td><td>'+(t.requires_recycling?'Sim':'N\u00e3o')+'</td><td>'+statusBadge(t.status)+'</td><td><div class="flex gap-1">'+(canEdit()?'<button class="btn btn-outline btn-sm" onclick="editTraining(\''+t.id+'\')"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>':'')+(canAdmin()?'<button class="btn btn-sm text-imec-red" onclick="deleteRecord(\'trainings\',\''+t.id+'\',\''+t.name+'\')"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>':'')+'</div></td></tr>'; });
+  h += '</tbody></table></div>'; return h;
+};
+function editTraining(id) {
+  const db = getDB(); const t = id ? (db.trainings||[]).find(function(x){return sameId(x.id, id);}) : null;
+  openModal('<div class="p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-6">'+(t?'Editar':'Novo')+' Treinamento</h2><form onsubmit="saveTraining(event,\''+(id||'')+'\')"><div class="grid md:grid-cols-2 gap-4"><div><label class="label">Nome *</label><input type="text" class="input" id="trName" value="'+(t?t.name:'')+'" required></div><div><label class="label">C\u00f3digo *</label><input type="text" class="input" id="trCode" value="'+(t?t.code:'')+'" required></div><div><label class="label">Categoria</label><select class="input" id="trCat"><option'+(t&&t.category==='NR'?' selected':'')+'>NR</option><option'+(t&&t.category==='Opera\u00e7\u00e3o'?' selected':'')+'>Opera\u00e7\u00e3o</option><option'+(t&&t.category==='T\u00e9cnico'?' selected':'')+'>T\u00e9cnico</option><option'+(t&&t.category==='Seguran\u00e7a'?' selected':'')+'>Seguran\u00e7a</option><option'+(t&&t.category==='Outro'?' selected':'')+'>Outro</option></select></div><div><label class="label">Carga Hor\u00e1ria (h)</label><input type="number" class="input" id="trWorkload" value="'+(t?t.default_workload:'16')+'"></div><div><label class="label">Validade (meses)</label><input type="number" class="input" id="trValidity" value="'+(t?t.default_validity_months:'24')+'"></div><div><label class="label">Exige Reciclagem</label><select class="input" id="trRecycling"><option value="true"'+(t&&t.requires_recycling?' selected':'')+'>Sim</option><option value="false"'+(t&&!t.requires_recycling?' selected':'')+'>N\u00e3o</option></select></div><div class="md:col-span-2"><label class="label">Descri\u00e7\u00e3o</label><textarea class="input" rows="2" id="trDesc">'+(t?t.description:'')+'</textarea></div></div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Salvar</button></div></form></div>');
+}
+async function saveTraining(e, id) {
+  e.preventDefault();
+  const data = {name:document.getElementById('trName').value,code:document.getElementById('trCode').value,category:document.getElementById('trCat').value,default_workload:parseInt(document.getElementById('trWorkload').value)||0,default_validity_months:parseInt(document.getElementById('trValidity').value)||0,requires_recycling:document.getElementById('trRecycling').value==='true',description:document.getElementById('trDesc').value,status:'ativo'};
+  try { if (id) await API.trainings.update(id, data); else await API.trainings.create(data); await refreshData(); closeModal(); await renderPage(); showToast(id?'Treinamento atualizado!':'Treinamento cadastrado!','success'); } catch (err) { showToast('Erro: '+err.message,'error'); }
+}
+
+renderers.certificates = async function() {
+  const db = getDB(); const ad = (db.settings&&db.settings.expiration_alert_days)||30;
+  let h = '<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div class="flex items-center gap-3 flex-1"><div class="search-box flex-1 max-w-md"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input type="text" class="input" placeholder="Buscar certificado..." id="certSearch" onkeyup="filterTable(\'certTable\',\'certSearch\')"></div><select class="input w-auto" id="certStatusFilter" onchange="filterTableByStatus(\'certTable\',\'certStatusFilter\',6)"><option value="">Todos</option><option value="valido">V\u00e1lido</option><option value="vencendo">Vencendo</option><option value="vencido">Vencido</option><option value="cancelado">Cancelado</option></select></div>'+(canEdit()?'<button class="btn btn-primary" onclick="editCertificate()"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>Novo Certificado</button>':'')+'</div>';
+  h += '<div class="table-container"><table id="certTable"><thead><tr><th>C\u00f3digo</th><th>Funcion\u00e1rio</th><th>Treinamento</th><th>Emiss\u00e3o</th><th>Validade</th><th>Status</th><th data-col="6">Status Calc.</th><th>A\u00e7\u00f5es</th></tr></thead><tbody>';
+  (db.certificates||[]).forEach(function(c) {
+    const st = c.status==='cancelado'?'cancelado':calcStatus(c.expiration_date,ad);
+    h += '<tr data-status="'+st+'"><td class="font-mono text-xs font-semibold">'+c.certificate_code+'</td><td>'+(c.employee_name||'N/A')+'</td><td>'+(c.training_code||'')+' \u2014 '+(c.training_name||'N/A')+'</td><td>'+formatDate(c.issue_date)+'</td><td>'+formatDate(c.expiration_date)+'</td><td>'+(c.status==='cancelado'?statusBadge('cancelado'):statusBadge(st))+'</td><td>'+statusBadge(st)+'</td><td><div class="flex gap-1"><button class="btn btn-outline btn-sm" onclick="showPublicVerification(\''+c.verification_token+'\')" title="Verificar"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button><button class="btn btn-outline btn-sm" onclick="showQRCode(\''+c.verification_token+'\',\''+c.certificate_code+'\')" title="QR Code"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg></button>'+(canEdit()?'<button class="btn btn-outline btn-sm" onclick="editCertificate(\''+c.id+'\')" title="Editar"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>':'')+(canAdmin()&&c.status!=='cancelado'?'<button class="btn btn-sm text-imec-red" onclick="cancelCertificate(\''+c.id+'\')" title="Cancelar"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg></button>':'')+'</div></td></tr>';
+  });
+  h += '</tbody></table></div>'; return h;
+};
+function editCertificate(id) {
+  const db = getDB(); const c = id ? (db.certificates||[]).find(function(x){return sameId(x.id, id);}) : null; const s = db.settings||{};
+  const eO = (db.employees||[]).map(function(e){return '<option value="'+e.id+'"'+(c&&sameId(c.employee_id, e.id)?' selected':'')+'>'+e.full_name+'</option>';}).join('');
+  const tO = (db.trainings||[]).map(function(t){return '<option value="'+t.id+'"'+(c&&sameId(c.training_id, t.id)?' selected':'')+'>'+t.code+' \u2014 '+t.name+'</option>';}).join('');
+  openModal('<div class="p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-6">'+(c?'Editar':'Novo')+' Certificado</h2><form onsubmit="saveCertificate(event,\''+(id||'')+'\')"><div class="grid md:grid-cols-2 gap-4"><div><label class="label">Funcion\u00e1rio *</label><select class="input" id="certEmp" required>'+eO+'</select></div><div><label class="label">Treinamento *</label><select class="input" id="certTrain" required>'+tO+'</select></div><div><label class="label">Data de Emiss\u00e3o *</label><input type="date" class="input" id="certIssue" value="'+(c?inputDate(c.issue_date):today())+'" required></div><div><label class="label">Data de Validade *</label><input type="date" class="input" id="certExp" value="'+(c?inputDate(c.expiration_date):addMonths(today(),24))+'" required></div><div><label class="label">Carga Hor\u00e1ria (h)</label><input type="number" class="input" id="certWorkload" value="'+(c?c.workload:'16')+'"></div><div><label class="label">Instrutor</label><input type="text" class="input" id="certInstructor" value="'+(c?c.instructor_name:'')+'"></div><div><label class="label">Empresa Emissora</label><input type="text" class="input" id="certIssuer" value="'+(c?c.issuer_company:(s.company_name||''))+'"></div><div><label class="label">Respons\u00e1vel T\u00e9cnico</label><input type="text" class="input" id="certResp" value="'+(c?c.technical_responsible:(s.technical_responsible||''))+'"></div><div><label class="label">CREA</label><input type="text" class="input" id="certCREA" value="'+(c?c.crea_number:(s.crea_number||''))+'"></div><div class="md:col-span-2"><label class="label">Observa\u00e7\u00f5es</label><textarea class="input" rows="2" id="certNotes">'+(c?c.notes:'')+'</textarea></div></div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Salvar</button></div></form></div>');
+}
+async function saveCertificate(e, id) {
+  e.preventDefault();
+  const data = {employee_id:document.getElementById('certEmp').value,training_id:document.getElementById('certTrain').value,issue_date:document.getElementById('certIssue').value,expiration_date:document.getElementById('certExp').value,workload:parseInt(document.getElementById('certWorkload').value)||0,instructor_name:document.getElementById('certInstructor').value,issuer_company:document.getElementById('certIssuer').value,technical_responsible:document.getElementById('certResp').value,crea_number:document.getElementById('certCREA').value,notes:document.getElementById('certNotes').value};
+  try { if (id) await API.certificates.update(id, data); else await API.certificates.create(data); await refreshData(); closeModal(); await renderPage(); showToast(id?'Certificado atualizado!':'Certificado criado!','success'); } catch (err) { showToast('Erro: '+err.message,'error'); }
+}
+async function cancelCertificate(id) { if (!confirm('Cancelar este certificado?')) return; try { await API.certificates.cancel(id); await refreshData(); await renderPage(); showToast('Certificado cancelado','warning'); } catch (err) { showToast('Erro: '+err.message,'error'); } }
+function showQRCode(token, code) {
+  var url = window.location.origin + '/verificar/' + encodeURIComponent(token);
+  openModal('<div class="p-6 text-center"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">QR Code de Autenticidade</h2><p class="text-sm text-gray-500 mb-4">'+code+'</p><div id="qrCanvas" class="flex justify-center mb-4"></div><p class="text-xs text-gray-400 mb-2">'+url+'</p><div class="flex justify-center gap-3 mt-4"><button class="btn btn-outline btn-sm" onclick="closeModal()">Fechar</button></div></div>');
+  setTimeout(function(){var c=document.getElementById('qrCanvas');if(c)QRCode.toCanvas(url,{width:200,margin:2},function(e,cv){if(!e&&c)c.appendChild(cv);});},100);
+}
+
+renderers.idcards = async function() {
+  const db = getDB(); const ad = (db.settings&&db.settings.expiration_alert_days)||30;
+  let h = '<div class="flex items-center justify-between mb-6"><h3 class="font-display text-lg font-bold text-imec-dark">Carteirinhas Digitais</h3></div><div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">';
+  (db.certificates||[]).filter(function(c){return c.status!=='cancelado';}).forEach(function(c) {
+    const st = calcStatus(c.expiration_date, ad);
+    const ini = (c.employee_name||'??').split(' ').map(function(w){return w[0];}).join('').substring(0,2);
+    h += '<div class="id-card"><div class="id-card-header"><div class="flex items-center justify-between"><div><p class="text-xs text-blue-200/70">IMEC Compliance Industrial</p><p class="font-display font-bold text-sm">Carteira de Qualifica\u00e7\u00e3o</p></div><div class="text-right"><p class="text-xs text-blue-200/60">'+(st==='valido'?'V\u00c1LIDA':st==='vencendo'?'VENCENDO':'VENCIDA')+'</p></div></div></div><div class="id-card-body"><div class="flex items-start gap-3 mb-3"><div class="w-12 h-12 rounded-lg bg-imec-blue/10 flex items-center justify-center text-imec-blue font-bold text-sm flex-shrink-0">'+ini+'</div><div class="min-w-0"><p class="font-bold text-sm text-gray-800 truncate">'+(c.employee_name||'')+'</p></div></div><div class="text-xs space-y-1"><div class="flex justify-between"><span class="text-gray-500">Treinamento:</span><span class="font-semibold">'+(c.training_code||'')+'</span></div><div class="flex justify-between"><span class="text-gray-500">Validade:</span><span class="font-semibold">'+formatDate(c.expiration_date)+'</span></div><div class="flex justify-between"><span class="text-gray-500">C\u00f3digo:</span><span class="font-mono text-[10px]">'+c.certificate_code+'</span></div></div><div class="mt-3 pt-2 border-t border-gray-100 flex items-center justify-between"><p class="text-[9px] text-gray-400 italic leading-tight">Autentica\u00e7\u00e3o por QR Code</p><div class="w-10 h-10 bg-gray-100 rounded flex items-center justify-center cursor-pointer" onclick="showQRCode(\''+c.verification_token+'\',\''+c.certificate_code+'\')" title="Ver QR Code"><svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg></div></div></div></div>';
+  });
+  h += '</div>'; return h;
+};
+
+renderers.idcards = async function() {
+  if (typeof window.renderIdCardsPage === 'function') return window.renderIdCardsPage();
+  return '<div class="card p-6 text-center text-gray-500">Carregando modelo de carteirinha...</div>';
+};
+
+renderers.aso = async function() {
+  const db = getDB(); const ad = (db.settings&&db.settings.expiration_alert_days)||30;
+  let h = '<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div class="search-box flex-1 max-w-md"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input type="text" class="input" placeholder="Buscar ASO..." id="asoSearch" onkeyup="filterTable(\'asoTable\',\'asoSearch\')"></div>'+(canEdit()?'<button class="btn btn-primary" onclick="editASO()"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>Novo ASO</button>':'')+'</div>';
+  h += '<div class="table-container"><table id="asoTable"><thead><tr><th>Funcion\u00e1rio</th><th>Tipo</th><th>Emiss\u00e3o</th><th>Validade</th><th>M\u00e9dico</th><th>CRM</th><th>Resultado</th><th>Status</th><th>A\u00e7\u00f5es</th></tr></thead><tbody>';
+  (db.medical_exams||[]).forEach(function(m) {
+    const st = calcStatus(m.expiration_date, ad);
+    h += '<tr data-status="'+st+'"><td>'+(m.employee_name||'N/A')+'</td><td>'+m.exam_type+'</td><td>'+formatDate(m.issue_date)+'</td><td>'+formatDate(m.expiration_date)+'</td><td>'+m.doctor_name+'</td><td>'+m.crm+'</td><td>'+statusBadge(m.aptitude_result)+'</td><td>'+statusBadge(st)+'</td><td><div class="flex gap-1">'+(canEdit()?'<button class="btn btn-outline btn-sm" onclick="editASO(\''+m.id+'\')"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>':'')+(canAdmin()?'<button class="btn btn-sm text-imec-red" onclick="deleteRecord(\'medical_exams\',\''+m.id+'\',\'ASO de '+(m.employee_name||'')+'\')"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>':'')+'</div></td></tr>';
+  });
+  h += '</tbody></table></div>'; return h;
+};
+function editASO(id) {
+  const db = getDB(); const m = id ? (db.medical_exams||[]).find(function(x){return sameId(x.id, id);}) : null;
+  const eO = (db.employees||[]).map(function(e){return '<option value="'+e.id+'"'+(m&&sameId(m.employee_id, e.id)?' selected':'')+'>'+e.full_name+'</option>';}).join('');
+  openModal('<div class="p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-6">'+(m?'Editar':'Novo')+' ASO</h2><form onsubmit="saveASO(event,\''+(id||'')+'\')"><div class="grid md:grid-cols-2 gap-4"><div><label class="label">Funcion\u00e1rio *</label><select class="input" id="asoEmp" required>'+eO+'</select></div><div><label class="label">Tipo *</label><select class="input" id="asoType" required><option value="admissional"'+(m&&m.exam_type==='admissional'?' selected':'')+'>Admissional</option><option value="peri\u00f3dico"'+(m&&m.exam_type==='peri\u00f3dico'?' selected':'')+'>Peri\u00f3dico</option><option value="mudan\u00e7a de fun\u00e7\u00e3o"'+(m&&m.exam_type==='mudan\u00e7a de fun\u00e7\u00e3o'?' selected':'')+'>Mudan\u00e7a de Fun\u00e7\u00e3o</option><option value="retorno ao trabalho"'+(m&&m.exam_type==='retorno ao trabalho'?' selected':'')+'>Retorno ao Trabalho</option><option value="demissional"'+(m&&m.exam_type==='demissional'?' selected':'')+'>Demissional</option></select></div><div><label class="label">Data de Emiss\u00e3o</label><input type="date" class="input" id="asoIssue" value="'+(m?inputDate(m.issue_date):today())+'"></div><div><label class="label">Data de Validade</label><input type="date" class="input" id="asoExp" value="'+(m?inputDate(m.expiration_date):addMonths(today(),12))+'"></div><div><label class="label">M\u00e9dico Respons\u00e1vel</label><input type="text" class="input" id="asoDoctor" value="'+(m?m.doctor_name:'')+'"></div><div><label class="label">CRM</label><input type="text" class="input" id="asoCRM" value="'+(m?m.crm:'')+'"></div><div><label class="label">Fun\u00e7\u00e3o Apta</label><input type="text" class="input" id="asoRole" value="'+(m?m.role_position:'')+'"></div><div><label class="label">Resultado</label><select class="input" id="asoResult"><option value="apto"'+(m&&m.aptitude_result==='apto'?' selected':'')+'>Apto</option><option value="inapto"'+(m&&m.aptitude_result==='inapto'?' selected':'')+'>Inapto</option><option value="apto_restricao"'+(m&&m.aptitude_result==='apto_restricao'?' selected':'')+'>Apto com Restri\u00e7\u00e3o</option></select></div><div class="md:col-span-2"><label class="label">Observa\u00e7\u00f5es</label><textarea class="input" rows="2" id="asoNotes">'+(m?m.notes:'')+'</textarea></div></div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Salvar</button></div></form></div>');
+}
+async function saveASO(e, id) {
+  e.preventDefault();
+  const data = {employee_id:document.getElementById('asoEmp').value,exam_type:document.getElementById('asoType').value,issue_date:document.getElementById('asoIssue').value,expiration_date:document.getElementById('asoExp').value,doctor_name:document.getElementById('asoDoctor').value,crm:document.getElementById('asoCRM').value,role_position:document.getElementById('asoRole').value,aptitude_result:document.getElementById('asoResult').value,notes:document.getElementById('asoNotes').value};
+  try { if (id) await API.medicalExams.update(id, data); else await API.medicalExams.create(data); await refreshData(); closeModal(); await renderPage(); showToast(id?'ASO atualizado!':'ASO cadastrado!','success'); } catch (err) { showToast('Erro: '+err.message,'error'); }
+}
+
+renderers.epi = async function() {
+  const db = getDB();
+  let h = '<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div class="search-box flex-1 max-w-md"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input type="text" class="input" placeholder="Buscar EPI..." id="epiSearch" onkeyup="filterTable(\'epiTable\',\'epiSearch\')"></div>'+(canEdit()?'<button class="btn btn-primary" onclick="editEPI()"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>Nova Entrega de EPI</button>':'')+'</div>';
+  h += '<div class="table-container"><table id="epiTable"><thead><tr><th>Funcion\u00e1rio</th><th>EPI</th><th>CA</th><th>Qtd</th><th>Entrega</th><th>Troca Prevista</th><th>A\u00e7\u00f5es</th></tr></thead><tbody>';
+  (db.epi_records||[]).forEach(function(ep) {
+    h += '<tr><td>'+(ep.employee_name||'N/A')+'</td><td>'+ep.epi_name+'</td><td>'+ep.ca_number+'</td><td>'+ep.quantity+'</td><td>'+formatDate(ep.delivery_date)+'</td><td>'+formatDate(ep.replacement_date)+'</td><td><div class="flex gap-1">'+(canEdit()?'<button class="btn btn-outline btn-sm" onclick="editEPI(\''+ep.id+'\')"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>':'')+(canAdmin()?'<button class="btn btn-sm text-imec-red" onclick="deleteRecord(\'epi_records\',\''+ep.id+'\',\''+ep.epi_name+'\')"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>':'')+'</div></td></tr>';
+  });
+  h += '</tbody></table></div>'; return h;
+};
+function editEPI(id) {
+  const db = getDB(); const ep = id ? (db.epi_records||[]).find(function(x){return sameId(x.id, id);}) : null;
+  const eO = (db.employees||[]).map(function(e){return '<option value="'+e.id+'"'+(ep&&sameId(ep.employee_id, e.id)?' selected':'')+'>'+e.full_name+'</option>';}).join('');
+  openModal('<div class="p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-6">'+(ep?'Editar':'Nova')+' Entrega de EPI</h2><form onsubmit="saveEPI(event,\''+(id||'')+'\')"><div class="grid md:grid-cols-2 gap-4"><div><label class="label">Funcion\u00e1rio *</label><select class="input" id="epiEmp" required>'+eO+'</select></div><div><label class="label">Nome do EPI *</label><input type="text" class="input" id="epiName" value="'+(ep?ep.epi_name:'')+'" required></div><div><label class="label">CA</label><input type="text" class="input" id="epiCA" value="'+(ep?ep.ca_number:'')+'"></div><div><label class="label">Quantidade</label><input type="number" class="input" id="epiQty" value="'+(ep?ep.quantity:1)+'" min="1"></div><div><label class="label">Data de Entrega</label><input type="date" class="input" id="epiDelivery" value="'+(ep?inputDate(ep.delivery_date):today())+'"></div><div><label class="label">Data Prevista de Troca</label><input type="date" class="input" id="epiReplacement" value="'+(ep?inputDate(ep.replacement_date):addMonths(today(),12))+'"></div><div class="md:col-span-2"><label class="label">Observa\u00e7\u00f5es</label><textarea class="input" rows="2" id="epiNotes">'+(ep?ep.notes:'')+'</textarea></div></div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Salvar</button></div></form></div>');
+}
+async function saveEPI(e, id) {
+  e.preventDefault();
+  const data = {employee_id:document.getElementById('epiEmp').value,epi_name:document.getElementById('epiName').value,ca_number:document.getElementById('epiCA').value,quantity:parseInt(document.getElementById('epiQty').value)||1,delivery_date:document.getElementById('epiDelivery').value,replacement_date:document.getElementById('epiReplacement').value,notes:document.getElementById('epiNotes').value};
+  try { if (id) await API.epi.update(id, data); else await API.epi.create(data); await refreshData(); closeModal(); await renderPage(); showToast(id?'EPI atualizado!':'EPI registrado!','success'); } catch (err) { showToast('Erro: '+err.message,'error'); }
+}
+
+renderers.equipment = async function() {
+  const db = getDB(); const ad = (db.settings&&db.settings.expiration_alert_days)||30;
+  let h = '<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div class="flex items-center gap-3 flex-1"><div class="search-box flex-1 max-w-md"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input type="text" class="input" placeholder="Buscar equipamento..." id="eqSearch" onkeyup="filterTable(\'eqTable\',\'eqSearch\')"></div><select class="input w-auto" id="eqTypeFilter" onchange="filterEqType()"><option value="">Todos os Tipos</option><option>Caminh\u00e3o Munck</option><option>Guindaste</option><option>Plataforma elevat\u00f3ria</option><option>Talha</option><option>Ponte rolante</option><option>Andaime</option><option>Linha de vida</option><option>Cinta de eleva\u00e7\u00e3o</option><option>Cabo de a\u00e7o</option><option>Outro</option></select></div>'+(canEdit()?'<button class="btn btn-primary" onclick="editEquipment()"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>Novo Equipamento</button>':'')+'</div>';
+  h += '<div class="table-container"><table id="eqTable"><thead><tr><th>Nome</th><th>Tipo</th><th>Marca/Modelo</th><th>N\u00ba S\u00e9rie</th><th>Capacidade</th><th>Status</th><th>A\u00e7\u00f5es</th></tr></thead><tbody>';
+  (db.equipment||[]).forEach(function(eq) {
+    h += '<tr data-type="'+eq.type+'"><td><p class="font-semibold">'+eq.name+'</p><p class="text-xs text-gray-400">Patrim\u00f4nio: '+eq.asset_number+'</p></td><td><span class="badge badge-blue">'+eq.type+'</span></td><td>'+eq.brand+' '+eq.model+'</td><td class="font-mono text-xs">'+eq.serial_number+'</td><td>'+eq.capacity+'</td><td>'+statusBadge(eq.status)+'</td><td><div class="flex gap-1">'+(canEdit()?'<button class="btn btn-outline btn-sm" onclick="editEquipment(\''+eq.id+'\')"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>':'')+(canAdmin()?'<button class="btn btn-sm text-imec-red" onclick="deleteRecord(\'equipment\',\''+eq.id+'\',\''+eq.name+'\')"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>':'')+'</div></td></tr>';
+  });
+  h += '</tbody></table></div>'; return h;
+};
+function filterEqType() { var v=document.getElementById('eqTypeFilter').value; document.getElementById('eqTable').querySelectorAll('tbody tr').forEach(function(r){r.style.display=!v||r.getAttribute('data-type')===v?'':'none';}); }
+function editEquipment(id) {
+  const db = getDB(); const eq = id ? (db.equipment||[]).find(function(x){return sameId(x.id, id);}) : null;
+  openModal('<div class="p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-6">'+(eq?'Editar':'Novo')+' Equipamento</h2><form onsubmit="saveEquipment(event,\''+(id||'')+'\')"><div class="grid md:grid-cols-2 gap-4"><div><label class="label">Nome *</label><input type="text" class="input" id="eqName" value="'+(eq?eq.name:'')+'" required></div><div><label class="label">Tipo *</label><select class="input" id="eqType" required><option'+(eq&&eq.type==='Caminh\u00e3o Munck'?' selected':'')+'>Caminh\u00e3o Munck</option><option'+(eq&&eq.type==='Guindaste'?' selected':'')+'>Guindaste</option><option'+(eq&&eq.type==='Plataforma elevat\u00f3ria'?' selected':'')+'>Plataforma elevat\u00f3ria</option><option'+(eq&&eq.type==='Talha'?' selected':'')+'>Talha</option><option'+(eq&&eq.type==='Ponte rolante'?' selected':'')+'>Ponte rolante</option><option'+(eq&&eq.type==='Outro'?' selected':'')+'>Outro</option></select></div><div><label class="label">Marca</label><input type="text" class="input" id="eqBrand" value="'+(eq?eq.brand:'')+'"></div><div><label class="label">Modelo</label><input type="text" class="input" id="eqModel" value="'+(eq?eq.model:'')+'"></div><div><label class="label">N\u00ba de S\u00e9rie</label><input type="text" class="input" id="eqSerial" value="'+(eq?eq.serial_number:'')+'"></div><div><label class="label">Patrim\u00f4nio</label><input type="text" class="input" id="eqAsset" value="'+(eq?eq.asset_number:'')+'"></div><div><label class="label">Placa</label><input type="text" class="input" id="eqPlate" value="'+(eq?eq.plate:'')+'"></div><div><label class="label">Ano</label><input type="text" class="input" id="eqYear" value="'+(eq?eq.year:'')+'"></div><div><label class="label">Capacidade Nominal</label><input type="text" class="input" id="eqCapacity" value="'+(eq?eq.capacity:'')+'"></div><div><label class="label">Propriet\u00e1rio</label><input type="text" class="input" id="eqOwner" value="'+(eq?eq.owner:'')+'"></div><div><label class="label">Status</label><select class="input" id="eqStatus"><option value="ativo"'+(eq&&eq.status==='ativo'?' selected':'')+'>Ativo</option><option value="manutencao"'+(eq&&eq.status==='manutencao'?' selected':'')+'>Manuten\u00e7\u00e3o</option><option value="inativo"'+(eq&&eq.status==='inativo'?' selected':'')+'>Inativo</option></select></div><div class="md:col-span-2"><label class="label">Observa\u00e7\u00f5es</label><textarea class="input" rows="2" id="eqNotes">'+(eq?eq.notes:'')+'</textarea></div></div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Salvar</button></div></form></div>');
+}
+async function saveEquipment(e, id) {
+  e.preventDefault();
+  const data = {name:document.getElementById('eqName').value,type:document.getElementById('eqType').value,brand:document.getElementById('eqBrand').value,model:document.getElementById('eqModel').value,serial_number:document.getElementById('eqSerial').value,asset_number:document.getElementById('eqAsset').value,plate:document.getElementById('eqPlate').value,year:document.getElementById('eqYear').value,capacity:document.getElementById('eqCapacity').value,owner:document.getElementById('eqOwner').value,status:document.getElementById('eqStatus').value,notes:document.getElementById('eqNotes').value};
+  try { if (id) await API.equipment.update(id, data); else await API.equipment.create(data); await refreshData(); closeModal(); await renderPage(); showToast(id?'Equipamento atualizado!':'Equipamento cadastrado!','success'); } catch (err) { showToast('Erro: '+err.message,'error'); }
+}
+
+renderers.cranes = async function() {
+  const db = getDB(); const ad = (db.settings&&db.settings.expiration_alert_days)||30;
+  const cranes = (db.equipment||[]).filter(function(e){return e.type==='Guindaste'||e.type==='Caminh\u00e3o Munck';});
+  let h = '<div class="flex items-center justify-between mb-6"><h3 class="font-display text-lg font-bold text-imec-dark">Guindastes e Caminh\u00f5es Munck</h3>'+(canEdit()?'<button class="btn btn-primary" onclick="editEquipment()">+ Novo Equipamento</button>':'')+'</div><div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">';
+  cranes.forEach(function(cr) {
+    h += '<div class="card overflow-hidden"><div class="bg-gradient-to-r from-imec-dark to-imec-blue p-4 text-white"><div class="flex items-center justify-between"><h4 class="font-display font-bold">'+cr.name+'</h4><span class="badge '+(cr.status==='ativo'?'badge-green':'badge-orange')+'">'+cr.status+'</span></div><p class="text-blue-200/70 text-sm mt-1">'+cr.type+'</p></div><div class="p-4 space-y-3 text-sm"><div class="flex justify-between"><span class="text-gray-500">Marca/Modelo:</span><span class="font-semibold">'+cr.brand+' '+cr.model+'</span></div><div class="flex justify-between"><span class="text-gray-500">Capacidade:</span><span class="font-semibold">'+cr.capacity+'</span></div><div class="flex justify-between"><span class="text-gray-500">Placa:</span><span class="font-semibold">'+(cr.plate||'\u2014')+'</span></div><div class="flex justify-between"><span class="text-gray-500">Ano:</span><span class="font-semibold">'+cr.year+'</span></div></div><div class="px-4 pb-4 flex gap-2"><button class="btn btn-outline btn-sm flex-1" onclick="editEquipment(\''+cr.id+'\')">Editar</button></div></div>';
+  });
+  h += '</div>'; return h;
+};
+
+renderers.clients = async function() {
+  const db = getDB();
+  let h = '<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div class="search-box flex-1 max-w-md"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input type="text" class="input" placeholder="Buscar cliente..." id="clientSearch" onkeyup="filterTable(\'clientTable\',\'clientSearch\')"></div>'+(canEdit()?'<button class="btn btn-primary" onclick="editClient()">+ Novo Cliente</button>':'')+'</div>';
+  h += '<div class="table-container"><table id="clientTable"><thead><tr><th>Nome</th><th>CNPJ</th><th>Contato</th><th>Telefone</th><th>Cidade/UF</th><th>A\u00e7\u00f5es</th></tr></thead><tbody>';
+  (db.clients||[]).forEach(function(c) {
+    h += '<tr><td class="font-semibold">'+c.name+'</td><td class="font-mono text-sm">'+c.cnpj+'</td><td>'+c.contact_name+'</td><td>'+c.phone+'</td><td>'+c.city+'/'+c.state+'</td><td><div class="flex gap-1">'+(canEdit()?'<button class="btn btn-outline btn-sm" onclick="editClient(\''+c.id+'\')"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>':'')+(canAdmin()?'<button class="btn btn-sm text-imec-red" onclick="deleteRecord(\'clients\',\''+c.id+'\',\''+c.name+'\')"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>':'')+'</div></td></tr>';
+  });
+  h += '</tbody></table></div>'; return h;
+};
+function editClient(id) {
+  const db = getDB(); const c = id ? (db.clients||[]).find(function(x){return sameId(x.id, id);}) : null;
+  openModal('<div class="p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-6">'+(c?'Editar':'Novo')+' Cliente</h2><form onsubmit="saveClient(event,\''+(id||'')+'\')"><div class="grid md:grid-cols-2 gap-4"><div><label class="label">Nome *</label><input type="text" class="input" id="clName" value="'+(c?c.name:'')+'" required></div><div><label class="label">CNPJ</label><input type="text" class="input" id="clCNPJ" value="'+(c?c.cnpj:'')+'"></div><div><label class="label">Contato Principal</label><input type="text" class="input" id="clContact" value="'+(c?c.contact_name:'')+'"></div><div><label class="label">Telefone</label><input type="text" class="input" id="clPhone" value="'+(c?c.phone:'')+'"></div><div><label class="label">E-mail</label><input type="email" class="input" id="clEmail" value="'+(c?c.email:'')+'"></div><div><label class="label">Endere\u00e7o</label><input type="text" class="input" id="clAddress" value="'+(c?c.address:'')+'"></div><div><label class="label">Cidade</label><input type="text" class="input" id="clCity" value="'+(c?c.city:'')+'"></div><div><label class="label">Estado</label><input type="text" class="input" id="clState" value="'+(c?c.state:'')+'" maxlength="2"></div><div class="md:col-span-2"><label class="label">Observa\u00e7\u00f5es</label><textarea class="input" rows="2" id="clNotes">'+(c?c.notes:'')+'</textarea></div></div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Salvar</button></div></form></div>');
+}
+async function saveClient(e, id) {
+  e.preventDefault();
+  const data = {name:document.getElementById('clName').value,cnpj:document.getElementById('clCNPJ').value,contact_name:document.getElementById('clContact').value,phone:document.getElementById('clPhone').value,email:document.getElementById('clEmail').value,address:document.getElementById('clAddress').value,city:document.getElementById('clCity').value,state:document.getElementById('clState').value,notes:document.getElementById('clNotes').value};
+  try { if (id) await API.clients.update(id, data); else await API.clients.create(data); await refreshData(); closeModal(); await renderPage(); showToast(id?'Cliente atualizado!':'Cliente cadastrado!','success'); } catch (err) { showToast('Erro: '+err.message,'error'); }
+}
+
+renderers.projects = async function() {
+  const db = getDB(); const user = getUser();
+  let projects = db.projects || [];
+  if (user && user.role === 'client') { projects = projects.filter(function(p){return sameId(p.client_id, user.client_id);}); }
+  let h = '<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div class="flex items-center gap-3 flex-1"><div class="search-box flex-1 max-w-md"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input type="text" class="input" placeholder="Buscar obra..." id="projSearch" onkeyup="filterTable(\'projTable\',\'projSearch\')"></div><select class="input w-auto" id="projStatusFilter" onchange="filterTableByStatus(\'projTable\',\'projStatusFilter\',4)"><option value="">Todos</option><option value="planejada">Planejada</option><option value="em_andamento">Em Andamento</option><option value="concluida">Conclu\u00edda</option><option value="paralisada">Paralisada</option></select></div>'+(canEdit()?'<button class="btn btn-primary" onclick="editProject()">+ Nova Obra</button>':'')+'</div>';
+  h += '<div class="table-container"><table id="projTable"><thead><tr><th>Obra</th><th>Cliente</th><th>Local</th><th>Per\u00edodo</th><th>Status</th><th>A\u00e7\u00f5es</th></tr></thead><tbody>';
+  projects.forEach(function(p) {
+    h += '<tr data-status="'+p.status+'"><td><p class="font-semibold">'+p.name+'</p></td><td>'+(p.client_name||'N/A')+'</td><td class="text-sm">'+p.location+'</td><td class="text-sm">'+formatDate(p.start_date)+' \u2014 '+formatDate(p.expected_end_date)+'</td><td>'+statusBadge(p.status)+'</td><td><div class="flex gap-1">'+(canEdit()?'<button class="btn btn-outline btn-sm" onclick="editProject(\''+p.id+'\')"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>':'')+'</div></td></tr>';
+  });
+  h += '</tbody></table></div>'; return h;
+};
+function editProject(id) {
+  const db = getDB(); const p = id ? (db.projects||[]).find(function(x){return sameId(x.id, id);}) : null; const s = db.settings||{};
+  const cO = (db.clients||[]).map(function(c){return '<option value="'+c.id+'"'+(p&&sameId(p.client_id, c.id)?' selected':'')+'>'+c.name+'</option>';}).join('');
+  openModal('<div class="p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-6">'+(p?'Editar':'Nova')+' Obra</h2><form onsubmit="saveProject(event,\''+(id||'')+'\')"><div class="grid md:grid-cols-2 gap-4"><div class="md:col-span-2"><label class="label">Nome da Obra *</label><input type="text" class="input" id="pName" value="'+(p?p.name:'')+'" required></div><div><label class="label">Cliente *</label><select class="input" id="pClient" required>'+cO+'</select></div><div><label class="label">Local</label><input type="text" class="input" id="pLocation" value="'+(p?p.location:'')+'"></div><div><label class="label">Data de In\u00edcio</label><input type="date" class="input" id="pStart" value="'+(p?inputDate(p.start_date):today())+'"></div><div><label class="label">Previs\u00e3o de T\u00e9rmino</label><input type="date" class="input" id="pEnd" value="'+(p?inputDate(p.expected_end_date):addMonths(today(),6))+'"></div><div><label class="label">Status</label><select class="input" id="pStatus"><option value="planejada"'+(p&&p.status==='planejada'?' selected':'')+'>Planejada</option><option value="em_andamento"'+(p&&p.status==='em_andamento'?' selected':'')+'>Em Andamento</option><option value="concluida"'+(p&&p.status==='concluida'?' selected':'')+'>Conclu\u00edda</option><option value="paralisada"'+(p&&p.status==='paralisada'?' selected':'')+'>Paralisada</option><option value="cancelada"'+(p&&p.status==='cancelada'?' selected':'')+'>Cancelada</option></select></div><div><label class="label">Respons\u00e1vel T\u00e9cnico</label><input type="text" class="input" id="pResp" value="'+(p?p.technical_responsible:(s.technical_responsible||''))+'"></div><div class="md:col-span-2"><label class="label">Descri\u00e7\u00e3o do Servi\u00e7o</label><textarea class="input" rows="3" id="pDesc">'+(p?p.service_description:'')+'</textarea></div><div class="md:col-span-2"><label class="label">Observa\u00e7\u00f5es</label><textarea class="input" rows="2" id="pNotes">'+(p?p.notes:'')+'</textarea></div></div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Salvar</button></div></form></div>');
+}
+async function saveProject(e, id) {
+  e.preventDefault();
+  const data = {name:document.getElementById('pName').value,client_id:document.getElementById('pClient').value,location:document.getElementById('pLocation').value,start_date:document.getElementById('pStart').value,expected_end_date:document.getElementById('pEnd').value,status:document.getElementById('pStatus').value,technical_responsible:document.getElementById('pResp').value,service_description:document.getElementById('pDesc').value,notes:document.getElementById('pNotes').value};
+  try { if (id) await API.projects.update(id, data); else await API.projects.create(data); await refreshData(); closeModal(); await renderPage(); showToast(id?'Obra atualizada!':'Obra cadastrada!','success'); } catch (err) { showToast('Erro: '+err.message,'error'); }
+}
+
+renderers.documents = async function() {
+  const db = getDB(); const ad = (db.settings&&db.settings.expiration_alert_days)||30;
+  let h = '<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div class="flex items-center gap-3 flex-1"><div class="search-box flex-1 max-w-md"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input type="text" class="input" placeholder="Buscar documento..." id="docSearch" onkeyup="filterTable(\'docTable\',\'docSearch\')"></div><select class="input w-auto" id="docTypeFilter" onchange="filterDocType()"><option value="">Todos os Tipos</option><option>ART</option><option>APR</option><option>Plano de Rigging</option><option>Memorial de c\u00e1lculo</option><option>Laudo t\u00e9cnico</option><option>Relat\u00f3rio fotogr\u00e1fico</option><option>Prontu\u00e1rio NR-13</option><option>Outro</option></select></div>'+(canEdit()?'<button class="btn btn-primary" onclick="editDocument()">+ Novo Documento</button>':'')+'</div>';
+  h += '<div class="table-container"><table id="docTable"><thead><tr><th>Tipo</th><th>N\u00ba</th><th>T\u00edtulo</th><th>Cliente</th><th>Obra</th><th>Respons\u00e1vel</th><th>Validade</th><th>Status</th><th>A\u00e7\u00f5es</th></tr></thead><tbody>';
+  (db.technical_documents||[]).forEach(function(d) {
+    const st = d.expiration_date ? calcStatus(d.expiration_date, ad) : 'valido';
+    h += '<tr data-type="'+d.document_type+'"><td><span class="badge badge-blue">'+d.document_type+'</span></td><td class="font-mono text-xs">'+d.document_number+'</td><td class="font-semibold text-sm">'+d.title+'</td><td>'+(d.client_name||'\u2014')+'</td><td>'+(d.project_name||'\u2014')+'</td><td>'+d.responsible_name+'</td><td>'+(d.expiration_date?formatDate(d.expiration_date):'\u2014')+'</td><td>'+statusBadge(st)+'</td><td><div class="flex gap-1">'+(canEdit()?'<button class="btn btn-outline btn-sm" onclick="editDocument(\''+d.id+'\')"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>':'')+(canAdmin()?'<button class="btn btn-sm text-imec-red" onclick="deleteRecord(\'technical_documents\',\''+d.id+'\',\''+d.title+'\')"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>':'')+'</div></td></tr>';
+  });
+  h += '</tbody></table></div>'; return h;
+};
+function filterDocType() { var v=document.getElementById('docTypeFilter').value; document.getElementById('docTable').querySelectorAll('tbody tr').forEach(function(r){r.style.display=!v||r.getAttribute('data-type')===v?'':'none';}); }
+function editDocument(id) {
+  const db = getDB(); const d = id ? (db.technical_documents||[]).find(function(x){return sameId(x.id, id);}) : null; const s = db.settings||{};
+  const cO = '<option value="">\u2014</option>'+(db.clients||[]).map(function(c){return '<option value="'+c.id+'"'+(d&&sameId(d.client_id, c.id)?' selected':'')+'>'+c.name+'</option>';}).join('');
+  const pO = '<option value="">\u2014</option>'+(db.projects||[]).map(function(p){return '<option value="'+p.id+'"'+(d&&sameId(d.project_id, p.id)?' selected':'')+'>'+p.name+'</option>';}).join('');
+  openModal('<div class="p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-6">'+(d?'Editar':'Novo')+' Documento T\u00e9cnico</h2><form onsubmit="saveDocument(event,\''+(id||'')+'\')"><div class="grid md:grid-cols-2 gap-4"><div><label class="label">Tipo *</label><select class="input" id="dType" required><option'+(d&&d.document_type==='ART'?' selected':'')+'>ART</option><option'+(d&&d.document_type==='APR'?' selected':'')+'>APR</option><option'+(d&&d.document_type==='Plano de Rigging'?' selected':'')+'>Plano de Rigging</option><option'+(d&&d.document_type==='Outro'?' selected':'')+'>Outro</option></select></div><div><label class="label">N\u00famero</label><input type="text" class="input" id="dNumber" value="'+(d?d.document_number:'')+'"></div><div class="md:col-span-2"><label class="label">T\u00edtulo *</label><input type="text" class="input" id="dTitle" value="'+(d?d.title:'')+'" required></div><div><label class="label">Cliente</label><select class="input" id="dClient">'+cO+'</select></div><div><label class="label">Obra</label><select class="input" id="dProject">'+pO+'</select></div><div><label class="label">Respons\u00e1vel T\u00e9cnico</label><input type="text" class="input" id="dResp" value="'+(d?d.responsible_name:(s.technical_responsible||''))+'"></div><div><label class="label">CREA</label><input type="text" class="input" id="dCREA" value="'+(d?d.crea_number:(s.crea_number||''))+'"></div><div><label class="label">Data de Emiss\u00e3o</label><input type="date" class="input" id="dIssue" value="'+(d?inputDate(d.issue_date):today())+'"></div><div><label class="label">Data de Validade</label><input type="date" class="input" id="dExp" value="'+(d?inputDate(d.expiration_date):addMonths(today(),12))+'"></div></div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Salvar</button></div></form></div>');
+}
+async function saveDocument(e, id) {
+  e.preventDefault();
+  const data = {document_type:document.getElementById('dType').value,document_number:document.getElementById('dNumber').value,title:document.getElementById('dTitle').value,client_id:document.getElementById('dClient').value,project_id:document.getElementById('dProject').value,responsible_name:document.getElementById('dResp').value,crea_number:document.getElementById('dCREA').value,issue_date:document.getElementById('dIssue').value,expiration_date:document.getElementById('dExp').value};
+  try { if (id) await API.technicalDocuments.update(id, data); else await API.technicalDocuments.create(data); await refreshData(); closeModal(); await renderPage(); showToast(id?'Documento atualizado!':'Documento cadastrado!','success'); } catch (err) { showToast('Erro: '+err.message,'error'); }
+}
+
+renderers.matrix = async function() {
+  const db = getDB(); const ad = (db.settings&&db.settings.expiration_alert_days)||30;
+  let h = '<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div><h3 class="font-display text-lg font-bold text-imec-dark">Matriz de Compet\u00eancia</h3><p class="text-sm text-gray-500">Verifique se os funcion\u00e1rios est\u00e3o aptos para cada atividade</p></div>'+(canEdit()?'<button class="btn btn-primary" onclick="editRequirement()">+ Nova Atividade</button>':'')+'</div><div class="space-y-6">';
+  (db.competency_requirements||[]).forEach(function(req) {
+    const reqT = req.required_training_ids || [];
+    h += '<div class="card p-6"><div class="flex items-center justify-between mb-4"><h4 class="font-display font-bold text-imec-dark">'+req.activity_name+'</h4><div class="flex gap-2 text-xs text-gray-500">'+(req.requires_aso?'<span class="badge badge-blue">ASO</span>':'')+(req.requires_epi?'<span class="badge badge-blue">EPI</span>':'')+(req.requires_client_integration?'<span class="badge badge-blue">Integra\u00e7\u00e3o</span>':'')+'</div></div><div class="table-container"><table><thead><tr><th>Funcion\u00e1rio</th>';
+    reqT.forEach(function(tid) { var t = (db.trainings||[]).find(function(x){return sameId(x.id, tid);}); if(t) h += '<th class="text-center text-xs">'+t.code+'</th>'; });
+    if (req.requires_aso) h += '<th class="text-center text-xs">ASO</th>';
+    h += '<th class="text-center">Situa\u00e7\u00e3o</th></tr></thead><tbody>';
+    (db.employees||[]).filter(function(e){return e.status==='ativo';}).forEach(function(emp) {
+      const certs = (db.certificates||[]).filter(function(c){return sameId(c.employee_id, emp.id)&&c.status!=='cancelado';});
+      const asos = (db.medical_exams||[]).filter(function(m){return sameId(m.employee_id, emp.id);});
+      let allValid = true;
+      h += '<tr><td class="font-semibold text-sm">'+emp.full_name+'</td>';
+      reqT.forEach(function(tid) {
+        const cert = certs.find(function(c){return sameId(c.training_id, tid);});
+        if (!cert) { h += '<td class="text-center"><span class="badge badge-red">Falta</span></td>'; allValid = false; }
+        else { var st = calcStatus(cert.expiration_date, ad); if (st==='vencido') { h += '<td class="text-center"><span class="badge badge-red">Venc.</span></td>'; allValid = false; } else if (st==='vencendo') { h += '<td class="text-center"><span class="badge badge-orange">Venc.</span></td>'; } else { h += '<td class="text-center"><span class="badge badge-green">OK</span></td>'; } }
+      });
+      if (req.requires_aso) {
+        var latestASO = asos.sort(function(a,b){return new Date(b.issue_date)-new Date(a.issue_date);})[0];
+        if (!latestASO) { h += '<td class="text-center"><span class="badge badge-red">Falta</span></td>'; allValid = false; }
+        else { var st2 = calcStatus(latestASO.expiration_date, ad); if (st2==='vencido') { h += '<td class="text-center"><span class="badge badge-red">Venc.</span></td>'; allValid = false; } else { h += '<td class="text-center"><span class="badge badge-green">OK</span></td>'; } }
+      }
+      h += '<td class="text-center">'+(allValid?'<span class="badge badge-green">APTO</span>':'<span class="badge badge-red">INAPTO</span>')+'</td></tr>';
+    });
+    h += '</tbody></table></div></div>';
+  });
+  h += '</div>'; return h;
+};
+function editRequirement(id) {
+  const db = getDB(); const r = id ? (db.competency_requirements||[]).find(function(x){return sameId(x.id, id);}) : null;
+  const tC = (db.trainings||[]).map(function(t){return '<label class="flex items-center gap-2 text-sm"><input type="checkbox" value="'+t.id+'"'+(r&&r.required_training_ids&&r.required_training_ids.map(String).includes(String(t.id))?' checked':'')+'> '+t.code+' \u2014 '+t.name+'</label>';}).join('');
+  openModal('<div class="p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-6">'+(r?'Editar':'Nova')+' Atividade</h2><form onsubmit="saveRequirement(event,\''+(id||'')+'\')"><div class="space-y-4"><div><label class="label">Nome da Atividade *</label><input type="text" class="input" id="reqName" value="'+(r?r.activity_name:'')+'" required></div><div><label class="label">Treinamentos Requeridos</label><div class="max-h-48 overflow-y-auto border rounded-xl p-3 space-y-2">'+tC+'</div></div><div class="grid grid-cols-3 gap-4"><label class="flex items-center gap-2 text-sm"><input type="checkbox" id="reqASO"'+(r&&r.requires_aso?' checked':'')+'> Exige ASO</label><label class="flex items-center gap-2 text-sm"><input type="checkbox" id="reqEPI"'+(r&&r.requires_epi?' checked':'')+'> Exige EPI</label><label class="flex items-center gap-2 text-sm"><input type="checkbox" id="reqInteg"'+(r&&r.requires_client_integration?' checked':'')+'> Integra\u00e7\u00e3o</label></div></div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Salvar</button></div></form></div>');
+}
+async function saveRequirement(e, id) {
+  e.preventDefault();
+  const checked = Array.from(document.querySelectorAll('#modalContent input[type=checkbox][value]')).filter(function(c){return c.checked&&c.id!=='reqASO'&&c.id!=='reqEPI'&&c.id!=='reqInteg';}).map(function(c){return c.value;});
+  const data = {activity_name:document.getElementById('reqName').value,required_training_ids:checked,requires_aso:document.getElementById('reqASO').checked,requires_epi:document.getElementById('reqEPI').checked,requires_client_integration:document.getElementById('reqInteg').checked};
+  try { if (id) await API.competency.update(id, data); else await API.competency.create(data); await refreshData(); closeModal(); await renderPage(); showToast('Atividade salva!','success'); } catch (err) { showToast('Erro: '+err.message,'error'); }
+}
+
+renderers.reports = async function() {
+  const reports = [
+    {id:'rpt_emps',name:'Funcion\u00e1rios Ativos',desc:'Lista completa de funcion\u00e1rios ativos'},
+    {id:'rpt_certs',name:'Certificados Emitidos',desc:'Todos os certificados do sistema'},
+    {id:'rpt_nr_expired',name:'NRs Vencidas',desc:'Certificados vencidos'},
+    {id:'rpt_nr_expiring',name:'NRs a Vencer',desc:'Certificados pr\u00f3ximos do vencimento'},
+    {id:'rpt_aso_expired',name:'ASOs Vencidos',desc:'Atestados de sa\u00fade vencidos'},
+    {id:'rpt_eq_expired',name:'Equip. com Laudo Vencido',desc:'Laudos vencidos'}
+  ];
+  let h = '<div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">';
+  reports.forEach(function(r) { h += '<div class="card p-5 cursor-pointer hover:border-imec-blue" onclick="generateReport(\''+r.id+'\')"><div class="w-10 h-10 rounded-xl bg-imec-blue/10 flex items-center justify-center mb-3"><svg class="w-5 h-5 text-imec-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div><h4 class="font-semibold text-sm text-gray-800">'+r.name+'</h4><p class="text-xs text-gray-400 mt-1">'+r.desc+'</p></div>'; });
+  h += '</div><div id="reportOutput" class="mt-6"></div>'; return h;
+};
+
+function generateReport(rptId) {
+  const db = getDB(); const ad = (db.settings&&db.settings.expiration_alert_days)||30;
+  const now = new Date().toLocaleDateString('pt-BR');
+  let title = '', headers = [], rows = [];
+  switch(rptId) {
+    case 'rpt_emps': title='Funcion\u00e1rios Ativos'; headers=['Nome','CPF','Fun\u00e7\u00e3o','Setor','Status']; (db.employees||[]).filter(function(e){return e.status==='ativo';}).forEach(function(e){rows.push([e.full_name,formatCPF(e.cpf),e.role_position,e.department,e.status]);}); break;
+    case 'rpt_certs': title='Certificados Emitidos'; headers=['C\u00f3digo','Funcion\u00e1rio','Treinamento','Emiss\u00e3o','Validade','Status']; (db.certificates||[]).forEach(function(c){var st=c.status==='cancelado'?'cancelado':calcStatus(c.expiration_date,ad);rows.push([c.certificate_code,c.employee_name||'N/A',(c.training_code||'')+' '+(c.training_name||''),formatDate(c.issue_date),formatDate(c.expiration_date),statusLabel(st)]);}); break;
+    case 'rpt_nr_expired': title='NRs Vencidas'; headers=['Funcion\u00e1rio','Treinamento','C\u00f3digo','Validade']; (db.certificates||[]).filter(function(c){return c.status!=='cancelado'&&calcStatus(c.expiration_date,ad)==='vencido';}).forEach(function(c){rows.push([c.employee_name||'N/A',c.training_name||'N/A',c.training_code||'N/A',formatDate(c.expiration_date)]);}); break;
+    case 'rpt_nr_expiring': title='NRs a Vencer'; headers=['Funcion\u00e1rio','Treinamento','C\u00f3digo','Validade','Dias']; (db.certificates||[]).filter(function(c){return c.status!=='cancelado'&&calcStatus(c.expiration_date,ad)==='vencendo';}).forEach(function(c){rows.push([c.employee_name||'N/A',c.training_name||'N/A',c.training_code||'N/A',formatDate(c.expiration_date),daysUntil(c.expiration_date)+' dias']);}); break;
+    case 'rpt_aso_expired': title='ASOs Vencidos'; headers=['Funcion\u00e1rio','Tipo','Emiss\u00e3o','Validade']; (db.medical_exams||[]).filter(function(m){return calcStatus(m.expiration_date,ad)==='vencido';}).forEach(function(m){rows.push([m.employee_name||'N/A',m.exam_type,formatDate(m.issue_date),formatDate(m.expiration_date)]);}); break;
+    case 'rpt_eq_expired': title='Equip. Laudo Vencido'; headers=['Equipamento','Documento','Validade','Respons\u00e1vel']; break;
+  }
+  let out = '<div class="card p-6"><div class="flex items-center justify-between mb-4"><div><h3 class="font-display text-lg font-bold text-imec-dark">'+title+'</h3><p class="text-xs text-gray-400">Gerado em '+now+'</p></div><div class="flex gap-2"><button class="btn btn-outline btn-sm" onclick="exportCSV()">Exportar CSV</button></div></div>';
+  if (rows.length===0) { out += '<p class="text-gray-400 text-center py-8">Nenhum registro encontrado.</p>'; }
+  else { out += '<div class="table-container"><table><thead><tr>'; headers.forEach(function(hd){out+='<th>'+hd+'</th>';}); out += '</tr></thead><tbody>'; rows.forEach(function(r){out+='<tr>';r.forEach(function(c){out+='<td class="text-sm">'+c+'</td>';});out+='</tr>';}); out += '</tbody></table></div>'; }
+  out += '</div>';
+  document.getElementById('reportOutput').innerHTML = out;
+}
+function exportCSV() {
+  var output = document.getElementById('reportOutput'); var table = output.querySelector('table'); if (!table) return;
+  var csv = ''; table.querySelectorAll('tr').forEach(function(row){var cols=[];row.querySelectorAll('th,td').forEach(function(cell){cols.push('"'+cell.textContent.replace(/"/g,'""')+'"');});csv+=cols.join(',')+'\n';});
+  var blob = new Blob([csv],{type:'text/csv;charset=utf-8;'}); var url = URL.createObjectURL(blob); var a = document.createElement('a'); a.href=url; a.download='relatorio_imec.csv'; a.click(); URL.revokeObjectURL(url);
+  showToast('CSV exportado!','success');
+}
+
+renderers.settings = async function() {
+  const db = getDB(); const s = db.settings || {};
+  const logs = db.dashboard && db.dashboard.audit_logs ? db.dashboard.audit_logs : [];
+  return '<div class="max-w-3xl"><div class="card p-6 mb-6"><h3 class="font-display text-lg font-bold text-imec-dark mb-6">Dados da Empresa</h3><form onsubmit="saveSettings(event)"><div class="grid md:grid-cols-2 gap-4"><div><label class="label">Nome da Empresa</label><input type="text" class="input" id="setName" value="'+(s.company_name||'')+'"></div><div><label class="label">CNPJ</label><input type="text" class="input" id="setCNPJ" value="'+(s.cnpj||'')+'"></div><div class="md:col-span-2"><label class="label">Endere\u00e7o</label><input type="text" class="input" id="setAddress" value="'+(s.address||'')+'"></div><div><label class="label">E-mail</label><input type="email" class="input" id="setEmail" value="'+(s.email||'')+'"></div><div><label class="label">Telefone</label><input type="text" class="input" id="setPhone" value="'+(s.phone||'')+'"></div><div><label class="label">Respons\u00e1vel T\u00e9cnico</label><input type="text" class="input" id="setResp" value="'+(s.technical_responsible||'')+'"></div><div><label class="label">CREA</label><input type="text" class="input" id="setCREA" value="'+(s.crea_number||'')+'"></div></div><h3 class="font-display text-lg font-bold text-imec-dark mt-8 mb-4">Configura\u00e7\u00f5es do Sistema</h3><div class="grid md:grid-cols-2 gap-4"><div><label class="label">Prazo de Alerta (dias)</label><select class="input" id="setAlertDays"><option value="30"'+(s.expiration_alert_days===30?' selected':'')+'>30 dias</option><option value="60"'+(s.expiration_alert_days===60?' selected':'')+'>60 dias</option><option value="90"'+(s.expiration_alert_days===90?' selected':'')+'>90 dias</option></select></div><div class="md:col-span-2"><label class="label">Rodap\u00e9 dos Relat\u00f3rios</label><textarea class="input" rows="2" id="setFooter">'+(s.report_footer||'')+'</textarea></div></div><div class="flex justify-end gap-3 mt-6"><button type="submit" class="btn btn-primary">Salvar Configura\u00e7\u00f5es</button></div></form></div><div class="card p-6"><h3 class="font-display text-lg font-bold text-imec-dark mb-4">Auditoria / Hist\u00f3rico</h3><div class="max-h-64 overflow-y-auto space-y-2">'+(logs.length===0?'<p class="text-gray-400 text-sm">Nenhum registro</p>':logs.slice(0,20).map(function(l){return '<div class="flex items-start gap-3 text-sm p-2 bg-gray-50 rounded-lg"><div class="w-2 h-2 rounded-full bg-imec-blue mt-1.5 flex-shrink-0"></div><div class="flex-1"><p class="text-gray-800">'+l.description+'</p><p class="text-xs text-gray-400">'+(l.user_name||'Sistema')+' \u2014 '+new Date(l.created_at).toLocaleString('pt-BR')+'</p></div></div>';}).join(''))+'</div></div></div>';
+};
+
+async function saveSettings(e) {
+  e.preventDefault();
+  const data = {company_name:document.getElementById('setName').value,cnpj:document.getElementById('setCNPJ').value,address:document.getElementById('setAddress').value,email:document.getElementById('setEmail').value,phone:document.getElementById('setPhone').value,technical_responsible:document.getElementById('setResp').value,crea_number:document.getElementById('setCREA').value,expiration_alert_days:parseInt(document.getElementById('setAlertDays').value),report_footer:document.getElementById('setFooter').value};
+  try { await API.settings.update(data); await refreshData(); showToast('Configura\u00e7\u00f5es salvas!','success'); } catch (err) { showToast('Erro: '+err.message,'error'); }
+}
+
+async function toggleNotifPanel() {
+  const db = getDB(); const alerts = db.dashboard ? (db.dashboard.alerts||[]) : [];
+  let h = '<div class="p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-4">Notifica\u00e7\u00f5es</h2>';
+  if (alerts.length===0) h += '<p class="text-gray-400 text-center py-8">Nenhuma notifica\u00e7\u00e3o pendente</p>';
+  else alerts.forEach(function(a){h+='<div class="alert-item '+(a.level==='critical'?'alert-critical':'alert-warning')+' mb-2"><div class="pulse-dot mt-1.5 '+(a.level==='critical'?'bg-imec-red':'bg-imec-orange')+'"></div><div><p class="text-sm font-medium">'+a.msg+'</p><p class="text-xs text-gray-400">'+a.type+'</p></div></div>';});
+  h += '<div class="flex justify-end mt-4"><button class="btn btn-outline" onclick="closeModal()">Fechar</button></div></div>';
+  openModal(h);
+}
+</script>
+</body>
+</html>

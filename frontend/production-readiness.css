@@ -1,0 +1,70 @@
+.prod-extra-panel {
+  grid-column: 1 / -1;
+  border: 1px solid #dbe7f4;
+  border-radius: 18px;
+  padding: 14px;
+  background: linear-gradient(135deg, #f8fbff, #ffffff);
+}
+
+.prod-extra-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+  color: #09234d;
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.prod-attachment-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.prod-upload-button {
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #0b4f9f;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.prod-upload-button input {
+  display: none;
+}
+
+.prod-link-list {
+  display: grid;
+  gap: 8px;
+}
+
+.prod-link-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 13px;
+}
+
+.prod-link-item a {
+  color: #0b6fe8;
+  font-weight: 900;
+}
+
+@media (max-width: 720px) {
+  .prod-attachment-grid {
+    grid-template-columns: 1fr;
+  }
+}
