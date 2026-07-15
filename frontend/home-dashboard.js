@@ -16,6 +16,10 @@
       car: '<path d="M19 17h2l-1.6-5.2A3 3 0 0 0 16.5 10h-9A3 3 0 0 0 4.6 11.8L3 17h2"/><path d="M5 17h14"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M6 10l1.2-3.2A2 2 0 0 1 9.1 5h5.8a2 2 0 0 1 1.9 1.8L18 10"/>',
       chart: '<path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-7"/>',
       download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>',
+      upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/>',
+      eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
+      edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+      menu: '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
       calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/>',
       report: '<path d="M9 17v-6"/><path d="M13 17V7"/><path d="M17 17v-3"/><path d="M4 19.5V4.5A2.5 2.5 0 0 1 6.5 2h9L20 6.5v13a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 19.5Z"/>',
       clipboard: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M8 12h8"/><path d="M8 16h5"/>'
@@ -73,6 +77,7 @@
     var certs = db.certificates || [];
     var exams = db.medical_exams || [];
     var projects = db.projects || [];
+    var vehicles = (db.equipment || []).filter(isVehicleEquipment);
     var d = db.dashboard || {};
     var certStats = certs.reduce(function (acc, cert) {
       var st = cert.status === 'cancelado' ? 'cancelado' : calcLocalStatus(cert.expiration_date, alertDays);
@@ -83,6 +88,7 @@
     var activeProjects = projects.filter(function (project) {
       return ['em_andamento', 'planejada', 'ativo'].indexOf(project.status) >= 0;
     }).length;
+    var activeVehicles = vehicles.filter(function (eq) { return (eq.status || 'ativo') === 'ativo'; }).length;
     var valid = Number(d.valid_certificates != null ? d.valid_certificates : certStats.valido || 0);
     var expiring = Number(d.expiring_certificates != null ? d.expiring_certificates : certStats.vencendo || 0);
     var expired = Number(d.expired_certificates != null ? d.expired_certificates : certStats.vencido || 0);
@@ -95,8 +101,18 @@
       expiring: expiring,
       expired: expired,
       activeProjects: Number(d.active_projects != null ? d.active_projects : activeProjects),
+      activeVehicles: activeVehicles,
+      criticalAlerts: dashboardCriticalAlerts(db),
       alertDays: alertDays
     };
+  }
+
+  function dashboardCriticalAlerts(db) {
+    var explicit = ((db.dashboard && db.dashboard.alerts) || []).filter(function (alert) {
+      return alert.level === 'critical' || alert.severity === 'critical' || alert.kind === 'critico';
+    }).length;
+    if (explicit) return explicit;
+    return 0;
   }
 
   function enhanceTopbar() {
@@ -178,7 +194,7 @@
     return '<section class="home-card home-kpi" style="--tone:' + options.tone + ';--soft:' + options.soft + '">'
       + '<div class="home-kpi-icon">' + icon(options.icon) + '</div>'
       + '<div class="home-kpi-copy"><div class="home-kpi-label">' + esc(options.label) + '</div>'
-      + '<div class="home-kpi-value">' + num(options.value) + '</div>'
+      + '<div class="home-kpi-value">' + num(options.value) + (options.suffix || '') + '</div>'
       + '<div class="home-kpi-change"><strong>' + esc(options.change) + '</strong><span>' + esc(options.hint) + '</span></div></div>'
       + '<div class="home-kpi-mini">' + spark(options.spark || 'bars', options.tone) + '</div></section>';
   }
@@ -262,7 +278,7 @@
   }
 
   function dueTable(rows) {
-    return '<div class="home-due-table"><div class="home-due-head"><span>Tipo</span><span>Funcion&aacute;rio</span><span>Vencimento</span><span>Dias</span></div>'
+    return '<div class="home-due-table"><div class="home-due-head"><span>Tipo</span><span>Funcion&aacute;rio / Ve&iacute;culo</span><span>Vencimento</span><span>Dias</span></div>'
       + rows.map(function (row) {
         var positive = row.days == null || row.days >= 0;
         var daysLabel = row.days == null ? '--' : Math.abs(row.days) + ' dias';
@@ -387,30 +403,91 @@
       return (ad ? ad.getTime() : 0) - (bd ? bd.getTime() : 0);
     });
     var score = docs.length ? Math.max(0, Math.round((valid / docs.length) * 100)) : 100;
-    return { vehicles: vehicles, activeVehicles: activeVehicles, maintenanceVehicles: maintenanceVehicles, inactiveVehicles: inactiveVehicles, docs: docs, expired: expired, expiring: expiring, valid: valid, queue: queue.slice(0, 4), recent: recent.slice(0, 4), score: score };
+    return { vehicles: vehicles, vehicleMap: vehicleMap, activeVehicles: activeVehicles, maintenanceVehicles: maintenanceVehicles, inactiveVehicles: inactiveVehicles, docs: docs, expired: expired, expiring: expiring, valid: valid, queue: queue.slice(0, 4), recent: recent.slice(0, 4), score: score };
+  }
+
+  function vehicleDocStatusLabel(status, days) {
+    if (status === 'vencido') return { text: 'Vencido', tone: '#e51d2a', soft: '#ffe1e4', key: 'vencido' };
+    if (status === 'vencendo' && days != null && days <= 15) return { text: 'Aten&ccedil;&atilde;o', tone: '#f59e0b', soft: '#fff3d8', key: 'vencendo' };
+    if (status === 'vencendo') return { text: 'Vencendo', tone: '#f59e0b', soft: '#fff3d8', key: 'vencendo' };
+    return { text: 'Regular', tone: '#16a34a', soft: '#dcfce7', key: 'regular' };
+  }
+
+  function vehicleDocRows(summary, metrics) {
+    var docs = summary.docs.slice().sort(function (a, b) {
+      var ad = dateValue(a.expiration_date);
+      var bd = dateValue(b.expiration_date);
+      return (ad ? ad.getTime() : 0) - (bd ? bd.getTime() : 0);
+    });
+    if (!docs.length) {
+      return summary.vehicles.slice(0, 4).map(function (vehicle) {
+        return {
+          vehicle: vehicle.name || 'Ve&iacute;culo',
+          plate: vehicle.plate || '-',
+          document: 'Sem documento',
+          expiration: '',
+          daysLabel: 'Pendente',
+          status: { text: 'Pend&ecirc;ncia', tone: '#f59e0b', soft: '#fff3d8', key: 'vencendo' },
+          docId: '',
+          fileUrl: ''
+        };
+      });
+    }
+    return docs.slice(0, 5).map(function (doc) {
+      var vehicle = summary.vehicleMap[String(doc.equipment_id)] || {};
+      var status = calcLocalStatus(doc.expiration_date, metrics.alertDays);
+      var days = daysUntil(doc.expiration_date);
+      var label = days == null ? '--' : (days < 0 ? Math.abs(days) + 'd vencido' : days + ' dias');
+      return {
+        vehicle: vehicle.name || doc.vehicle_name || 'Ve&iacute;culo',
+        plate: vehicle.plate || doc.plate || '-',
+        document: doc.document_type || doc.title || 'Documento',
+        expiration: doc.expiration_date,
+        daysLabel: label,
+        status: vehicleDocStatusLabel(status, days),
+        docId: doc.id || '',
+        fileUrl: doc.file_url || ''
+      };
+    });
+  }
+
+  window.filterHomeVehicleDocs = function (kind, button) {
+    var panel = button && button.closest ? button.closest('.home-vehicle-dashboard') : document;
+    panel.querySelectorAll('.home-fleet-filter button').forEach(function (tab) {
+      tab.classList.toggle('active', tab === button);
+    });
+    panel.querySelectorAll('.home-fleet-table tbody tr').forEach(function (row) {
+      var status = row.getAttribute('data-vehicle-status');
+      row.style.display = kind === 'todos' || status === kind ? '' : 'none';
+    });
+  };
+
+  function vehicleDocActionButtons(row) {
+    var openEdit = row.docId ? "if(window.openVehicleDoc){openVehicleDoc('" + esc(row.docId) + "')}else{navigate('vehicleDocuments')}" : "navigate('vehicleDocuments')";
+    var openFile = row.fileUrl ? "window.open('" + esc(row.fileUrl) + "','_blank')" : "navigate('vehicleDocuments')";
+    return '<div class="home-fleet-actions-cell">'
+      + '<button type="button" title="Ver documento" onclick="navigate(\'vehicleDocuments\')">' + icon('eye') + '</button>'
+      + '<button type="button" title="Editar" onclick="' + openEdit + '">' + icon('edit') + '</button>'
+      + '<button type="button" title="Baixar anexo" onclick="' + openFile + '">' + icon('upload') + '</button>'
+      + '<button type="button" title="Mais op&ccedil;&otilde;es" onclick="navigate(\'vehicleDocuments\')">' + icon('menu') + '</button>'
+      + '</div>';
   }
 
   function vehicleDocDashboard(db, metrics) {
     var summary = vehicleDocsSummary(db, metrics);
-    var rows = summary.queue.length ? summary.queue : summary.recent;
-    var listTitle = summary.queue.length ? 'Pr&oacute;ximos vencimentos' : 'Documentos cadastrados';
-    var allClear = summary.expired === 0 && summary.expiring === 0 && summary.maintenanceVehicles === 0 && summary.inactiveVehicles === 0 && summary.vehicles.length > 0;
-    var statusNote = summary.maintenanceVehicles || summary.inactiveVehicles
-      ? summary.maintenanceVehicles + ' em manuten&ccedil;&atilde;o &bull; ' + summary.inactiveVehicles + ' inativos'
-      : 'Todos liberados para opera&ccedil;&atilde;o';
-    var okMessage = allClear
-      ? '<div class="home-vehicle-ok"><div class="home-vehicle-ok-icon">' + icon('shield') + '</div><div><strong>Tudo certo com a frota</strong><span>Ve&iacute;culos ativos e documentos sem vencimentos pr&oacute;ximos.</span></div><em>Operacional</em></div>'
-      : '';
-    var queue = rows.length ? rows.map(function (item) {
-      var critical = item.status === 'vencido' || (item.days !== null && item.days !== undefined && item.days <= 7);
-      var validDoc = item.status === 'valido';
-      var tone = critical ? '#e51d2a' : validDoc ? '#168844' : '#f59e0b';
-      var soft = critical ? '#ffe1e4' : validDoc ? '#dcfce7' : '#fff3d8';
-      var label = item.days == null ? 'Sem prazo' : (item.days < 0 ? Math.abs(item.days) + 'd vencido' : item.days + ' dias');
-      if (!summary.queue.length && validDoc) label = 'Cadastrado';
-      return '<div class="home-vehicle-row"><div class="home-vehicle-row-icon" style="--tone:' + tone + ';--soft:' + soft + '">' + icon(critical ? 'warning' : validDoc ? 'shield' : 'calendar') + '</div><div><div class="home-row-title">' + esc(item.title) + '</div><div class="home-row-sub">' + item.vehicle + ' &bull; validade ' + formatDate(item.date) + '</div></div><span class="home-chip" style="--tone:' + tone + ';--soft:' + soft + '">' + label + '</span></div>';
-    }).join('') : '<div class="home-empty">Nenhum documento de ve&iacute;culo cadastrado ainda.</div>';
-    return '<section class="home-card home-panel home-vehicle-dashboard"><div class="home-panel-header"><div><div class="home-panel-title">' + icon('car') + 'Dashboard de Documentos de Ve&iacute;culos</div><p>' + listTitle + ' de IPVA, licenciamento, CRLV, seguro e ANTT.</p></div><button class="text-blue-600 font-bold text-sm" onclick="navigate(\'vehicleDocuments\')">Abrir m&oacute;dulo</button></div><div class="home-vehicle-grid"><div class="home-vehicle-score"><span>Regularidade da frota</span><strong>' + summary.score + '%</strong><div class="home-vehicle-bar"><i style="width:' + summary.score + '%"></i></div></div><div class="home-vehicle-mini status"><span>Status dos ve&iacute;culos</span><strong>' + num(summary.activeVehicles) + ' ativos</strong><small>' + statusNote + '</small></div><div class="home-vehicle-mini warn"><span>Vencendo</span><strong>' + num(summary.expiring) + '</strong></div><div class="home-vehicle-mini danger"><span>Vencidos</span><strong>' + num(summary.expired) + '</strong></div></div><div class="home-vehicle-list">' + okMessage + queue + '</div></section>';
+    var rows = vehicleDocRows(summary, metrics);
+    var attention = summary.expiring + summary.expired;
+    var pending = Math.max(0, summary.vehicles.length - summary.docs.length) + summary.expired;
+    var tableRows = rows.map(function (row) {
+      return '<tr data-vehicle-status="' + row.status.key + '"><td><span class="home-fleet-vehicle-icon">' + icon('car') + '</span>' + esc(row.vehicle) + '</td><td>' + esc(row.plate) + '</td><td>' + esc(row.document) + '</td><td>' + formatDate(row.expiration) + '</td><td class="' + (row.status.key === 'regular' ? 'ok' : row.status.key === 'vencido' ? 'danger' : 'warn') + '">' + esc(row.daysLabel) + '</td><td><span class="home-fleet-status" style="--tone:' + row.status.tone + ';--soft:' + row.status.soft + '">' + row.status.text + '</span></td><td>' + vehicleDocActionButtons(row) + '</td></tr>';
+    }).join('');
+    var footer = attention
+      ? '<div class="home-fleet-alert warn">' + icon('warning') + '<strong>' + num(attention) + ' documentos exigem aten&ccedil;&atilde;o nos pr&oacute;ximos 30 dias</strong><button type="button" onclick="navigate(\'vehicleDocuments\')">Revisar agora</button></div>'
+      : '<div class="home-fleet-alert ok">' + icon('shield') + '<strong>Frota regular e documentos cadastrados sem vencimentos pr&oacute;ximos</strong><button type="button" onclick="navigate(\'vehicleDocuments\')">Conferir m&oacute;dulo</button></div>';
+    return '<section class="home-card home-panel home-vehicle-dashboard"><div class="home-fleet-head"><div><div class="home-panel-title">' + icon('car') + 'Documentos da Frota</div><p>Controle de CRLV, licenciamento, IPVA, seguro, ANTT, inspe&ccedil;&otilde;es e manuten&ccedil;&otilde;es.</p></div><div class="home-fleet-actions"><button type="button" class="btn btn-primary" onclick="if(window.openVehicleDoc){openVehicleDoc()}else{navigate(\'vehicleDocuments\')}">' + icon('plus') + 'Novo documento</button><button type="button" class="btn btn-outline" onclick="navigate(\'vehicleDocuments\')">Ver m&oacute;dulo completo</button></div></div>'
+      + '<div class="home-fleet-kpis"><div class="home-fleet-score"><span>Regularidade da frota</span><strong>' + summary.score + '%</strong><div class="home-vehicle-bar"><i style="width:' + summary.score + '%"></i></div></div><div class="home-fleet-mini"><span>' + icon('car') + '</span><strong>' + num(summary.activeVehicles || metrics.activeVehicles || 0) + '</strong><small>ve&iacute;culos ativos</small></div><div class="home-fleet-mini warn"><span>' + icon('calendar') + '</span><strong>' + num(summary.expiring) + '</strong><small>vencendo em 30 dias</small></div><div class="home-fleet-mini danger"><span>' + icon('alert') + '</span><strong>' + num(pending) + '</strong><small>pend&ecirc;ncia</small></div></div>'
+      + '<div class="home-fleet-filter"><button type="button" class="active" onclick="filterHomeVehicleDocs(\'todos\', this)">Todos</button><button type="button" onclick="filterHomeVehicleDocs(\'regular\', this)"><i class="green"></i>Regulares</button><button type="button" onclick="filterHomeVehicleDocs(\'vencendo\', this)"><i class="orange"></i>Vencendo</button><button type="button" onclick="filterHomeVehicleDocs(\'vencido\', this)"><i class="red"></i>Vencidos</button></div>'
+      + '<div class="home-fleet-table-wrap"><table class="home-fleet-table"><thead><tr><th>Ve&iacute;culo</th><th>Placa</th><th>Documento</th><th>Vencimento</th><th>Dias</th><th>Status</th><th>A&ccedil;&otilde;es</th></tr></thead><tbody>' + tableRows + '</tbody></table></div>' + footer + '</section>';
   }
 
   function actionCard(label, iconName, click) {
@@ -577,30 +654,29 @@
     var metrics = resolveMetrics(db);
     var alerts = buildAlerts(db);
     var due = buildDue(db, metrics);
+    var criticalAlerts = alerts.filter(function (alert) { return alert.kind === 'critico'; }).length;
+    var upcomingAlerts = alerts.filter(function (alert) { return alert.kind === 'proximo'; }).length;
     return '<div class="home-dashboard fade-in">'
-      + toolbar()
       + '<div class="home-kpis">'
-      + kpiCard({ label: 'Conformidade Geral', value: metrics.score, change: '+6 p.p.', hint: 'vs. m\u00eas anterior', icon: 'shield', tone: '#1269ff', soft: '#eaf2ff', spark: 'line' })
-      + kpiCard({ label: 'Funcion\u00e1rios Ativos', value: metrics.activeEmployees || 28, change: '+4', hint: 'vs. m\u00eas anterior', icon: 'users', tone: '#1269ff', soft: '#eaf2ff', spark: 'bars' })
-      + kpiCard({ label: 'NRs V\u00e1lidas', value: metrics.valid || 6, change: '+2', hint: 'vs. m\u00eas anterior', icon: 'shield', tone: '#18a957', soft: '#dcfce7', spark: 'bars' })
-      + kpiCard({ label: 'Obras Ativas', value: metrics.activeProjects || 3, change: '0', hint: 'vs. m\u00eas anterior', icon: 'building', tone: '#1269ff', soft: '#eaf2ff', spark: 'bars' })
+      + kpiCard({ label: 'Conformidade Geral', value: metrics.score, suffix: '%', change: '+6 p.p.', hint: 'vs. m\u00eas anterior', icon: 'shield', tone: '#1269ff', soft: '#eaf2ff', spark: 'line' })
+      + kpiCard({ label: 'Funcion&aacute;rios', value: metrics.activeEmployees || 28, change: '+4', hint: 'vs. m\u00eas anterior', icon: 'users', tone: '#1269ff', soft: '#eaf2ff', spark: 'bars' })
+      + kpiCard({ label: 'NRs v&aacute;lidas', value: metrics.valid || 6, change: '+2', hint: 'vs. m\u00eas anterior', icon: 'shield', tone: '#18a957', soft: '#dcfce7', spark: 'bars' })
+      + kpiCard({ label: 'Ve&iacute;culos ativos', value: metrics.activeVehicles || 3, change: '0', hint: 'vs. m\u00eas anterior', icon: 'car', tone: '#1269ff', soft: '#eaf2ff', spark: 'bars' })
+      + kpiCard({ label: 'Alertas cr&iacute;ticos', value: metrics.criticalAlerts || criticalAlerts, change: '0', hint: 'vs. m\u00eas anterior', icon: 'warning', tone: '#e51d2a', soft: '#ffe1e4', spark: 'bars' })
       + '</div>'
       + '<div class="home-grid-main">'
-      + '<section class="home-card home-panel"><div class="home-panel-header"><div class="home-panel-title">' + icon('warning') + 'Central de Alertas</div><div class="home-tabs"><button type="button" class="home-tab-button active" onclick="filterHomeAlerts(\'todos\', this)">Todos</button><button type="button" class="home-tab-button" onclick="filterHomeAlerts(\'critico\', this)">Cr&iacute;ticos</button><button type="button" class="home-tab-button" onclick="filterHomeAlerts(\'proximo\', this)">Pr&oacute;ximos</button></div></div><div class="home-list">' + alerts.map(alertRow).join('') + '<div class="home-row" style="justify-content:center"><button class="text-blue-600 font-bold text-sm" onclick="openHomeAlertCenter()">Ver todos os alertas &rsaquo;</button></div></div></section>'
+      + '<section class="home-card home-panel"><div class="home-panel-header"><div class="home-panel-title">' + icon('alert') + 'Central de Alertas</div><div class="home-tabs"><button type="button" class="home-tab-button active" onclick="filterHomeAlerts(\'todos\', this)">Todos (' + alerts.length + ')</button><button type="button" class="home-tab-button" onclick="filterHomeAlerts(\'critico\', this)">Cr&iacute;ticos (' + criticalAlerts + ')</button><button type="button" class="home-tab-button" onclick="filterHomeAlerts(\'proximo\', this)">Pr&oacute;ximos (' + upcomingAlerts + ')</button></div></div><div class="home-list">' + alerts.map(alertRow).join('') + '<div class="home-row" style="justify-content:center"><button class="text-blue-600 font-bold text-sm" onclick="openHomeAlertCenter()">Ver todos os alertas &rsaquo;</button></div></div></section>'
       + '<section class="home-card home-panel"><div class="home-panel-header"><div class="home-panel-title">' + icon('calendar') + 'Pr&oacute;ximos Vencimentos</div><button class="text-blue-600 font-bold text-sm" onclick="navigate(\'reports\')">Ver todos</button></div>' + dueTable(due) + '</section>'
       + '</div>'
+      + vehicleDocDashboard(db, metrics)
       + '<div class="home-chart-grid">'
       + '<section class="home-card home-panel"><div class="home-panel-header"><div class="home-panel-title">' + icon('chart') + 'Conformidade por M&ecirc;s</div><span class="home-chip" style="--tone:#51617f;--soft:#f1f5f9">&Uacute;ltimos 6 meses</span></div>' + lineChart(metrics.score) + '</section>'
-      + '<section class="home-card home-panel"><div class="home-panel-header"><div class="home-panel-title">' + icon('shield') + 'Status das NRs</div></div>' + statusDonut(metrics) + '</section>'
-      + '</div>'
-      + vehicleDocDashboard(db, metrics)
-      + '<div class="home-projects-actions">'
-      + '<section class="home-card home-panel"><div class="home-panel-header"><div class="home-panel-title">' + icon('building') + 'Obras em Andamento</div><button class="text-blue-600 font-bold text-sm" onclick="navigate(\'projects\')">Ver todas</button></div>' + projectRows(db) + '</section>'
       + '<section class="home-card home-panel"><div class="home-panel-header"><div class="home-panel-title">' + icon('alert') + 'A&ccedil;&otilde;es R&aacute;pidas</div></div><div class="home-actions-grid">'
       + actionCard('Emitir certificado', 'certificate', 'editCertificate()')
       + actionCard('Cadastrar funcion&aacute;rio', 'users', 'editEmployee()')
       + actionCard('Nova obra', 'crane', 'editProject()')
       + actionCard('Docs. ve&iacute;culos', 'certificate', "navigate('vehicleDocuments')")
+      + actionCard('Carteirinha', 'clipboard', "navigate('idcards')")
       + '</div></section></div>'
       + '</div>';
   }
