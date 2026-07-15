@@ -15,7 +15,9 @@
       crane: '<path d="M4 20h16"/><path d="M7 20V8l10-4v16"/><path d="M7 8h12"/><path d="M13 8v12"/><path d="M19 8v4l-2 2"/>',
       chart: '<path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-7"/>',
       report: '<path d="M9 17v-6"/><path d="M13 17V7"/><path d="M17 17v-3"/><path d="M4 19.5V4.5A2.5 2.5 0 0 1 6.5 2h9L20 6.5v13a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 19.5Z"/>',
-      id: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M15 8h2"/><path d="M15 12h2"/><path d="M7 16h4"/>'
+      id: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M15 8h2"/><path d="M15 12h2"/><path d="M7 16h4"/>',
+      clipboard: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M8 12h8"/><path d="M8 16h5"/>',
+      pulse: '<path d="M22 12h-4l-3 8L9 4l-3 8H2"/>'
     };
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (icons[name] || icons.certificate) + '</svg>';
   }
@@ -71,7 +73,6 @@
     var exams = db.medical_exams || [];
     var projects = db.projects || [];
     var d = db.dashboard || {};
-
     var certStats = certs.reduce(function (acc, cert) {
       var st = cert.status === 'cancelado' ? 'cancelado' : calcLocalStatus(cert.expiration_date, alertDays);
       acc[st] = (acc[st] || 0) + 1;
@@ -82,13 +83,11 @@
     var activeProjects = projects.filter(function (project) {
       return ['em_andamento', 'planejada', 'ativo'].indexOf(project.status) >= 0;
     }).length;
-
     var valid = Number(d.valid_certificates != null ? d.valid_certificates : certStats.valido || 0);
     var expiring = Number(d.expiring_certificates != null ? d.expiring_certificates : certStats.vencendo || 0);
     var expired = Number(d.expired_certificates != null ? d.expired_certificates : certStats.vencido || 0);
     var total = Math.max(0, valid + expiring + expired);
     var score = total ? Math.max(42, Math.round(((valid + expiring * .5) / total) * 100)) : 86;
-
     return {
       score: score,
       activeEmployees: Number(d.active_employees != null ? d.active_employees : activeEmployees),
@@ -105,25 +104,20 @@
     var topbar = document.getElementById('topbar');
     if (!topbar) return;
     topbar.classList.add('home-mode');
-
     var title = document.getElementById('pageTitle');
     var subtitle = document.getElementById('pageSubtitle');
     if (title) title.textContent = 'Dashboard Executivo';
-    if (subtitle) subtitle.textContent = 'Visao geral da conformidade industrial';
-
+    if (subtitle) subtitle.textContent = 'Visão geral da conformidade industrial';
     var right = topbar.querySelector('.flex.items-center.gap-3');
     if (!right) return;
-
     var consult = right.querySelector('[onclick*="openPublicConsult"]');
     if (consult) consult.classList.add('home-consult-hidden');
-
     if (!right.querySelector('.top-pro-search') && !right.querySelector('.home-search')) {
       var search = document.createElement('div');
       search.className = 'home-search search-box';
-      search.innerHTML = icon('search') + '<input type="text" class="input" placeholder="Buscar no sistema..." onkeydown="if(event.key===\'Enter\'){showToast(\'Busca global em preparacao\',\'info\')}">';
+      search.innerHTML = icon('search') + '<input type="text" class="input" placeholder="Buscar no sistema..." onkeydown="if(event.key===\'Enter\'){showToast(\'Busca global em preparação\',\'info\')}">';
       right.insertBefore(search, right.firstChild);
     }
-
     if (!right.querySelector('.home-new-button')) {
       var button = document.createElement('button');
       button.type = 'button';
@@ -147,30 +141,29 @@
   function healthCard(score) {
     return '<section class="home-card home-kpi home-health" style="--tone:#1269ff;--soft:#eaf2ff">'
       + '<div class="home-ring" style="--score:' + score + '"><span>' + score + '%</span></div>'
-      + '<div><div class="home-kpi-label">Saude Operacional</div>'
-      + '<div class="home-kpi-change"><strong>↑ 6 p.p.</strong><span>vs. mes anterior</span></div></div></section>';
+      + '<div><div class="home-kpi-label">Saúde Operacional</div>'
+      + '<div class="home-kpi-change"><strong>+6 p.p.</strong><span>vs. mês anterior</span></div></div></section>';
   }
 
   function buildAlerts(db, metrics) {
     var dashboardAlerts = (db.dashboard && db.dashboard.alerts) || [];
     var rows = dashboardAlerts.slice(0, 3).map(function (alert) {
+      var critical = alert.level === 'critical' || alert.severity === 'critical';
       return {
         title: alert.msg || alert.message || 'Alerta pendente',
         sub: alert.type || 'Sistema',
         date: alert.date || '',
-        tag: alert.level === 'critical' || alert.severity === 'critical' ? 'Critico' : 'Atencao',
-        tone: alert.level === 'critical' || alert.severity === 'critical' ? '#e51d2a' : '#f59e0b',
-        soft: alert.level === 'critical' || alert.severity === 'critical' ? '#ffe1e4' : '#fff3d8',
-        icon: alert.level === 'critical' || alert.severity === 'critical' ? 'warning' : 'alert'
+        tag: critical ? 'Crítico' : 'Atenção',
+        tone: critical ? '#e51d2a' : '#f59e0b',
+        soft: critical ? '#ffe1e4' : '#fff3d8',
+        icon: critical ? 'warning' : 'alert'
       };
     });
-
     if (rows.length) return rows;
-
     return [
-      { title: 'Certificado IMEC-NR-35 de colaborador vence em 28 dias', sub: 'Certificado a vencer', date: '14/06/2026', tag: 'Atencao', tone: '#f59e0b', soft: '#fff3d8', icon: 'alert' },
-      { title: 'ASO periodico vence em 29 dias', sub: 'ASO a vencer', date: '15/06/2026', tag: 'Critico', tone: '#e51d2a', soft: '#ffe1e4', icon: 'warning' },
-      { title: 'ASO periodico vence em 30 dias', sub: 'ASO a vencer', date: '16/06/2026', tag: 'Atencao', tone: '#f59e0b', soft: '#fff3d8', icon: 'alert' }
+      { title: 'Certificado IMEC-NR-35 vence em 28 dias', sub: 'Certificado a vencer', date: '14/06/2026', tag: 'Atenção', tone: '#f59e0b', soft: '#fff3d8', icon: 'alert' },
+      { title: 'ASO periódico vence em 29 dias', sub: 'ASO a vencer', date: '15/06/2026', tag: 'Crítico', tone: '#e51d2a', soft: '#ffe1e4', icon: 'warning' },
+      { title: 'EPI entregue sem assinatura registrada', sub: 'Controle individual', date: '16/06/2026', tag: 'Atenção', tone: '#f59e0b', soft: '#fff3d8', icon: 'clipboard' }
     ].slice(0, Math.max(3, metrics.expiring ? 3 : 0));
   }
 
@@ -197,7 +190,7 @@
       var days = daysUntil(exam.expiration_date);
       if (days == null || days > metrics.alertDays + 15) return;
       due.push({
-        title: 'ASO - ' + (exam.exam_type || 'Periodico'),
+        title: 'ASO - ' + (exam.exam_type || 'Periódico'),
         sub: exam.employee_name || 'Colaborador',
         date: exam.expiration_date,
         days: days,
@@ -206,12 +199,11 @@
     });
     due.sort(function (a, b) { return a.days - b.days; });
     if (due.length) return due.slice(0, 5);
-
     return [
       { title: 'NR-35 - Trabalho em Altura', sub: 'ADMILSON RODRIGUES SOARES', date: '2026-06-13', days: 28, icon: 'certificate' },
-      { title: 'ASO - Periodico', sub: 'ADMILSON RODRIGUES SOARES', date: '2026-06-14', days: 29, icon: 'heart' },
-      { title: 'ASO - Periodico', sub: 'ED FLAVIO CRUZ AMANCIO', date: '2026-06-14', days: 29, icon: 'heart' },
-      { title: 'ASO - Periodico', sub: 'EVANDRO PERRONE', date: '2026-06-14', days: 29, icon: 'heart' }
+      { title: 'ASO - Periódico', sub: 'ADMILSON RODRIGUES SOARES', date: '2026-06-14', days: 29, icon: 'heart' },
+      { title: 'ASO - Periódico', sub: 'ED FLAVIO CRUZ AMANCIO', date: '2026-06-14', days: 29, icon: 'heart' },
+      { title: 'ASO - Periódico', sub: 'EVANDRO PERRONE', date: '2026-06-14', days: 29, icon: 'heart' }
     ];
   }
 
@@ -227,8 +219,8 @@
     var months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'];
     var values = [Math.max(60, score - 8), score - 5, score - 6, score - 2, score - 3, score];
     var width = 660;
-    var height = 170;
-    var plot = { left: 38, top: 12, right: 18, bottom: 32 };
+    var height = 186;
+    var plot = { left: 38, top: 18, right: 18, bottom: 34 };
     var innerW = width - plot.left - plot.right;
     var innerH = height - plot.top - plot.bottom;
     var points = values.map(function (v, i) {
@@ -243,9 +235,9 @@
       return '<line x1="' + plot.left + '" y1="' + y + '" x2="' + (plot.left + innerW) + '" y2="' + y + '" stroke="#e6edf6"/><text x="0" y="' + (y + 4) + '" font-size="12" fill="#7890ad">' + v + '%</text>';
     }).join('');
     var labels = points.map(function (p, i) {
-      return '<text x="' + p.x + '" y="' + (height - 6) + '" text-anchor="middle" font-size="12" fill="#51617f">' + months[i] + '</text><text x="' + p.x + '" y="' + (p.y - 10) + '" text-anchor="middle" font-size="12" font-weight="800" fill="#1269ff">' + Math.round(p.v) + '%</text><circle cx="' + p.x + '" cy="' + p.y + '" r="4" fill="#fff" stroke="#1269ff" stroke-width="3"/>';
+      return '<text x="' + p.x + '" y="' + (height - 7) + '" text-anchor="middle" font-size="12" fill="#51617f">' + months[i] + '</text><text x="' + p.x + '" y="' + (p.y - 10) + '" text-anchor="middle" font-size="12" font-weight="800" fill="#1269ff">' + Math.round(p.v) + '%</text><circle cx="' + p.x + '" cy="' + p.y + '" r="4" fill="#fff" stroke="#1269ff" stroke-width="3"/>';
     }).join('');
-    return '<div class="home-line"><svg viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="Conformidade por mes"><polygon points="' + area + '" fill="#1269ff" opacity=".10"/>' + grid + '<polyline points="' + line + '" fill="none" stroke="#1269ff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>' + labels + '</svg></div>';
+    return '<div class="home-line"><svg viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="Conformidade por mês"><polygon points="' + area + '" fill="#1269ff" opacity=".10"/>' + grid + '<polyline points="' + line + '" fill="none" stroke="#1269ff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>' + labels + '</svg></div>';
   }
 
   function statusDonut(metrics) {
@@ -257,7 +249,7 @@
     var expiredPct = total ? Math.round((metrics.expired / total) * 1000) / 10 : 4.7;
     return '<div class="home-donut-wrap"><div class="home-donut" style="--valid:' + validEnd + '%;--warn:' + warnEnd + '%"><div class="home-donut-center"><div><div style="font-size:30px">' + num(total || 7) + '</div><div style="font-size:12px;color:#718096">Total</div></div></div></div>'
       + '<div class="home-legend">'
-      + '<div class="home-legend-row"><span class="home-dot" style="background:#20b760"></span><span>Validas</span><b>' + num(metrics.valid || 6) + '</b><span>' + validPct + '%</span></div>'
+      + '<div class="home-legend-row"><span class="home-dot" style="background:#20b760"></span><span>Válidas</span><b>' + num(metrics.valid || 6) + '</b><span>' + validPct + '%</span></div>'
       + '<div class="home-legend-row"><span class="home-dot" style="background:#f59e0b"></span><span>Vencendo</span><b>' + num(metrics.expiring || 1) + '</b><span>' + warnPct + '%</span></div>'
       + '<div class="home-legend-row"><span class="home-dot" style="background:#ef233c"></span><span>Vencidas</span><b>' + num(metrics.expired || 0) + '</b><span>' + expiredPct + '%</span></div>'
       + '</div></div>';
@@ -269,9 +261,9 @@
     }).slice(0, 3);
     if (!projects.length) {
       projects = [
-        { name: 'Manutencao Caldeira NR-13', client_name: 'Celalco Acucar e Alcool', progress: 82, status: 'em_andamento' },
-        { name: 'Plano de Rigging - Montagem Industrial', client_name: 'Companhia Muller de Bebidas', progress: 64, status: 'planejada' },
-        { name: 'Operacao Guindaste - Trocador de Calor', client_name: 'Usina Santa Adelia', progress: 43, status: 'em_andamento' }
+        { name: 'Manutenção Caldeira NR-13', client_name: 'Celalco Açúcar e Álcool', progress: 82, status: 'em_andamento' },
+        { name: 'Plano de Rigging - Montagem Industrial', client_name: 'Companhia Müller de Bebidas', progress: 64, status: 'planejada' },
+        { name: 'Operação Guindaste - Trocador de Calor', client_name: 'Usina Santa Adélia', progress: 43, status: 'em_andamento' }
       ];
     }
     return projects.map(function (project, index) {
@@ -287,34 +279,57 @@
     return '<button type="button" class="home-action" onclick="' + click + '">' + icon(iconName) + '<span>' + esc(label) + '</span></button>';
   }
 
+  function riskItem(label, value, iconName, tone, soft) {
+    return '<section class="home-card home-risk-item"><div class="home-risk-icon" style="--tone:' + tone + ';--soft:' + soft + '">' + icon(iconName) + '</div>'
+      + '<div><div class="home-risk-label">' + esc(label) + '</div><div class="home-risk-value">' + esc(value) + '</div></div></section>';
+  }
+
+  function commandPanel(metrics) {
+    var pending = Math.max(0, metrics.expiring + metrics.expired + metrics.asoExpired);
+    return '<section class="home-card home-command"><div><div class="home-command-eyebrow">Central executiva</div>'
+      + '<h2>Controle industrial em tempo real</h2>'
+      + '<p>Resumo inteligente de vencimentos, NRs, ASOs, obras e ações que precisam de atenção hoje.</p></div>'
+      + '<div class="home-command-actions">'
+      + '<button type="button" class="home-soft-button" onclick="navigate(\'reports\')">' + icon('chart') + 'Relatórios</button>'
+      + '<button type="button" class="home-soft-button" onclick="navigate(\'idcards\')">' + icon('id') + 'Carteirinhas</button>'
+      + '<button type="button" class="home-soft-button" onclick="navigate(\'epi\')">' + icon('shield') + 'EPI</button>'
+      + '</div></section>'
+      + '<div class="home-risk-strip">'
+      + riskItem('Pendências críticas', num(pending), 'warning', '#e51d2a', '#ffe1e4')
+      + riskItem('Saúde do sistema', metrics.score + '%', 'pulse', '#1269ff', '#eaf2ff')
+      + riskItem('ASOs vencidos', num(metrics.asoExpired), 'heart', '#f59e0b', '#fff3d8')
+      + riskItem('Obras ativas', num(metrics.activeProjects || 3), 'building', '#18a957', '#dcfce7')
+      + '</div>';
+  }
+
   function renderDashboard() {
     var db = localDb();
     var metrics = resolveMetrics(db);
     var alerts = buildAlerts(db, metrics);
     var due = buildDue(db, metrics);
-
     return '<div class="home-dashboard fade-in">'
+      + commandPanel(metrics)
       + '<div class="home-kpis">'
       + healthCard(metrics.score)
-      + kpiCard({ label: 'Funcionarios Ativos', value: metrics.activeEmployees || 28, change: '↑ 4', hint: 'vs. mes anterior', icon: 'users', tone: '#1269ff', soft: '#eaf2ff' })
-      + kpiCard({ label: 'NRs Validas', value: metrics.valid || 6, change: '↑ 2', hint: 'vs. mes anterior', icon: 'shield', tone: '#18a957', soft: '#dcfce7' })
-      + kpiCard({ label: 'Obras Ativas', value: metrics.activeProjects || 3, change: '— 0', hint: 'vs. mes anterior', icon: 'building', tone: '#1269ff', soft: '#eaf2ff' })
+      + kpiCard({ label: 'Funcionários Ativos', value: metrics.activeEmployees || 28, change: '+4', hint: 'vs. mês anterior', icon: 'users', tone: '#1269ff', soft: '#eaf2ff' })
+      + kpiCard({ label: 'NRs Válidas', value: metrics.valid || 6, change: '+2', hint: 'vs. mês anterior', icon: 'shield', tone: '#18a957', soft: '#dcfce7' })
+      + kpiCard({ label: 'Obras Ativas', value: metrics.activeProjects || 3, change: '0', hint: 'vs. mês anterior', icon: 'building', tone: '#1269ff', soft: '#eaf2ff' })
       + '</div>'
       + '<div class="home-grid-main">'
-      + '<section class="home-card home-panel"><div class="home-panel-header"><div class="home-panel-title">Central de Alertas</div><div class="home-tabs"><span>Todos</span><span>Criticos</span><span>Proximos</span></div></div><div class="home-list">' + alerts.map(alertRow).join('') + '<div class="home-row" style="justify-content:center"><button class="text-blue-600 font-bold text-sm" onclick="navigate(\'reports\')">Ver todos os alertas ›</button></div></div></section>'
-      + '<section class="home-card home-panel"><div class="home-panel-header"><div class="home-panel-title">Proximos Vencimentos</div><button class="text-blue-600 font-bold text-sm" onclick="navigate(\'reports\')">Ver todos</button></div><div class="home-list">' + due.map(dueRow).join('') + '</div></section>'
+      + '<section class="home-card home-panel"><div class="home-panel-header"><div class="home-panel-title">' + icon('warning') + 'Central de Alertas</div><div class="home-tabs"><span>Todos</span><span>Críticos</span><span>Próximos</span></div></div><div class="home-list">' + alerts.map(alertRow).join('') + '<div class="home-row" style="justify-content:center"><button class="text-blue-600 font-bold text-sm" onclick="navigate(\'reports\')">Ver todos os alertas &rsaquo;</button></div></div></section>'
+      + '<section class="home-card home-panel"><div class="home-panel-header"><div class="home-panel-title">' + icon('clipboard') + 'Próximos Vencimentos</div><button class="text-blue-600 font-bold text-sm" onclick="navigate(\'reports\')">Ver todos</button></div><div class="home-list">' + due.map(dueRow).join('') + '</div></section>'
       + '</div>'
       + '<div class="home-chart-grid">'
-      + '<section class="home-card home-panel"><div class="home-panel-header"><div class="home-panel-title">Conformidade por Mes</div><span class="home-chip" style="--tone:#51617f;--soft:#f1f5f9">Ultimos 6 meses</span></div>' + lineChart(metrics.score) + '</section>'
-      + '<section class="home-card home-panel"><div class="home-panel-header"><div class="home-panel-title">Status das NRs</div></div>' + statusDonut(metrics) + '</section>'
+      + '<section class="home-card home-panel"><div class="home-panel-header"><div class="home-panel-title">' + icon('chart') + 'Conformidade por Mês</div><span class="home-chip" style="--tone:#51617f;--soft:#f1f5f9">Últimos 6 meses</span></div>' + lineChart(metrics.score) + '</section>'
+      + '<section class="home-card home-panel"><div class="home-panel-header"><div class="home-panel-title">' + icon('shield') + 'Status das NRs</div></div>' + statusDonut(metrics) + '</section>'
       + '</div>'
       + '<div class="home-projects-actions">'
-      + '<section class="home-card home-panel"><div class="home-panel-header"><div class="home-panel-title">Obras em Andamento</div><button class="text-blue-600 font-bold text-sm" onclick="navigate(\'projects\')">Ver todas</button></div>' + projectRows(db) + '</section>'
-      + '<section class="home-card home-panel"><div class="home-panel-header"><div class="home-panel-title">Acoes Rapidas</div></div><div class="home-actions-grid">'
+      + '<section class="home-card home-panel"><div class="home-panel-header"><div class="home-panel-title">' + icon('crane') + 'Obras em Andamento</div><button class="text-blue-600 font-bold text-sm" onclick="navigate(\'projects\')">Ver todas</button></div>' + projectRows(db) + '</section>'
+      + '<section class="home-card home-panel"><div class="home-panel-header"><div class="home-panel-title">' + icon('plus') + 'Ações Rápidas</div></div><div class="home-actions-grid">'
       + actionCard('Emitir certificado', 'certificate', 'editCertificate()')
-      + actionCard('Cadastrar funcionario', 'users', 'editEmployee()')
+      + actionCard('Cadastrar funcionário', 'users', 'editEmployee()')
       + actionCard('Nova obra', 'crane', 'editProject()')
-      + actionCard('Gerar relatorio', 'report', "navigate('reports')")
+      + actionCard('Gerar relatório', 'report', "navigate('reports')")
       + '</div></section></div>'
       + '</div>';
   }
