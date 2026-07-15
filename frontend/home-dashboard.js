@@ -126,7 +126,45 @@
       };
       right.appendChild(button);
     }
+    setupAvatarMenu(right);
   }
+
+  function setupAvatarMenu(right) {
+    var avatar = document.getElementById('topAvatar');
+    if (!avatar || avatar.dataset.homeMenuReady === '1') return;
+    avatar.dataset.homeMenuReady = '1';
+    avatar.setAttribute('role', 'button');
+    avatar.setAttribute('tabindex', '0');
+    avatar.setAttribute('title', 'Menu do administrador');
+    avatar.onclick = function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      window.toggleHomeUserMenu();
+    };
+    avatar.onkeydown = function (event) {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        window.toggleHomeUserMenu();
+      }
+    };
+    if (!document.getElementById('homeUserMenu')) {
+      var menu = document.createElement('div');
+      menu.id = 'homeUserMenu';
+      menu.className = 'home-user-menu hidden';
+      menu.innerHTML = '<button type="button" onclick="navigate(\'settings\'); window.toggleHomeUserMenu(false)">Configura&ccedil;&otilde;es</button>'
+        + '<button type="button" onclick="navigate(\'reports\'); window.toggleHomeUserMenu(false)">Relat&oacute;rios</button>'
+        + '<button type="button" class="danger" onclick="handleLogout()">Sair do sistema</button>';
+      right.appendChild(menu);
+      document.addEventListener('click', function () { window.toggleHomeUserMenu(false); });
+    }
+  }
+
+  window.toggleHomeUserMenu = function (force) {
+    var menu = document.getElementById('homeUserMenu');
+    if (!menu) return;
+    var show = typeof force === 'boolean' ? force : menu.classList.contains('hidden');
+    menu.classList.toggle('hidden', !show);
+  };
 
   function spark(kind, tone) {
     if (kind === 'line') {
@@ -153,6 +191,7 @@
         sub: alert.type || 'Sistema',
         date: alert.date || '',
         tag: critical ? 'Cr&iacute;tico' : 'Aten&ccedil;&atilde;o',
+        kind: critical ? 'critico' : 'proximo',
         tone: critical ? '#e51d2a' : '#f59e0b',
         soft: critical ? '#ffe1e4' : '#fff3d8',
         icon: critical ? 'warning' : 'alert'
@@ -160,18 +199,29 @@
     });
     if (rows.length) return rows;
     return [
-      { title: 'Certificado IMEC-NR-35 vence em 29 dias', sub: 'Certificado a vencer', date: '', tag: 'Aten&ccedil;&atilde;o', tone: '#e51d2a', soft: '#ffe1e4', icon: 'warning' },
-      { title: 'ASO peri&oacute;dico vence em 30 dias', sub: 'ASO a vencer', date: '', tag: 'Aten&ccedil;&atilde;o', tone: '#f59e0b', soft: '#fff3d8', icon: 'alert' },
-      { title: 'Peri&oacute;dico de colaborador vence em 30 dias', sub: 'ASO a vencer', date: '', tag: 'Aten&ccedil;&atilde;o', tone: '#f59e0b', soft: '#fff3d8', icon: 'alert' }
+      { title: 'Certificado IMEC-NR-35 vence em 29 dias', sub: 'Certificado a vencer', date: '', tag: 'Aten&ccedil;&atilde;o', tone: '#e51d2a', soft: '#ffe1e4', icon: 'warning', kind: 'critico' },
+      { title: 'ASO peri&oacute;dico vence em 30 dias', sub: 'ASO a vencer', date: '', tag: 'Aten&ccedil;&atilde;o', tone: '#f59e0b', soft: '#fff3d8', icon: 'alert', kind: 'proximo' },
+      { title: 'Peri&oacute;dico de colaborador vence em 30 dias', sub: 'ASO a vencer', date: '', tag: 'Aten&ccedil;&atilde;o', tone: '#f59e0b', soft: '#fff3d8', icon: 'alert', kind: 'proximo' }
     ];
   }
 
   function alertRow(row) {
-    return '<div class="home-row"><div class="home-alert-icon" style="--tone:' + row.tone + ';--soft:' + row.soft + '">' + icon(row.icon) + '</div>'
+    return '<div class="home-row home-alert-row" data-alert-kind="' + esc(row.kind || 'proximo') + '"><div class="home-alert-icon" style="--tone:' + row.tone + ';--soft:' + row.soft + '">' + icon(row.icon) + '</div>'
       + '<div class="min-w-0 flex-1"><div class="home-row-title">' + row.title + '</div><div class="home-row-sub">' + row.sub + '</div></div>'
       + (row.date ? '<div class="home-row-date">' + esc(row.date) + '</div>' : '')
       + '<span class="home-chip" style="--tone:' + row.tone + ';--soft:' + row.soft + '">' + row.tag + '</span></div>';
   }
+
+  window.filterHomeAlerts = function (kind, button) {
+    var panel = button && button.closest ? button.closest('.home-panel') : document;
+    panel.querySelectorAll('.home-tab-button').forEach(function (tab) {
+      tab.classList.toggle('active', tab === button);
+    });
+    panel.querySelectorAll('.home-alert-row').forEach(function (row) {
+      var shouldShow = kind === 'todos' || row.getAttribute('data-alert-kind') === kind;
+      row.style.display = shouldShow ? '' : 'none';
+    });
+  };
 
   function buildDue(db, metrics) {
     var due = [];
@@ -298,13 +348,13 @@
     return '<div class="home-dashboard fade-in">'
       + toolbar()
       + '<div class="home-kpis">'
-      + kpiCard({ label: 'Conformidade Geral', value: metrics.score, change: '+6 p.p.', hint: 'vs. m&ecirc;s anterior', icon: 'shield', tone: '#1269ff', soft: '#eaf2ff', spark: 'line' })
-      + kpiCard({ label: 'Funcion&aacute;rios Ativos', value: metrics.activeEmployees || 28, change: '+4', hint: 'vs. m&ecirc;s anterior', icon: 'users', tone: '#1269ff', soft: '#eaf2ff', spark: 'bars' })
-      + kpiCard({ label: 'NRs V&aacute;lidas', value: metrics.valid || 6, change: '+2', hint: 'vs. m&ecirc;s anterior', icon: 'shield', tone: '#18a957', soft: '#dcfce7', spark: 'bars' })
-      + kpiCard({ label: 'Obras Ativas', value: metrics.activeProjects || 3, change: '0', hint: 'vs. m&ecirc;s anterior', icon: 'building', tone: '#1269ff', soft: '#eaf2ff', spark: 'bars' })
+      + kpiCard({ label: 'Conformidade Geral', value: metrics.score, change: '+6 p.p.', hint: 'vs. m\u00eas anterior', icon: 'shield', tone: '#1269ff', soft: '#eaf2ff', spark: 'line' })
+      + kpiCard({ label: 'Funcion\u00e1rios Ativos', value: metrics.activeEmployees || 28, change: '+4', hint: 'vs. m\u00eas anterior', icon: 'users', tone: '#1269ff', soft: '#eaf2ff', spark: 'bars' })
+      + kpiCard({ label: 'NRs V\u00e1lidas', value: metrics.valid || 6, change: '+2', hint: 'vs. m\u00eas anterior', icon: 'shield', tone: '#18a957', soft: '#dcfce7', spark: 'bars' })
+      + kpiCard({ label: 'Obras Ativas', value: metrics.activeProjects || 3, change: '0', hint: 'vs. m\u00eas anterior', icon: 'building', tone: '#1269ff', soft: '#eaf2ff', spark: 'bars' })
       + '</div>'
       + '<div class="home-grid-main">'
-      + '<section class="home-card home-panel"><div class="home-panel-header"><div class="home-panel-title">' + icon('warning') + 'Central de Alertas</div><div class="home-tabs"><span>Todos</span><span>Cr&iacute;ticos</span><span>Pr&oacute;ximos</span></div></div><div class="home-list">' + alerts.map(alertRow).join('') + '<div class="home-row" style="justify-content:center"><button class="text-blue-600 font-bold text-sm" onclick="navigate(\'reports\')">Ver todos os alertas &rsaquo;</button></div></div></section>'
+      + '<section class="home-card home-panel"><div class="home-panel-header"><div class="home-panel-title">' + icon('warning') + 'Central de Alertas</div><div class="home-tabs"><button type="button" class="home-tab-button active" onclick="filterHomeAlerts(\'todos\', this)">Todos</button><button type="button" class="home-tab-button" onclick="filterHomeAlerts(\'critico\', this)">Cr&iacute;ticos</button><button type="button" class="home-tab-button" onclick="filterHomeAlerts(\'proximo\', this)">Pr&oacute;ximos</button></div></div><div class="home-list">' + alerts.map(alertRow).join('') + '<div class="home-row" style="justify-content:center"><button class="text-blue-600 font-bold text-sm" onclick="navigate(\'reports\')">Ver todos os alertas &rsaquo;</button></div></div></section>'
       + '<section class="home-card home-panel"><div class="home-panel-header"><div class="home-panel-title">' + icon('calendar') + 'Pr&oacute;ximos Vencimentos</div><button class="text-blue-600 font-bold text-sm" onclick="navigate(\'reports\')">Ver todos</button></div>' + dueTable(due) + '</section>'
       + '</div>'
       + '<div class="home-chart-grid">'

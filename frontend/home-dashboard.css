@@ -383,25 +383,79 @@
 .home-tabs {
   display: flex;
   align-items: center;
-  gap: 28px;
+  gap: 10px;
   color: #64748b;
   font-size: 13px;
   font-weight: 700;
 }
 
-.home-tabs span:first-child {
-  color: #1269ff;
+.home-tab-button {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: #64748b;
+  font: inherit;
+  cursor: pointer;
   position: relative;
 }
 
-.home-tabs span:first-child::after {
-  content: "";
+.home-tab-button:hover,
+.home-tab-button.active {
+  color: #1269ff;
+}
+
+.home-tab-button.active {
+  border-bottom-color: #1269ff;
+}
+
+.home-user-menu {
   position: absolute;
-  height: 3px;
-  left: -16px;
-  right: -16px;
-  bottom: -21px;
-  background: #1269ff;
+  right: 20px;
+  top: 58px;
+  width: 220px;
+  padding: 8px;
+  border: 1px solid #dbe5f1;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 18px 42px rgba(15, 48, 91, .18);
+  z-index: 80;
+}
+
+.home-user-menu.hidden {
+  display: none;
+}
+
+.home-user-menu button {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #20395f;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.home-user-menu button:hover {
+  background: #f3f7ff;
+  color: #1269ff;
+}
+
+.home-user-menu .danger {
+  color: #dc2626;
+}
+
+.home-user-menu .danger:hover {
+  background: #fff1f2;
+  color: #dc2626;
 }
 
 .home-list {
