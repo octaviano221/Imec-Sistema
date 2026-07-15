@@ -339,14 +339,28 @@
       if ((attempts || 0) < 80) setTimeout(function () { install((attempts || 0) + 1); }, 80);
       return;
     }
-    renderers.dashboard = async function () {
+    var homeDashboardRenderer = async function () {
       enhanceTopbar();
       return renderDashboard();
     };
+    homeDashboardRenderer.__homeDashboard = true;
+    homeDashboardRenderer.__premium = true;
+    homeDashboardRenderer.__execPatched = true;
+    homeDashboardRenderer.__suiteTools = true;
+    renderers.dashboard = homeDashboardRenderer;
     if (typeof currentPage !== 'undefined' && currentPage === 'dashboard' && typeof renderPage === 'function') {
-      setTimeout(function () {
-        try { renderPage(); } catch (err) { console.warn('Nao foi possivel atualizar o dashboard executivo.', err); }
-      }, 80);
+      [80, 360, 900].forEach(function (delay) {
+        setTimeout(function () {
+          try {
+            if (renderers.dashboard !== homeDashboardRenderer) {
+              renderers.dashboard = homeDashboardRenderer;
+            }
+            if (currentPage === 'dashboard') renderPage();
+          } catch (err) {
+            console.warn('Nao foi possivel atualizar o dashboard executivo.', err);
+          }
+        }, delay);
+      });
     }
   }
 
