@@ -13,6 +13,7 @@
       heart: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z"/>',
       certificate: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/>',
       crane: '<path d="M4 20h16"/><path d="M7 20V8l10-4v16"/><path d="M7 8h12"/><path d="M13 8v12"/><path d="M19 8v4l-2 2"/>',
+      car: '<path d="M19 17h2l-1.6-5.2A3 3 0 0 0 16.5 10h-9A3 3 0 0 0 4.6 11.8L3 17h2"/><path d="M5 17h14"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M6 10l1.2-3.2A2 2 0 0 1 9.1 5h5.8a2 2 0 0 1 1.9 1.8L18 10"/>',
       chart: '<path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-7"/>',
       download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>',
       calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/>',
@@ -332,6 +333,58 @@
     }).join('');
   }
 
+  function isVehicleEquipment(eq) {
+    var text = ((eq.type || '') + ' ' + (eq.name || '')).toLowerCase();
+    return !!eq.plate || /veiculo|carro|caminh|munck|van|pickup|utilitario|utilit/.test(text);
+  }
+
+  function vehicleDocsSummary(db, metrics) {
+    var vehicles = (db.equipment || []).filter(isVehicleEquipment);
+    var vehicleMap = vehicles.reduce(function (acc, eq) {
+      acc[String(eq.id)] = eq;
+      return acc;
+    }, {});
+    var docs = (db.equipment_documents || []).filter(function (doc) {
+      var text = String((doc.document_type || '') + ' ' + (doc.title || '')).toLowerCase();
+      return vehicleMap[String(doc.equipment_id)] || /ipva|licenciamento|crlv|seguro|antt|tacografo/.test(text);
+    });
+    var expired = 0;
+    var expiring = 0;
+    var valid = 0;
+    var queue = [];
+    docs.forEach(function (doc) {
+      var remaining = daysUntil(doc.expiration_date);
+      var status = calcLocalStatus(doc.expiration_date, metrics.alertDays);
+      if (status === 'vencido') expired += 1;
+      else if (status === 'vencendo') expiring += 1;
+      else valid += 1;
+      if (remaining != null && remaining <= metrics.alertDays + 30) {
+        queue.push({
+          title: doc.document_type || doc.title || 'Documento',
+          vehicle: vehicleMap[String(doc.equipment_id)] ? vehicleMap[String(doc.equipment_id)].name + (vehicleMap[String(doc.equipment_id)].plate ? ' - ' + vehicleMap[String(doc.equipment_id)].plate : '') : 'Ve&iacute;culo',
+          date: doc.expiration_date,
+          days: remaining,
+          status: status
+        });
+      }
+    });
+    queue.sort(function (a, b) { return a.days - b.days; });
+    var score = docs.length ? Math.max(0, Math.round((valid / docs.length) * 100)) : 100;
+    return { vehicles: vehicles, docs: docs, expired: expired, expiring: expiring, valid: valid, queue: queue.slice(0, 4), score: score };
+  }
+
+  function vehicleDocDashboard(db, metrics) {
+    var summary = vehicleDocsSummary(db, metrics);
+    var queue = summary.queue.length ? summary.queue.map(function (item) {
+      var critical = item.status === 'vencido' || item.days <= 7;
+      var tone = critical ? '#e51d2a' : '#f59e0b';
+      var soft = critical ? '#ffe1e4' : '#fff3d8';
+      var label = item.days == null ? '--' : (item.days < 0 ? Math.abs(item.days) + 'd vencido' : item.days + ' dias');
+      return '<div class="home-vehicle-row"><div class="home-vehicle-row-icon" style="--tone:' + tone + ';--soft:' + soft + '">' + icon(critical ? 'warning' : 'calendar') + '</div><div><div class="home-row-title">' + esc(item.title) + '</div><div class="home-row-sub">' + item.vehicle + ' &bull; ' + formatDate(item.date) + '</div></div><span class="home-chip" style="--tone:' + tone + ';--soft:' + soft + '">' + label + '</span></div>';
+    }).join('') : '<div class="home-empty">Nenhum IPVA ou licenciamento pr&oacute;ximo do vencimento.</div>';
+    return '<section class="home-card home-panel home-vehicle-dashboard"><div class="home-panel-header"><div><div class="home-panel-title">' + icon('car') + 'Dashboard de Documentos de Ve&iacute;culos</div><p>IPVA, licenciamento, CRLV, seguro e ANTT na fila de controle.</p></div><button class="text-blue-600 font-bold text-sm" onclick="navigate(\'vehicleDocuments\')">Abrir m&oacute;dulo</button></div><div class="home-vehicle-grid"><div class="home-vehicle-score"><span>Regularidade da frota</span><strong>' + summary.score + '%</strong><div class="home-vehicle-bar"><i style="width:' + summary.score + '%"></i></div></div><div class="home-vehicle-mini"><span>Ve&iacute;culos</span><strong>' + num(summary.vehicles.length) + '</strong></div><div class="home-vehicle-mini warn"><span>Vencendo</span><strong>' + num(summary.expiring) + '</strong></div><div class="home-vehicle-mini danger"><span>Vencidos</span><strong>' + num(summary.expired) + '</strong></div></div><div class="home-vehicle-list">' + queue + '</div></section>';
+  }
+
   function actionCard(label, iconName, click) {
     return '<button type="button" class="home-action" onclick="' + click + '">' + icon(iconName) + '<span>' + label + '</span></button>';
   }
@@ -512,6 +565,7 @@
       + '<section class="home-card home-panel"><div class="home-panel-header"><div class="home-panel-title">' + icon('chart') + 'Conformidade por M&ecirc;s</div><span class="home-chip" style="--tone:#51617f;--soft:#f1f5f9">&Uacute;ltimos 6 meses</span></div>' + lineChart(metrics.score) + '</section>'
       + '<section class="home-card home-panel"><div class="home-panel-header"><div class="home-panel-title">' + icon('shield') + 'Status das NRs</div></div>' + statusDonut(metrics) + '</section>'
       + '</div>'
+      + vehicleDocDashboard(db, metrics)
       + '<div class="home-projects-actions">'
       + '<section class="home-card home-panel"><div class="home-panel-header"><div class="home-panel-title">' + icon('building') + 'Obras em Andamento</div><button class="text-blue-600 font-bold text-sm" onclick="navigate(\'projects\')">Ver todas</button></div>' + projectRows(db) + '</section>'
       + '<section class="home-card home-panel"><div class="home-panel-header"><div class="home-panel-title">' + icon('alert') + 'A&ccedil;&otilde;es R&aacute;pidas</div></div><div class="home-actions-grid">'
