@@ -340,6 +340,9 @@
 
   function vehicleDocsSummary(db, metrics) {
     var vehicles = (db.equipment || []).filter(isVehicleEquipment);
+    var activeVehicles = vehicles.filter(function (eq) { return (eq.status || 'ativo') === 'ativo'; }).length;
+    var maintenanceVehicles = vehicles.filter(function (eq) { return eq.status === 'manutencao'; }).length;
+    var inactiveVehicles = vehicles.filter(function (eq) { return eq.status === 'inativo'; }).length;
     var vehicleMap = vehicles.reduce(function (acc, eq) {
       acc[String(eq.id)] = eq;
       return acc;
@@ -384,13 +387,20 @@
       return (ad ? ad.getTime() : 0) - (bd ? bd.getTime() : 0);
     });
     var score = docs.length ? Math.max(0, Math.round((valid / docs.length) * 100)) : 100;
-    return { vehicles: vehicles, docs: docs, expired: expired, expiring: expiring, valid: valid, queue: queue.slice(0, 4), recent: recent.slice(0, 4), score: score };
+    return { vehicles: vehicles, activeVehicles: activeVehicles, maintenanceVehicles: maintenanceVehicles, inactiveVehicles: inactiveVehicles, docs: docs, expired: expired, expiring: expiring, valid: valid, queue: queue.slice(0, 4), recent: recent.slice(0, 4), score: score };
   }
 
   function vehicleDocDashboard(db, metrics) {
     var summary = vehicleDocsSummary(db, metrics);
     var rows = summary.queue.length ? summary.queue : summary.recent;
     var listTitle = summary.queue.length ? 'Pr&oacute;ximos vencimentos' : 'Documentos cadastrados';
+    var allClear = summary.expired === 0 && summary.expiring === 0 && summary.maintenanceVehicles === 0 && summary.inactiveVehicles === 0 && summary.vehicles.length > 0;
+    var statusNote = summary.maintenanceVehicles || summary.inactiveVehicles
+      ? summary.maintenanceVehicles + ' em manuten&ccedil;&atilde;o &bull; ' + summary.inactiveVehicles + ' inativos'
+      : 'Todos liberados para opera&ccedil;&atilde;o';
+    var okMessage = allClear
+      ? '<div class="home-vehicle-ok"><div class="home-vehicle-ok-icon">' + icon('shield') + '</div><div><strong>Tudo certo com a frota</strong><span>Ve&iacute;culos ativos e documentos sem vencimentos pr&oacute;ximos.</span></div><em>Operacional</em></div>'
+      : '';
     var queue = rows.length ? rows.map(function (item) {
       var critical = item.status === 'vencido' || (item.days !== null && item.days !== undefined && item.days <= 7);
       var validDoc = item.status === 'valido';
@@ -400,7 +410,7 @@
       if (!summary.queue.length && validDoc) label = 'Cadastrado';
       return '<div class="home-vehicle-row"><div class="home-vehicle-row-icon" style="--tone:' + tone + ';--soft:' + soft + '">' + icon(critical ? 'warning' : validDoc ? 'shield' : 'calendar') + '</div><div><div class="home-row-title">' + esc(item.title) + '</div><div class="home-row-sub">' + item.vehicle + ' &bull; validade ' + formatDate(item.date) + '</div></div><span class="home-chip" style="--tone:' + tone + ';--soft:' + soft + '">' + label + '</span></div>';
     }).join('') : '<div class="home-empty">Nenhum documento de ve&iacute;culo cadastrado ainda.</div>';
-    return '<section class="home-card home-panel home-vehicle-dashboard"><div class="home-panel-header"><div><div class="home-panel-title">' + icon('car') + 'Dashboard de Documentos de Ve&iacute;culos</div><p>' + listTitle + ' de IPVA, licenciamento, CRLV, seguro e ANTT.</p></div><button class="text-blue-600 font-bold text-sm" onclick="navigate(\'vehicleDocuments\')">Abrir m&oacute;dulo</button></div><div class="home-vehicle-grid"><div class="home-vehicle-score"><span>Regularidade da frota</span><strong>' + summary.score + '%</strong><div class="home-vehicle-bar"><i style="width:' + summary.score + '%"></i></div></div><div class="home-vehicle-mini"><span>Ve&iacute;culos</span><strong>' + num(summary.vehicles.length) + '</strong></div><div class="home-vehicle-mini warn"><span>Vencendo</span><strong>' + num(summary.expiring) + '</strong></div><div class="home-vehicle-mini danger"><span>Vencidos</span><strong>' + num(summary.expired) + '</strong></div></div><div class="home-vehicle-list">' + queue + '</div></section>';
+    return '<section class="home-card home-panel home-vehicle-dashboard"><div class="home-panel-header"><div><div class="home-panel-title">' + icon('car') + 'Dashboard de Documentos de Ve&iacute;culos</div><p>' + listTitle + ' de IPVA, licenciamento, CRLV, seguro e ANTT.</p></div><button class="text-blue-600 font-bold text-sm" onclick="navigate(\'vehicleDocuments\')">Abrir m&oacute;dulo</button></div><div class="home-vehicle-grid"><div class="home-vehicle-score"><span>Regularidade da frota</span><strong>' + summary.score + '%</strong><div class="home-vehicle-bar"><i style="width:' + summary.score + '%"></i></div></div><div class="home-vehicle-mini status"><span>Status dos ve&iacute;culos</span><strong>' + num(summary.activeVehicles) + ' ativos</strong><small>' + statusNote + '</small></div><div class="home-vehicle-mini warn"><span>Vencendo</span><strong>' + num(summary.expiring) + '</strong></div><div class="home-vehicle-mini danger"><span>Vencidos</span><strong>' + num(summary.expired) + '</strong></div></div><div class="home-vehicle-list">' + okMessage + queue + '</div></section>';
   }
 
   function actionCard(label, iconName, click) {
