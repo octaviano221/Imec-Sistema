@@ -70,11 +70,12 @@
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  justify-content: flex-end;
 }
 
 .vehicle-kpis {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -125,6 +126,79 @@
   display: grid;
   grid-template-columns: .95fr 1.45fr;
   gap: 18px;
+}
+
+.vehicle-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  gap: 14px;
+}
+
+.vehicle-card {
+  min-height: 132px;
+  padding: 16px;
+  border: 1px solid #dbe5f1;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(18, 105, 255, .07), transparent 44%),
+    linear-gradient(180deg, #fff, #f8fbff);
+  box-shadow: 0 10px 24px rgba(15, 48, 91, .055);
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+}
+
+.vehicle-card-icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  color: #1269ff;
+  background: #eaf2ff;
+  display: grid;
+  place-items: center;
+}
+
+.vehicle-card-icon svg {
+  width: 28px !important;
+  height: 28px !important;
+}
+
+.vehicle-card h3 {
+  margin: 0;
+  color: #06265a;
+  font: 900 16px/1.15 Outfit, DM Sans, sans-serif;
+}
+
+.vehicle-card p,
+.vehicle-card span,
+.vehicle-card small {
+  display: block;
+  margin-top: 4px;
+  color: #60708d;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.vehicle-card span {
+  color: #20395f;
+}
+
+.vehicle-card small {
+  color: #8a98b4;
+}
+
+.vehicle-card-actions {
+  min-width: 138px;
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+}
+
+.vehicle-card-actions .btn {
+  min-height: 32px;
+  width: 100%;
+  justify-content: center;
 }
 
 .vehicle-section {
@@ -359,7 +433,7 @@
 
 @media (max-width: 1180px) {
   .vehicle-kpis {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .vehicle-grid {
     grid-template-columns: 1fr;
@@ -374,6 +448,20 @@
   }
   .vehicle-kpis {
     grid-template-columns: 1fr;
+  }
+  .vehicle-actions {
+    width: 100%;
+  }
+  .vehicle-actions .btn {
+    flex: 1 1 100%;
+  }
+  .vehicle-card {
+    grid-template-columns: 48px 1fr;
+  }
+  .vehicle-card-actions {
+    grid-column: 2;
+    width: 100%;
+    justify-items: stretch;
   }
   .vehicle-queue-item {
     grid-template-columns: 44px 1fr;

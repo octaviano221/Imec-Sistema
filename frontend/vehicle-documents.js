@@ -8,6 +8,7 @@
       calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/>',
       warning: '<path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
       shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/>',
+      crane: '<path d="M4 20h16"/><path d="M7 20V8l10-4v16"/><path d="M7 8h12"/><path d="M13 8v12"/><path d="M19 8v4l-2 2"/>',
       plus: '<path d="M12 5v14M5 12h14"/>',
       search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
       download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>',
@@ -65,7 +66,7 @@
 
   function isVehicle(eq) {
     var text = ((eq.type || '') + ' ' + (eq.name || '')).toLowerCase();
-    return !!eq.plate || /veiculo|veiculo|carro|caminh|munck|van|pickup|utilitario|utilit/.test(text);
+    return !!eq.plate || /veiculo|veiculo|carro|caminh|munck|guindaste|grua|van|pickup|utilitario|utilit/.test(text);
   }
 
   function vehicles() {
@@ -75,7 +76,7 @@
   function vehicleDocs() {
     var vehicleIds = vehicles().map(function (item) { return String(item.id); });
     return (db().equipment_documents || []).filter(function (doc) {
-      return vehicleIds.indexOf(String(doc.equipment_id)) >= 0 || /ipva|licenciamento|crlv|seguro|antt|tacografo/i.test(doc.document_type || doc.title || '');
+      return vehicleIds.indexOf(String(doc.equipment_id)) >= 0 || /ipva|licenciamento|crlv|seguro|antt|tacografo|laudo|capacidade|inspecao|inspe/i.test(doc.document_type || doc.title || '');
     });
   }
 
@@ -112,6 +113,24 @@
     return '<section class="vehicle-kpi" style="--tone:' + tone + '"><div class="vehicle-kpi-icon">' + icon(iconName) + '</div><div><span>' + label + '</span><strong>' + value + '</strong></div></section>';
   }
 
+  function laudoDocs() {
+    return vehicleDocs().filter(function (doc) {
+      return /laudo|capacidade|inspecao|inspe/i.test((doc.document_type || '') + ' ' + (doc.title || ''));
+    });
+  }
+
+  function isCapacityEquipment(eq) {
+    var text = ((eq.type || '') + ' ' + (eq.name || '')).toLowerCase();
+    return /guindaste|munck|caminh|crane|truck|grua/.test(text);
+  }
+
+  function vehicleStatusLabel(eq) {
+    var status = eq.status || 'ativo';
+    if (status === 'manutencao') return chip('vencendo', 'Manuten&ccedil;&atilde;o');
+    if (status === 'inativo') return chip('outro', 'Inativo');
+    return chip('valido', 'Operacional');
+  }
+
   function queueRow(doc, isQueue) {
     var d = days(doc.expiration_date);
     var status = statusOf(doc.expiration_date, ((db().settings || {}).expiration_alert_days || 30));
@@ -135,14 +154,32 @@
     }).join('');
   }
 
+  function vehicleCard(eq) {
+    var isCapacity = isCapacityEquipment(eq);
+    var docs = vehicleDocs().filter(function (doc) { return same(doc.equipment_id, eq.id); });
+    var nextDoc = docs.slice().sort(function (a, b) {
+      var ad = days(a.expiration_date);
+      var bd = days(b.expiration_date);
+      if (ad == null && bd == null) return 0;
+      if (ad == null) return 1;
+      if (bd == null) return -1;
+      return ad - bd;
+    })[0];
+    var next = nextDoc ? (esc(nextDoc.document_type || 'Documento') + ' vence ' + fmt(nextDoc.expiration_date)) : 'Sem documento cadastrado';
+    return '<article class="vehicle-card"><div class="vehicle-card-icon">' + icon(isCapacity ? 'crane' : 'car') + '</div><div><h3>' + esc(eq.name || 'Ve&iacute;culo') + '</h3><p>' + esc(eq.type || 'Ve&iacute;culo da frota') + (eq.plate ? ' &bull; ' + esc(eq.plate) : '') + '</p><span>' + esc(eq.brand || '') + ' ' + esc(eq.model || '') + (eq.capacity ? ' &bull; Cap. ' + esc(eq.capacity) : '') + '</span><small>' + next + '</small></div><div class="vehicle-card-actions">' + vehicleStatusLabel(eq) + '<button class="btn btn-outline btn-sm" onclick="openVehicleRegister(\'' + esc(eq.id) + '\')">Editar</button><button class="btn btn-primary btn-sm" onclick="openCapacityReport(\'' + esc(eq.id) + '\')">Laudo</button></div></article>';
+  }
+
   function renderVehicleDocuments() {
     var docs = vehicleDocs();
     var preview = documentPreviewItems();
     var activeVehicles = vehicles().filter(function (eq) { return (eq.status || 'ativo') === 'ativo'; });
     var expired = docs.filter(function (doc) { return statusOf(doc.expiration_date, ((db().settings || {}).expiration_alert_days || 30)) === 'vencido'; }).length;
     var expiring = docs.filter(function (doc) { return statusOf(doc.expiration_date, ((db().settings || {}).expiration_alert_days || 30)) === 'vencendo'; }).length;
-    return '<div class="vehicle-docs fade-in"><section class="vehicle-hero"><div><p class="vehicle-kicker">Controle de frota</p><h2>Documentos de Ve&iacute;culos</h2><p>Fila premium para IPVA, licenciamento, CRLV, seguro, ANTT e documentos com vencimento.</p></div><div class="vehicle-actions"><button class="btn btn-outline" onclick="navigate(\'equipment\')">Ver equipamentos</button><button class="btn btn-primary" onclick="openVehicleDoc()">' + icon('plus') + 'Novo documento</button></div></section>'
-      + '<div class="vehicle-kpis">' + metricCard('Ve&iacute;culos ativos', activeVehicles.length, 'car', '#1269ff') + metricCard('Documentos', docs.length, 'doc', '#1269ff') + metricCard('Vencendo', expiring, 'calendar', '#d97706') + metricCard('Vencidos', expired, 'warning', '#dc2626') + '</div>'
+    var capacity = vehicles().filter(isCapacityEquipment);
+    var vehicleCards = vehicles().length ? vehicles().map(vehicleCard).join('') : '<div class="vehicle-empty">Cadastre o primeiro carro, caminh&atilde;o ou guindaste da empresa.</div>';
+    return '<div class="vehicle-docs fade-in"><section class="vehicle-hero"><div><p class="vehicle-kicker">Controle de frota</p><h2>Frota, ve&iacute;culos e laudos de capacidade</h2><p>Cadastre carros, caminh&otilde;es, guindastes e Munck, anexe CRLV/IPVA/licenciamento e controle o vencimento dos laudos de capacidade.</p></div><div class="vehicle-actions"><button class="btn btn-outline" onclick="openVehicleRegister()">Cadastrar ve&iacute;culo</button><button class="btn btn-outline" onclick="openCapacityReport()">' + icon('crane') + 'Laudo de capacidade</button><button class="btn btn-primary" onclick="openVehicleDoc()">' + icon('plus') + 'Novo documento</button></div></section>'
+      + '<div class="vehicle-kpis">' + metricCard('Ve&iacute;culos ativos', activeVehicles.length, 'car', '#1269ff') + metricCard('Laudos capacidade', laudoDocs().length, 'crane', '#7c3aed') + metricCard('Documentos', docs.length, 'doc', '#1269ff') + metricCard('Vencendo', expiring, 'calendar', '#d97706') + metricCard('Vencidos', expired, 'warning', '#dc2626') + '</div>'
+      + '<section class="vehicle-section"><div class="vehicle-section-head"><div><h2>Cadastro da frota</h2><p>Carros, caminh&otilde;es, guindastes e Munck da empresa com placa, capacidade e status operacional.</p></div><button class="btn btn-primary btn-sm" onclick="openVehicleRegister()">' + icon('plus') + 'Novo ve&iacute;culo</button></div><div class="vehicle-card-grid">' + vehicleCards + '</div></section>'
       + '<div class="vehicle-grid"><section class="vehicle-section"><div class="vehicle-section-head"><div><h2>' + preview.title + '</h2><p>' + preview.hint + '</p></div></div><div class="vehicle-queue">' + (preview.items.length ? preview.items.map(function (doc) { return queueRow(doc, preview.isQueue); }).join('') : '<div class="vehicle-empty">Nenhum documento de ve&iacute;culo cadastrado ainda.</div>') + '</div></section>'
       + '<section class="vehicle-section"><div class="vehicle-section-head"><div><h2>Controle documental</h2><p>Consulte, filtre e atualize os documentos da frota.</p></div><button class="btn btn-outline btn-sm" onclick="exportVehicleDocsCSV()">Exportar CSV</button></div><div class="vehicle-filterbar"><div class="search-box flex-1 min-w-[240px]">' + icon('search') + '<input class="input" id="vehicleDocSearch" placeholder="Buscar ve&iacute;culo, placa ou documento..." onkeyup="filterVehicleDocs()"></div><select class="input w-auto" id="vehicleDocStatus" onchange="filterVehicleDocs()"><option value="">Todos os status</option><option value="vencido">Vencidos</option><option value="vencendo">Vencendo</option><option value="valido">V&aacute;lidos</option></select></div><div class="vehicle-table-wrap"><table class="vehicle-table" id="vehicleDocsTable"><thead><tr><th>Documento</th><th>Ve&iacute;culo</th><th>N&uacute;mero</th><th>Emiss&atilde;o</th><th>Vencimento</th><th>Status</th><th>Anexo</th><th>A&ccedil;&otilde;es</th></tr></thead><tbody>' + (docs.length ? docs.map(tableRow).join('') : '<tr><td colspan="8"><div class="vehicle-empty">Cadastre o primeiro IPVA ou licenciamento.</div></td></tr>') + '</tbody></table></div></section></div></div>';
   }
@@ -154,7 +191,7 @@
     var currentFile = doc && doc.file_url ? '<div class="vehicle-file-current">' + icon('paperclip') + '<div><strong>PDF anexado</strong><span>O arquivo atual ser&aacute; mantido se voc&ecirc; n&atilde;o enviar outro.</span></div><a href="' + esc(doc.file_url) + '" target="_blank" download>Baixar</a></div>' : '<div class="vehicle-file-current vehicle-file-empty">' + icon('paperclip') + '<div><strong>Nenhum PDF anexado</strong><span>Anexe o IPVA, licenciamento, CRLV ou outro documento em PDF.</span></div></div>';
     var html = '<div class="p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">' + (doc ? 'Editar' : 'Novo') + ' documento de ve&iacute;culo</h2><p class="text-sm text-slate-500 mb-5">Controle IPVA, licenciamento e demais documentos da frota.</p><form onsubmit="saveVehicleDoc(event,\'' + (id || '') + '\')"><div class="grid md:grid-cols-2 gap-4">'
       + '<div><label class="label">Ve&iacute;culo *</label><select class="input" id="vehEquipment" required>' + vehicleOptions(doc && doc.equipment_id) + '</select></div>'
-      + '<div><label class="label">Tipo *</label><select class="input" id="vehType" required><option' + selectedType('IPVA') + '>IPVA</option><option' + selectedType('Licenciamento') + '>Licenciamento</option><option' + selectedType('CRLV') + '>CRLV</option><option' + selectedType('Seguro') + '>Seguro</option><option' + selectedType('ANTT') + '>ANTT</option><option' + selectedType('Tac&oacute;grafo') + '>Tac&oacute;grafo</option><option' + selectedType('Outro') + '>Outro</option></select></div>'
+      + '<div><label class="label">Tipo *</label><select class="input" id="vehType" required><option' + selectedType('IPVA') + '>IPVA</option><option' + selectedType('Licenciamento') + '>Licenciamento</option><option' + selectedType('CRLV') + '>CRLV</option><option' + selectedType('Seguro') + '>Seguro</option><option' + selectedType('ANTT') + '>ANTT</option><option' + selectedType('Tac&oacute;grafo') + '>Tac&oacute;grafo</option><option' + selectedType('Laudo de capacidade') + '>Laudo de capacidade</option><option' + selectedType('Inspe&ccedil;&atilde;o de guindaste') + '>Inspe&ccedil;&atilde;o de guindaste</option><option' + selectedType('Inspe&ccedil;&atilde;o de caminh&atilde;o Munck') + '>Inspe&ccedil;&atilde;o de caminh&atilde;o Munck</option><option' + selectedType('Outro') + '>Outro</option></select></div>'
       + '<div><label class="label">N&uacute;mero / Refer&ecirc;ncia</label><input class="input" id="vehNumber" value="' + esc(doc && doc.document_number) + '"></div>'
       + '<div><label class="label">Respons&aacute;vel</label><input class="input" id="vehResponsible" value="' + esc(doc && doc.responsible_name) + '"></div>'
       + '<div><label class="label">Data de emiss&atilde;o</label><input type="date" class="input" id="vehIssue" value="' + (typeof inputDate === 'function' ? inputDate(doc && doc.issue_date) : '') + '"></div>'
@@ -163,6 +200,74 @@
       + '<div class="md:col-span-2"><label class="label">Observa&ccedil;&otilde;es</label><textarea class="input" rows="3" id="vehNotes">' + esc(doc && doc.notes) + '</textarea></div>'
       + '</div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" type="submit">Salvar documento</button></div></form></div>';
     if (typeof openModal === 'function') openModal(html);
+  };
+
+  window.openCapacityReport = function (equipmentId) {
+    var preferred = equipmentId || '';
+    var type = 'Laudo de capacidade';
+    var currentFile = '<div class="vehicle-file-current vehicle-file-empty">' + icon('paperclip') + '<div><strong>Anexe o laudo assinado em PDF</strong><span>Use para laudo de capacidade de guindaste, caminh&atilde;o Munck ou inspe&ccedil;&atilde;o t&eacute;cnica.</span></div></div>';
+    var html = '<div class="p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Novo laudo de capacidade</h2><p class="text-sm text-slate-500 mb-5">Controle vencimento e anexo do laudo t&eacute;cnico do equipamento.</p><form onsubmit="saveVehicleDoc(event,\'\')"><input type="hidden" id="vehType" value="' + type + '"><div class="grid md:grid-cols-2 gap-4">'
+      + '<div><label class="label">Equipamento *</label><select class="input" id="vehEquipment" required>' + vehicleOptions(preferred) + '</select></div>'
+      + '<div><label class="label">N&uacute;mero do laudo</label><input class="input" id="vehNumber" placeholder="Ex.: LAUDO-CAP-2026-001"></div>'
+      + '<div><label class="label">Respons&aacute;vel / Engenheiro</label><input class="input" id="vehResponsible" placeholder="Nome do respons&aacute;vel t&eacute;cnico"></div>'
+      + '<div><label class="label">Capacidade avaliada</label><input class="input" id="vehCapacityNote" placeholder="Ex.: 12 t / 20 t.m"></div>'
+      + '<div><label class="label">Data de emiss&atilde;o</label><input type="date" class="input" id="vehIssue" value="' + (typeof today === 'function' ? today() : '') + '"></div>'
+      + '<div><label class="label">Data de vencimento *</label><input type="date" class="input" id="vehExp" required></div>'
+      + '<div class="md:col-span-2"><label class="label">PDF do laudo *</label>' + currentFile + '<input type="file" class="input vehicle-file-input" id="vehFile" accept="application/pdf,.pdf" required><p class="vehicle-file-hint">Depois de salvar, o laudo aparecer&aacute; na fila de vencimentos e na tabela para baixar.</p></div>'
+      + '<div class="md:col-span-2"><label class="label">Observa&ccedil;&otilde;es</label><textarea class="input" rows="3" id="vehNotes" placeholder="Condi&ccedil;&otilde;es avaliadas, recomenda&ccedil;&otilde;es ou restri&ccedil;&otilde;es."></textarea></div>'
+      + '</div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" type="submit">Salvar laudo</button></div></form></div>';
+    if (typeof openModal === 'function') openModal(html);
+  };
+
+  window.openVehicleRegister = function (id) {
+    var eq = id ? (db().equipment || []).find(function (item) { return same(item.id, id); }) : null;
+    var selectedType = function (value) { return eq && eq.type === value ? ' selected' : ''; };
+    var selectedStatus = function (value) { return (eq ? eq.status : 'ativo') === value ? ' selected' : ''; };
+    var html = '<div class="p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">' + (eq ? 'Editar' : 'Novo') + ' ve&iacute;culo / equipamento</h2><p class="text-sm text-slate-500 mb-5">Cadastre carros, caminh&otilde;es, guindastes e equipamentos da frota.</p><form onsubmit="saveVehicleRegister(event,\'' + (id || '') + '\')"><div class="grid md:grid-cols-2 gap-4">'
+      + '<div><label class="label">Nome *</label><input class="input" id="fleetName" value="' + esc(eq && eq.name) + '" placeholder="Ex.: Caminh&atilde;o Munck 01" required></div>'
+      + '<div><label class="label">Tipo *</label><select class="input" id="fleetType" required><option' + selectedType('Carro') + '>Carro</option><option' + selectedType('Caminh&atilde;o') + '>Caminh&atilde;o</option><option' + selectedType('Caminh&atilde;o Munck') + '>Caminh&atilde;o Munck</option><option' + selectedType('Guindaste') + '>Guindaste</option><option' + selectedType('Van') + '>Van</option><option' + selectedType('Pickup') + '>Pickup</option><option' + selectedType('Outro') + '>Outro</option></select></div>'
+      + '<div><label class="label">Marca</label><input class="input" id="fleetBrand" value="' + esc(eq && eq.brand) + '"></div>'
+      + '<div><label class="label">Modelo</label><input class="input" id="fleetModel" value="' + esc(eq && eq.model) + '"></div>'
+      + '<div><label class="label">Placa</label><input class="input" id="fleetPlate" value="' + esc(eq && eq.plate) + '" placeholder="ABC1D23"></div>'
+      + '<div><label class="label">Ano</label><input class="input" id="fleetYear" value="' + esc(eq && eq.year) + '" placeholder="2026"></div>'
+      + '<div><label class="label">Capacidade</label><input class="input" id="fleetCapacity" value="' + esc(eq && eq.capacity) + '" placeholder="Ex.: 12 t / 20 t.m"></div>'
+      + '<div><label class="label">N&ordm; s&eacute;rie / chassi</label><input class="input" id="fleetSerial" value="' + esc(eq && eq.serial_number) + '"></div>'
+      + '<div><label class="label">Patrim&ocirc;nio</label><input class="input" id="fleetAsset" value="' + esc(eq && eq.asset_number) + '"></div>'
+      + '<div><label class="label">Propriet&aacute;rio</label><input class="input" id="fleetOwner" value="' + esc(eq && eq.owner) + '" placeholder="IMEC"></div>'
+      + '<div><label class="label">Status</label><select class="input" id="fleetStatus"><option value="ativo"' + selectedStatus('ativo') + '>Ativo / Operacional</option><option value="manutencao"' + selectedStatus('manutencao') + '>Manuten&ccedil;&atilde;o</option><option value="inativo"' + selectedStatus('inativo') + '>Inativo</option></select></div>'
+      + '<div class="md:col-span-2"><label class="label">Observa&ccedil;&otilde;es</label><textarea class="input" rows="3" id="fleetNotes">' + esc(eq && eq.notes) + '</textarea></div>'
+      + '</div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" type="submit">Salvar ve&iacute;culo</button></div></form></div>';
+    if (typeof openModal === 'function') openModal(html);
+  };
+
+  window.saveVehicleRegister = async function (event, id) {
+    event.preventDefault();
+    var current = id ? (db().equipment || []).find(function (item) { return same(item.id, id); }) : {};
+    var data = {
+      name: document.getElementById('fleetName').value,
+      type: document.getElementById('fleetType').value,
+      brand: document.getElementById('fleetBrand').value,
+      model: document.getElementById('fleetModel').value,
+      serial_number: document.getElementById('fleetSerial').value,
+      asset_number: document.getElementById('fleetAsset').value,
+      plate: document.getElementById('fleetPlate').value,
+      year: document.getElementById('fleetYear').value,
+      capacity: document.getElementById('fleetCapacity').value,
+      owner: document.getElementById('fleetOwner').value,
+      status: document.getElementById('fleetStatus').value,
+      photo_url: current.photo_url || '',
+      notes: document.getElementById('fleetNotes').value
+    };
+    try {
+      if (id) await API.equipment.update(id, data);
+      else await API.equipment.create(data);
+      await refreshData();
+      closeModal();
+      await renderPage();
+      showToast(id ? 'Ve&iacute;culo atualizado!' : 'Ve&iacute;culo cadastrado!', 'success');
+    } catch (err) {
+      showToast('Erro: ' + err.message, 'error');
+    }
   };
 
   window.saveVehicleDoc = async function (event, id) {
@@ -187,7 +292,7 @@
       expiration_date: exp,
       responsible_name: document.getElementById('vehResponsible').value,
       status: statusOf(exp, ((db().settings || {}).expiration_alert_days || 30)),
-      notes: document.getElementById('vehNotes').value
+      notes: (document.getElementById('vehCapacityNote') ? 'Capacidade avaliada: ' + document.getElementById('vehCapacityNote').value + '\n' : '') + document.getElementById('vehNotes').value
     };
     try {
       if (file) {

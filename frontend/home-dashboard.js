@@ -351,7 +351,7 @@
 
   function isVehicleEquipment(eq) {
     var text = ((eq.type || '') + ' ' + (eq.name || '')).toLowerCase();
-    return !!eq.plate || /veiculo|carro|caminh|munck|van|pickup|utilitario|utilit/.test(text);
+    return !!eq.plate || /veiculo|carro|caminh|munck|guindaste|grua|van|pickup|utilitario|utilit/.test(text);
   }
 
   function vehicleDocsSummary(db, metrics) {
@@ -365,7 +365,7 @@
     }, {});
     var docs = (db.equipment_documents || []).filter(function (doc) {
       var text = String((doc.document_type || '') + ' ' + (doc.title || '')).toLowerCase();
-      return vehicleMap[String(doc.equipment_id)] || /ipva|licenciamento|crlv|seguro|antt|tacografo/.test(text);
+      return vehicleMap[String(doc.equipment_id)] || /ipva|licenciamento|crlv|seguro|antt|tacografo|laudo|capacidade|inspecao|inspe/.test(text);
     });
     var expired = 0;
     var expiring = 0;
@@ -484,7 +484,7 @@
     var footer = attention
       ? '<div class="home-fleet-alert warn">' + icon('warning') + '<strong>' + num(attention) + ' documentos exigem aten&ccedil;&atilde;o nos pr&oacute;ximos 30 dias</strong><button type="button" onclick="navigate(\'vehicleDocuments\')">Revisar agora</button></div>'
       : '<div class="home-fleet-alert ok">' + icon('shield') + '<strong>Frota regular e documentos cadastrados sem vencimentos pr&oacute;ximos</strong><button type="button" onclick="navigate(\'vehicleDocuments\')">Conferir m&oacute;dulo</button></div>';
-    return '<section class="home-card home-panel home-vehicle-dashboard"><div class="home-fleet-head"><div><div class="home-panel-title">' + icon('car') + 'Documentos da Frota</div><p>Controle de CRLV, licenciamento, IPVA, seguro, ANTT, inspe&ccedil;&otilde;es e manuten&ccedil;&otilde;es.</p></div><div class="home-fleet-actions"><button type="button" class="btn btn-primary" onclick="if(window.openVehicleDoc){openVehicleDoc()}else{navigate(\'vehicleDocuments\')}">' + icon('plus') + 'Novo documento</button><button type="button" class="btn btn-outline" onclick="navigate(\'vehicleDocuments\')">Ver m&oacute;dulo completo</button></div></div>'
+    return '<section class="home-card home-panel home-vehicle-dashboard"><div class="home-fleet-head"><div><div class="home-panel-title">' + icon('car') + 'Documentos da Frota</div><p>Controle de CRLV, licenciamento, IPVA, seguro, ANTT, laudos de capacidade, inspe&ccedil;&otilde;es e manuten&ccedil;&otilde;es.</p></div><div class="home-fleet-actions"><button type="button" class="btn btn-primary" onclick="if(window.openVehicleDoc){openVehicleDoc()}else{navigate(\'vehicleDocuments\')}">' + icon('plus') + 'Novo documento</button><button type="button" class="btn btn-outline" onclick="navigate(\'vehicleDocuments\')">Ver m&oacute;dulo completo</button></div></div>'
       + '<div class="home-fleet-kpis"><div class="home-fleet-score"><span>Regularidade da frota</span><strong>' + summary.score + '%</strong><div class="home-vehicle-bar"><i style="width:' + summary.score + '%"></i></div></div><div class="home-fleet-mini"><span>' + icon('car') + '</span><strong>' + num(summary.activeVehicles || metrics.activeVehicles || 0) + '</strong><small>ve&iacute;culos ativos</small></div><div class="home-fleet-mini warn"><span>' + icon('calendar') + '</span><strong>' + num(summary.expiring) + '</strong><small>vencendo em 30 dias</small></div><div class="home-fleet-mini danger"><span>' + icon('alert') + '</span><strong>' + num(pending) + '</strong><small>pend&ecirc;ncia</small></div></div>'
       + '<div class="home-fleet-filter"><button type="button" class="active" onclick="filterHomeVehicleDocs(\'todos\', this)">Todos</button><button type="button" onclick="filterHomeVehicleDocs(\'regular\', this)"><i class="green"></i>Regulares</button><button type="button" onclick="filterHomeVehicleDocs(\'vencendo\', this)"><i class="orange"></i>Vencendo</button><button type="button" onclick="filterHomeVehicleDocs(\'vencido\', this)"><i class="red"></i>Vencidos</button></div>'
       + '<div class="home-fleet-table-wrap"><table class="home-fleet-table"><thead><tr><th>Ve&iacute;culo</th><th>Placa</th><th>Documento</th><th>Vencimento</th><th>Dias</th><th>Status</th><th>A&ccedil;&otilde;es</th></tr></thead><tbody>' + tableRows + '</tbody></table></div>' + footer + '</section>';
@@ -546,14 +546,14 @@
     });
     var vehicleIds = (db.equipment || []).filter(function (eq) {
       var text = ((eq.type || '') + ' ' + (eq.name || '')).toLowerCase();
-      return !!eq.plate || /veiculo|carro|caminh|munck|van|pickup|utilitario|utilit/.test(text);
+      return !!eq.plate || /veiculo|carro|caminh|munck|guindaste|grua|van|pickup|utilitario|utilit/.test(text);
     }).reduce(function (acc, eq) {
       acc[String(eq.id)] = eq.name + (eq.plate ? ' - ' + eq.plate : '');
       return acc;
     }, {});
     (db.equipment_documents || []).forEach(function (doc) {
       var docText = String((doc.document_type || '') + ' ' + (doc.title || '')).toLowerCase();
-      if (!vehicleIds[String(doc.equipment_id)] && !/ipva|licenciamento|crlv|seguro|antt|tacografo/.test(docText)) return;
+      if (!vehicleIds[String(doc.equipment_id)] && !/ipva|licenciamento|crlv|seguro|antt|tacografo|laudo|capacidade|inspecao|inspe/.test(docText)) return;
       var remaining = daysUntil(doc.expiration_date);
       if (remaining == null || remaining > metrics.alertDays + 30) return;
       var criticalVehicle = remaining < 0 || remaining <= 7;
@@ -645,7 +645,7 @@
       + reportCard('rpt_nr_expired', 'NRs vencidas', 'Itens fora do prazo para a&ccedil;&atilde;o imediata.', 'alert', 'Cr&iacute;tico')
       + reportCard('rpt_aso_expired', 'ASOs vencidos', 'Exames m&eacute;dicos vencidos por colaborador.', 'heart', 'Sa&uacute;de')
       + reportCard('rpt_eq_expired', 'Equipamentos com laudo vencido', 'Equipamentos que exigem regulariza&ccedil;&atilde;o.', 'crane', 'Equipamentos')
-      + reportNavCard('vehicleDocuments', 'Documentos de ve&iacute;culos', 'Fila de IPVA, licenciamento, CRLV, seguro e ANTT.', 'certificate', 'Frota')
+      + reportNavCard('vehicleDocuments', 'Documentos de ve&iacute;culos', 'Fila de IPVA, licenciamento, CRLV, seguro, ANTT e laudos de capacidade.', 'certificate', 'Frota')
       + '</div></section><div id="reportOutput" class="mt-6"></div></div>';
   }
 
