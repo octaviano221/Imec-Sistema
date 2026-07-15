@@ -162,13 +162,7 @@
   function boot() {
     enhanceTopbar();
     if (installDashboard()) {
-      setTimeout(function () {
-        try {
-          if (typeof currentPage !== 'undefined' && currentPage === 'dashboard' && typeof renderPage === 'function') renderPage();
-        } catch (err) {
-          console.warn('Dashboard profissional carregado, mas sem re-render automatico.', err);
-        }
-      }, 60);
+      return;
     } else {
       setTimeout(boot, 80);
     }

@@ -634,30 +634,7 @@
     homeReportsRenderer.__suiteTools = true;
     renderers.reports = homeReportsRenderer;
 
-    if (typeof currentPage !== 'undefined' && currentPage === 'dashboard' && typeof renderPage === 'function') {
-      [80, 360, 900].forEach(function (delay) {
-        setTimeout(function () {
-          try {
-            if (renderers.dashboard !== homeDashboardRenderer) renderers.dashboard = homeDashboardRenderer;
-            if (currentPage === 'dashboard') renderPage();
-          } catch (err) {
-            console.warn('Nao foi possivel atualizar o dashboard executivo.', err);
-          }
-        }, delay);
-      });
-    }
-    if (typeof currentPage !== 'undefined' && currentPage === 'reports' && typeof renderPage === 'function') {
-      [80, 360, 900].forEach(function (delay) {
-        setTimeout(function () {
-          try {
-            if (renderers.reports !== homeReportsRenderer) renderers.reports = homeReportsRenderer;
-            if (currentPage === 'reports') renderPage();
-          } catch (err) {
-            console.warn('Nao foi possivel atualizar os relatorios executivos.', err);
-          }
-        }, delay);
-      });
-    }
+    window.__imecDashboardRendererReady = true;
   }
 
   if (document.readyState === 'loading') {
