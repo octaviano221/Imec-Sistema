@@ -8,7 +8,9 @@ router.post('/', authenticate, upload.single('file'), (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: 'Nenhum arquivo enviado' });
     }
-    res.json({ url: `/uploads/${req.file.filename}` });
+    const relativeUrl = `/uploads/${req.file.filename}`;
+    const baseUrl = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
+    res.json({ url: baseUrl ? `${baseUrl}${relativeUrl}` : relativeUrl });
   } catch (error) {
     res.status(500).json({ error: 'Erro ao fazer upload do arquivo' });
   }

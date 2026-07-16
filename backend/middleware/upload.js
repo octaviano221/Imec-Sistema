@@ -39,4 +39,6 @@ const upload = multer({
   }
 });
 
+upload.uploadDir = uploadDir;
+
 module.exports = upload;

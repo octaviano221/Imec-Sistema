@@ -7,6 +7,7 @@ const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
 const db = require('./config/db');
+const upload = require('./middleware/upload');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -100,7 +101,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(morgan('dev'));
 
 // Static files for uploads
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(upload.uploadDir || path.join(__dirname, 'uploads')));
 
 // Serve frontend
 app.get('/', sendFrontendApp);
