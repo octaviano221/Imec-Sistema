@@ -170,6 +170,16 @@
     }) || null;
   }
 
+  function findMatchingVehicleDoc(equipmentId, docType, docNumber) {
+    var cleanNumber = String(docNumber || '').replace(/\s+/g, '').toUpperCase();
+    return vehicleDocs().find(function (doc) {
+      if (!same(doc.equipment_id, equipmentId)) return false;
+      if (String(doc.document_type || '').toLowerCase() !== String(docType || '').toLowerCase()) return false;
+      if (!cleanNumber) return false;
+      return String(doc.document_number || '').replace(/\s+/g, '').toUpperCase() === cleanNumber;
+    }) || null;
+  }
+
   function optionList(values, selected) {
     return values.map(function (value) {
       return '<option value="' + esc(value) + '"' + (value === selected ? ' selected' : '') + '>' + esc(value) + '</option>';
@@ -227,7 +237,7 @@
     var input = document.getElementById('vehicleAiFile');
     var file = input && input.files && input.files[0] ? input.files[0] : null;
     if (!file) {
-      showToast('Selecione um PDF ou imagem.', 'error');
+      showToast('Selecione o PDF digital do Detran.', 'error');
       return;
     }
     var button = event.target.querySelector('button[type="submit"]');
@@ -264,12 +274,13 @@
     var selectedVehicleType = vehicleTypes.indexOf(vehicle.type) >= 0 ? vehicle.type : 'Outro';
     var selectedDocType = docTypes.indexOf(doc.type) >= 0 ? doc.type : 'CRLV';
     var suggestedName = vehicle.name || [vehicle.brand, vehicle.model, vehicle.plate].filter(Boolean).join(' - ') || 'Veiculo da frota';
-    var html = '<div class="p-6 vehicle-ai-modal"><div class="vehicle-ai-head">' + icon('spark') + '<div><h2>Conferir dados lidos pela IA</h2><p>Revise os campos abaixo. Nada vai para o banco antes de clicar em salvar.</p></div>' + confidenceLabel(extraction.confidence) + '</div>' + warnings
+    var selectedStatus = match && match.status ? match.status : 'ativo';
+    var html = '<div class="p-6 vehicle-ai-modal"><div class="vehicle-ai-head">' + icon('spark') + '<div><h2>Conferir veículo e documento</h2><p>Revise os dados. Ao salvar, o sistema cadastra ou atualiza o ve&iacute;culo e j&aacute; anexa o documento nele.</p></div>' + confidenceLabel(extraction.confidence) + '</div>' + warnings
       + '<form onsubmit="saveVehicleAiResult(event)">'
       + '<input type="hidden" id="aiFileUrl" value="' + esc(result && result.file_url) + '">'
       + '<div class="vehicle-ai-review">'
-      + '<section><h3>Ve&iacute;culo</h3><div class="grid md:grid-cols-2 gap-4">'
-      + '<div class="md:col-span-2"><label class="label">Vincular cadastro</label><select class="input" id="aiExistingVehicle"><option value="">Criar novo ve&iacute;culo</option>' + vehicleOptions(match && match.id) + '</select><p class="vehicle-file-hint">' + (match ? 'Encontramos um ve&iacute;culo com essa placa. Ele j&aacute; vem selecionado.' : 'Se este ve&iacute;culo j&aacute; existe, selecione-o aqui para anexar o documento nele.') + '</p></div>'
+      + '<section><h3>1. Cadastro do ve&iacute;culo</h3><div class="grid md:grid-cols-2 gap-4">'
+      + '<div class="md:col-span-2"><label class="label">A&ccedil;&atilde;o do cadastro</label><select class="input" id="aiExistingVehicle"><option value="">Criar novo ve&iacute;culo automaticamente</option>' + vehicleOptions(match && match.id) + '</select><p class="vehicle-file-hint">' + (match ? 'Encontramos um ve&iacute;culo com essa placa. Ele ser&aacute; atualizado e o documento ficar&aacute; vinculado nele.' : 'Se este ve&iacute;culo j&aacute; existe, selecione-o aqui. Se deixar como novo, ele ser&aacute; cadastrado junto com o documento.') + '</p></div>'
       + '<div><label class="label">Nome *</label><input class="input" id="aiFleetName" value="' + esc(suggestedName) + '" required></div>'
       + '<div><label class="label">Tipo *</label><select class="input" id="aiFleetType" required>' + optionList(vehicleTypes, selectedVehicleType) + '</select></div>'
       + '<div><label class="label">Marca</label><input class="input" id="aiFleetBrand" value="' + esc(vehicle.brand) + '"></div>'
@@ -277,9 +288,12 @@
       + '<div><label class="label">Placa</label><input class="input" id="aiFleetPlate" value="' + esc(vehicle.plate) + '"></div>'
       + '<div><label class="label">Ano</label><input class="input" id="aiFleetYear" value="' + esc(vehicle.year) + '"></div>'
       + '<div><label class="label">Chassi / s&eacute;rie</label><input class="input" id="aiFleetSerial" value="' + esc(vehicle.serial_number) + '"></div>'
+      + '<div><label class="label">Capacidade</label><input class="input" id="aiFleetCapacity" value="' + esc(vehicle.capacity) + '" placeholder="Ex.: 10.000 kgf.m"></div>'
+      + '<div><label class="label">Patrim&ocirc;nio</label><input class="input" id="aiFleetAsset" value="' + esc(vehicle.asset_number) + '"></div>'
       + '<div><label class="label">Propriet&aacute;rio</label><input class="input" id="aiFleetOwner" value="' + esc(vehicle.owner) + '"></div>'
+      + '<div><label class="label">Status</label><select class="input" id="aiFleetStatus"><option value="ativo"' + (selectedStatus === 'ativo' ? ' selected' : '') + '>Ativo / Operacional</option><option value="manutencao"' + (selectedStatus === 'manutencao' ? ' selected' : '') + '>Manuten&ccedil;&atilde;o</option><option value="inativo"' + (selectedStatus === 'inativo' ? ' selected' : '') + '>Inativo</option></select></div>'
       + '</div></section>'
-      + '<section><h3>Documento</h3><div class="grid md:grid-cols-2 gap-4">'
+      + '<section><h3>2. Documento vinculado</h3><div class="grid md:grid-cols-2 gap-4">'
       + '<div><label class="label">Tipo *</label><select class="input" id="aiDocType" required>' + optionList(docTypes, selectedDocType) + '</select></div>'
       + '<div><label class="label">N&uacute;mero / refer&ecirc;ncia</label><input class="input" id="aiDocNumber" value="' + esc(doc.number || doc.exercise_year) + '"></div>'
       + '<div><label class="label">Data de emiss&atilde;o</label><input type="date" class="input" id="aiDocIssue" value="' + esc(doc.issue_date || '') + '"></div>'
@@ -288,7 +302,7 @@
       + '<div><label class="label">Arquivo</label><a class="vehicle-download vehicle-ai-file" href="' + esc(result && result.file_url) + '" target="_blank" download>' + icon('download') + 'Baixar anexo</a></div>'
       + '<div class="md:col-span-2"><label class="label">Observa&ccedil;&otilde;es</label><textarea class="input" rows="3" id="aiDocNotes">' + esc(doc.notes) + '</textarea></div>'
       + '</div></section></div>'
-      + '<div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="openVehicleAi()">Voltar</button><button class="btn btn-primary" type="submit">Salvar ve&iacute;culo e documento</button></div></form></div>';
+      + '<div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="openVehicleAi()">Voltar</button><button class="btn btn-primary" type="submit">Cadastrar tudo junto</button></div></form></div>';
     if (typeof openModal === 'function') openModal(html);
   };
 
@@ -301,52 +315,61 @@
       brand: document.getElementById('aiFleetBrand').value,
       model: document.getElementById('aiFleetModel').value,
       serial_number: document.getElementById('aiFleetSerial').value,
-      asset_number: '',
+      asset_number: document.getElementById('aiFleetAsset').value,
       plate: document.getElementById('aiFleetPlate').value,
       year: document.getElementById('aiFleetYear').value,
-      capacity: '',
+      capacity: document.getElementById('aiFleetCapacity').value,
       owner: document.getElementById('aiFleetOwner').value,
-      status: 'ativo',
+      status: document.getElementById('aiFleetStatus').value,
       photo_url: '',
-      notes: 'Cadastro auxiliado por IA a partir de documento anexado.'
+      notes: 'Cadastro criado/atualizado automaticamente a partir do PDF oficial do Detran.'
     };
     var docType = document.getElementById('aiDocType').value;
     var exp = document.getElementById('aiDocExp').value;
+    var docNumber = document.getElementById('aiDocNumber').value;
     try {
       var equipmentId = selectedVehicleId;
       if (equipmentId) {
         var current = (db().equipment || []).find(function (item) { return same(item.id, equipmentId); }) || {};
         await API.equipment.update(equipmentId, Object.assign({}, current, {
-          name: current.name || vehicleData.name,
-          type: current.type || vehicleData.type,
-          brand: current.brand || vehicleData.brand,
-          model: current.model || vehicleData.model,
-          serial_number: current.serial_number || vehicleData.serial_number,
-          plate: current.plate || vehicleData.plate,
-          year: current.year || vehicleData.year,
-          owner: current.owner || vehicleData.owner,
-          status: current.status || 'ativo'
+          name: vehicleData.name || current.name,
+          type: vehicleData.type || current.type,
+          brand: vehicleData.brand || current.brand,
+          model: vehicleData.model || current.model,
+          serial_number: vehicleData.serial_number || current.serial_number,
+          asset_number: vehicleData.asset_number || current.asset_number,
+          plate: vehicleData.plate || current.plate,
+          year: vehicleData.year || current.year,
+          capacity: vehicleData.capacity || current.capacity,
+          owner: vehicleData.owner || current.owner,
+          status: vehicleData.status || current.status || 'ativo',
+          photo_url: current.photo_url || '',
+          notes: current.notes || vehicleData.notes
         }));
       } else {
         var created = await API.equipment.create(vehicleData);
-        equipmentId = created.id;
+        equipmentId = created.id || created.insertId || created.equipment_id;
       }
-      await API.equipmentDocs.create({
+      if (!equipmentId) throw new Error('Nao foi possivel identificar o veiculo salvo.');
+      var docData = {
         equipment_id: equipmentId,
         document_type: docType,
         title: docType + ' - ' + (selectedVehicleId ? vehicleName(equipmentId) : vehicleData.name),
-        document_number: document.getElementById('aiDocNumber').value,
+        document_number: docNumber,
         issue_date: document.getElementById('aiDocIssue').value || null,
         expiration_date: exp,
         responsible_name: document.getElementById('aiDocResponsible').value,
         file_url: document.getElementById('aiFileUrl').value,
         status: statusOf(exp, ((db().settings || {}).expiration_alert_days || 30)),
         notes: document.getElementById('aiDocNotes').value
-      });
+      };
+      var existingDoc = findMatchingVehicleDoc(equipmentId, docType, docNumber);
+      if (existingDoc) await API.equipmentDocs.update(existingDoc.id, Object.assign({}, existingDoc, docData));
+      else await API.equipmentDocs.create(docData);
       await refreshData();
       closeModal();
       await renderPage();
-      showToast('Documento importado com IA e salvo com sucesso!', 'success');
+      showToast(existingDoc ? 'Ve&iacute;culo atualizado e documento revisado!' : 'Ve&iacute;culo e documento cadastrados juntos!', 'success');
     } catch (err) {
       showToast('Erro ao salvar: ' + err.message, 'error');
     }
