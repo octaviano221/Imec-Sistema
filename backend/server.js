@@ -36,6 +36,44 @@ async function applyCompatibilityMigrations() {
     'ALTER TABLE epi_records MODIFY attachment_url MEDIUMTEXT',
     'ALTER TABLE equipment_documents MODIFY file_url MEDIUMTEXT',
     'ALTER TABLE technical_documents MODIFY file_url MEDIUMTEXT',
+    `CREATE TABLE IF NOT EXISTS technical_proposals (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      proposal_number VARCHAR(60) NOT NULL,
+      revision VARCHAR(20) DEFAULT 'R00',
+      title VARCHAR(255) NOT NULL,
+      proposal_type VARCHAR(80) NOT NULL DEFAULT 'locacao_equipamento',
+      client_id INT NULL,
+      project_id INT NULL,
+      contact_name VARCHAR(255),
+      contact_area VARCHAR(255),
+      location TEXT,
+      request_date DATE,
+      proposal_date DATE,
+      validity_date DATE,
+      status VARCHAR(50) NOT NULL DEFAULT 'rascunho',
+      scope_summary TEXT,
+      technical_scope MEDIUMTEXT,
+      equipment_description MEDIUMTEXT,
+      contracted_obligations MEDIUMTEXT,
+      client_obligations MEDIUMTEXT,
+      commercial_terms MEDIUMTEXT,
+      payment_terms TEXT,
+      delivery_time TEXT,
+      warranty_terms TEXT,
+      total_value DECIMAL(14,2) NULL,
+      currency VARCHAR(10) DEFAULT 'BRL',
+      file_url MEDIUMTEXT,
+      source_model VARCHAR(120),
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL,
+      FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL
+    ) ENGINE=InnoDB`,
+    'ALTER TABLE technical_proposals MODIFY file_url MEDIUMTEXT',
+    'CREATE INDEX idx_technical_proposals_client ON technical_proposals(client_id)',
+    'CREATE INDEX idx_technical_proposals_status ON technical_proposals(status)',
+    'CREATE INDEX idx_technical_proposals_date ON technical_proposals(proposal_date)',
     'ALTER TABLE users ADD COLUMN password_changed_at TIMESTAMP NULL',
     'ALTER TABLE system_settings ADD COLUMN notification_email VARCHAR(255)',
     'ALTER TABLE system_settings ADD COLUMN smtp_host VARCHAR(255)',
@@ -72,7 +110,7 @@ function sendFrontendApp(req, res, next) {
 
     const enhancedHtml = html
       .replace('</head>', '<link rel="stylesheet" href="/pro-dashboard.css">\n<link rel="stylesheet" href="/pro-polish.css">\n</head>')
-.replace('</body>', '<script src="/pro-dashboard.js"></script>\n<script src="/pro-polish.js"></script>\n<link rel="stylesheet" href="/nr-idcards.css">\n<script src="/nr-idcards.js"></script>\n<script src="/site-fixes.js"></script>\n<link rel="stylesheet" href="/system-enhancements.css">\n<script src="/system-enhancements.js"></script>\n<link rel="stylesheet" href="/production-readiness.css">\n<script src="/production-readiness.js"></script>\n<link rel="stylesheet" href="/executive-control.css">\n<script src="/executive-control.js"></script>\n<link rel="stylesheet" href="/professional-suite.css">\n<script src="/professional-suite.js"></script>\n<link rel="stylesheet" href="/premium-improvements.css">\n<script src="/premium-improvements.js"></script>\n<link rel="stylesheet" href="/epi-control.css">\n<script src="/epi-control.js"></script>\n<link rel="stylesheet" href="/home-dashboard.css">\n<script src="/home-dashboard.js"></script>\n<link rel="stylesheet" href="/vehicle-documents.css">\n<script src="/vehicle-documents.js"></script>\n</body>');
+.replace('</body>', '<script src="/pro-dashboard.js"></script>\n<script src="/pro-polish.js"></script>\n<link rel="stylesheet" href="/nr-idcards.css">\n<script src="/nr-idcards.js"></script>\n<script src="/site-fixes.js"></script>\n<link rel="stylesheet" href="/system-enhancements.css">\n<script src="/system-enhancements.js"></script>\n<link rel="stylesheet" href="/production-readiness.css">\n<script src="/production-readiness.js"></script>\n<link rel="stylesheet" href="/executive-control.css">\n<script src="/executive-control.js"></script>\n<link rel="stylesheet" href="/professional-suite.css">\n<script src="/professional-suite.js"></script>\n<link rel="stylesheet" href="/premium-improvements.css">\n<script src="/premium-improvements.js"></script>\n<link rel="stylesheet" href="/epi-control.css">\n<script src="/epi-control.js"></script>\n<link rel="stylesheet" href="/home-dashboard.css">\n<script src="/home-dashboard.js"></script>\n<link rel="stylesheet" href="/vehicle-documents.css">\n<script src="/vehicle-documents.js"></script>\n<link rel="stylesheet" href="/proposals-control.css">\n<script src="/proposals-control.js"></script>\n</body>');
 
     res.type('html').send(enhancedHtml);
   });
@@ -124,6 +162,7 @@ app.use('/api/equipment-documents', require('./routes/equipmentDocuments'));
 app.use('/api/clients', require('./routes/clients'));
 app.use('/api/projects', require('./routes/projects'));
 app.use('/api/technical-documents', require('./routes/technicalDocuments'));
+app.use('/api/technical-proposals', require('./routes/technicalProposals'));
 app.use('/api/competency', require('./routes/competency'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/audit-logs', require('./routes/auditLogs'));

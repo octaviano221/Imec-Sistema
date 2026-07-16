@@ -287,6 +287,47 @@ CREATE TABLE technical_documents (
 ) ENGINE=InnoDB;
 
 -- ============================================
+-- TECHNICAL AND COMMERCIAL PROPOSALS
+-- ============================================
+CREATE TABLE technical_proposals (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    proposal_number VARCHAR(60) NOT NULL,
+    revision VARCHAR(20) DEFAULT 'R00',
+    title VARCHAR(255) NOT NULL,
+    proposal_type VARCHAR(80) NOT NULL DEFAULT 'locacao_equipamento',
+    client_id INT NULL,
+    project_id INT NULL,
+    contact_name VARCHAR(255),
+    contact_area VARCHAR(255),
+    location TEXT,
+    request_date DATE,
+    proposal_date DATE,
+    validity_date DATE,
+    status VARCHAR(50) NOT NULL DEFAULT 'rascunho',
+    scope_summary TEXT,
+    technical_scope MEDIUMTEXT,
+    equipment_description MEDIUMTEXT,
+    contracted_obligations MEDIUMTEXT,
+    client_obligations MEDIUMTEXT,
+    commercial_terms MEDIUMTEXT,
+    payment_terms TEXT,
+    delivery_time TEXT,
+    warranty_terms TEXT,
+    total_value DECIMAL(14,2) NULL,
+    currency VARCHAR(10) DEFAULT 'BRL',
+    file_url MEDIUMTEXT,
+    source_model VARCHAR(120),
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL,
+    INDEX idx_technical_proposals_client (client_id),
+    INDEX idx_technical_proposals_status (status),
+    INDEX idx_technical_proposals_date (proposal_date)
+) ENGINE=InnoDB;
+
+-- ============================================
 -- COMPETENCY REQUIREMENTS
 -- ============================================
 CREATE TABLE competency_requirements (

@@ -416,6 +416,12 @@ const API = {
     update: (id, d) => apiFetch('/api/technical-documents/' + id, { method: 'PUT', body: JSON.stringify(d) }),
     delete: (id) => apiFetch('/api/technical-documents/' + id, { method: 'DELETE' })
   },
+  technicalProposals: {
+    list: () => apiFetch('/api/technical-proposals'),
+    create: (d) => apiFetch('/api/technical-proposals', { method: 'POST', body: JSON.stringify(d) }),
+    update: (id, d) => apiFetch('/api/technical-proposals/' + id, { method: 'PUT', body: JSON.stringify(d) }),
+    delete: (id) => apiFetch('/api/technical-proposals/' + id, { method: 'DELETE' })
+  },
   competency: {
     list: () => apiFetch('/api/competency'),
     create: (d) => apiFetch('/api/competency', { method: 'POST', body: JSON.stringify(d) }),
@@ -434,14 +440,15 @@ let _cache = {};
 
 async function refreshData() {
   try {
-    const [employees, trainings, certificates, medicalExams, epiRecords, equipment, equipmentDocs, clients, projects, technicalDocs, competency, settings, dashboard] = await Promise.all([
+    const [employees, trainings, certificates, medicalExams, epiRecords, equipment, equipmentDocs, clients, projects, technicalDocs, technicalProposals, competency, settings, dashboard] = await Promise.all([
       API.employees.list(), API.trainings.list(), API.certificates.list(),
       API.medicalExams.list(), API.epi.list(), API.equipment.list(),
       API.equipmentDocs.list(),
       API.clients.list(), API.projects.list(), API.technicalDocuments.list(),
+      API.technicalProposals.list(),
       API.competency.list(), API.settings.get(), API.dashboard.get()
     ]);
-    _cache = { employees, trainings, certificates, medical_exams: medicalExams, epi_records: epiRecords, equipment, equipment_documents: equipmentDocs, clients, projects, technical_documents: technicalDocs, competency_requirements: competency, settings, dashboard };
+    _cache = { employees, trainings, certificates, medical_exams: medicalExams, epi_records: epiRecords, equipment, equipment_documents: equipmentDocs, clients, projects, technical_documents: technicalDocs, technical_proposals: technicalProposals, competency_requirements: competency, settings, dashboard };
   } catch (err) { console.error('Refresh error:', err); }
 }
 
@@ -472,7 +479,7 @@ function canAccess(page) {
   if (u.role==='admin') return true;
   if (u.role==='client') return ['dashboard','projects','documents'].includes(page);
   if (u.role==='viewer') return true;
-  const p = {'engenharia':['dashboard','employees','trainings','certificates','idcards','equipment','cranes','vehicleDocuments','clients','projects','documents','matrix','reports','settings'],'rh':['dashboard','employees','trainings','certificates','idcards','aso','epi','vehicleDocuments','reports','settings']};
+  const p = {'engenharia':['dashboard','employees','trainings','certificates','idcards','equipment','cranes','vehicleDocuments','clients','projects','proposals','documents','matrix','reports','settings'],'rh':['dashboard','employees','trainings','certificates','idcards','aso','epi','vehicleDocuments','reports','settings']};
   return (p[u.role]||[]).includes(page);
 }
 
@@ -569,7 +576,7 @@ async function handlePublicConsult(e) {
 }
 
 async function renderPage() {
-  const titles = {dashboard:['Dashboard','Vis\u00e3o geral do sistema'],employees:['Funcion\u00e1rios','Gest\u00e3o de colaboradores'],trainings:['NRs / Treinamentos','Tipos de treinamento e NRs'],certificates:['Certificados','Certificados e valida\u00e7\u00f5es'],idcards:['Carteirinhas','Carteirinhas digitais'],aso:['ASO','Atestados de Sa\u00fade Ocupacional'],epi:['EPI','Equipamentos de Prote\u00e7\u00e3o Individual'],equipment:['Equipamentos','Gest\u00e3o de equipamentos'],cranes:['Guindastes / Munck','Guindastes e cami\u00f5es Munck'],clients:['Clientes','Base de clientes'],projects:['Obras','Obras e servi\u00e7os'],documents:['ART / APR / Rigging','Documentos t\u00e9cnicos'],matrix:['Matriz de Compet\u00eancia','An\u00e1lise de aptid\u00e3o'],reports:['Relat\u00f3rios','Relat\u00f3rios e exporta\u00e7\u00f5es'],settings:['Configura\u00e7\u00f5es','Configura\u00e7\u00f5es do sistema']};
+  const titles = {dashboard:['Dashboard','Vis\u00e3o geral do sistema'],employees:['Funcion\u00e1rios','Gest\u00e3o de colaboradores'],trainings:['NRs / Treinamentos','Tipos de treinamento e NRs'],certificates:['Certificados','Certificados e valida\u00e7\u00f5es'],idcards:['Carteirinhas','Carteirinhas digitais'],aso:['ASO','Atestados de Sa\u00fade Ocupacional'],epi:['EPI','Equipamentos de Prote\u00e7\u00e3o Individual'],equipment:['Equipamentos','Gest\u00e3o de equipamentos'],cranes:['Guindastes / Munck','Guindastes e cami\u00f5es Munck'],clients:['Clientes','Base de clientes'],projects:['Obras','Obras e servi\u00e7os'],proposals:['Propostas','T\u00e9cnicas e comerciais'],documents:['ART / APR / Rigging','Documentos t\u00e9cnicos'],matrix:['Matriz de Compet\u00eancia','An\u00e1lise de aptid\u00e3o'],reports:['Relat\u00f3rios','Relat\u00f3rios e exporta\u00e7\u00f5es'],settings:['Configura\u00e7\u00f5es','Configura\u00e7\u00f5es do sistema']};
   const t = titles[currentPage] || ['',''];
   document.getElementById('pageTitle').textContent = t[0];
   document.getElementById('pageSubtitle').textContent = t[1];
@@ -666,7 +673,7 @@ function filterTableByStatus(tid, sid, ci) { var v=document.getElementById(sid).
 async function deleteRecord(collection, id, name) {
   if (!confirm('Tem certeza que deseja excluir "'+name+'"?')) return;
   try {
-    var map = {'employees':API.employees.delete,'trainings':API.trainings.delete,'certificates':API.certificates.delete,'medical_exams':API.medicalExams.delete,'epi_records':API.epi.delete,'equipment':API.equipment.delete,'clients':API.clients.delete,'projects':API.projects.delete,'technical_documents':API.technicalDocuments.delete};
+    var map = {'employees':API.employees.delete,'trainings':API.trainings.delete,'certificates':API.certificates.delete,'medical_exams':API.medicalExams.delete,'epi_records':API.epi.delete,'equipment':API.equipment.delete,'clients':API.clients.delete,'projects':API.projects.delete,'technical_documents':API.technicalDocuments.delete,'technical_proposals':API.technicalProposals.delete};
     var fn = map[collection]; if (fn) await fn(id);
     await refreshData(); await renderPage(); showToast('Registro exclu\u00eddo','success');
   } catch (err) { showToast('Erro: '+err.message,'error'); }
