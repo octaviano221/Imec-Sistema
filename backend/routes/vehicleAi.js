@@ -154,9 +154,12 @@ router.post('/analyze', authenticate, upload.single('file'), async (req, res) =>
     const payload = await openaiResponse.json().catch(() => ({}));
     if (!openaiResponse.ok) {
       const openaiMessage = payload.error && payload.error.message ? payload.error.message : '';
-      const message = openaiResponse.status === 401
-        ? 'Chave da OpenAI invalida. Confira a variavel OPENAI_API_KEY na Hostinger.'
-        : openaiMessage || 'Erro ao consultar a IA.';
+      let message = openaiMessage || 'Erro ao consultar a IA.';
+      if (openaiResponse.status === 401) {
+        message = 'Chave da OpenAI invalida. Confira a variavel OPENAI_API_KEY na Hostinger.';
+      } else if (openaiResponse.status === 429 || /quota|billing|plan/i.test(openaiMessage)) {
+        message = 'Limite ou credito da OpenAI esgotado. Confira billing/creditos da conta OpenAI e tente novamente.';
+      }
       return res.status(502).json({ message });
     }
 
