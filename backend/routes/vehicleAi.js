@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const pdfParse = require('pdf-parse');
 const router = express.Router();
 const upload = require('../middleware/upload');
 const { authenticate } = require('../middleware/auth');
@@ -65,6 +66,90 @@ function normalizeDate(value) {
   return null;
 }
 
+function findAfterLabel(text, label, fallbackPattern) {
+  const compact = String(text || '').replace(/\r/g, '');
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const labelPattern = new RegExp(`${escaped}\\s*\\n\\s*([^\\n]+)`, 'i');
+  const labelMatch = compact.match(labelPattern);
+  if (labelMatch) return str(labelMatch[1]);
+  if (fallbackPattern) {
+    const fallbackMatch = compact.match(fallbackPattern);
+    if (fallbackMatch) return str(fallbackMatch[1] || fallbackMatch[0]);
+  }
+  return '';
+}
+
+function normalizePlate(value) {
+  const clean = str(value).replace(/[^a-z0-9]/gi, '').toUpperCase();
+  return /^[A-Z]{3}\d[A-Z0-9]\d{2}$/.test(clean) ? clean : '';
+}
+
+function inferVehicleType(text) {
+  const source = String(text || '').toLowerCase();
+  if (/guindaste|guindauto|munck/.test(source)) return 'Caminhao Munck';
+  if (/carga|caminhao|camioneta|prancha/.test(source)) return 'Caminhao';
+  if (/pick[\s-]?up/.test(source)) return 'Pickup';
+  if (/van|microonibus|micro-onibus/.test(source)) return 'Van';
+  return 'Carro';
+}
+
+function extractCrlvOffline(text) {
+  const normalized = String(text || '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{2,}/g, '\n');
+  const warnings = [];
+  const plate = normalizePlate(findAfterLabel(normalized, 'PLACA', /\b([A-Z]{3}\d[A-Z0-9]\d{2})\b/i));
+  const renavam = findAfterLabel(normalized, 'CODIGO RENAVAM', /\bRENAVAM\s*[:\n ]\s*(\d{9,13})/i);
+  const exerciseYear = findAfterLabel(normalized, 'EXERCICIO', /\bEXERCICIO\s*[:\n ]\s*(\d{4})/i);
+  const manufactureYear = findAfterLabel(normalized, 'ANO FABRICACAO', /ANO FABRICACAO\s*[:\n ]\s*(\d{4})/i);
+  const modelYear = findAfterLabel(normalized, 'ANO MODELO', /ANO MODELO\s*[:\n ]\s*(\d{4})/i);
+  const modelVersion = findAfterLabel(normalized, 'MARCA / MODELO / VERSAO', /MARCA\s*\/\s*MODELO\s*\/\s*VERSAO\s*[:\n ]\s*([^\n]+)/i);
+  const owner = findAfterLabel(normalized, 'NOME', /NOME\s*[:\n ]\s*([^\n]+)/i);
+  const issueDate = findAfterLabel(normalized, 'DATA', /\bDATA\s*[:\n ]\s*(\d{2}[/-]\d{2}[/-]\d{4})/i);
+  const crvNumber = findAfterLabel(normalized, 'NUMERO DO CRV', /NUMERO DO CRV\s*[:\n ]\s*([A-Z0-9.-]+)/i);
+  const securityCode = findAfterLabel(normalized, 'CODIGO DE SEGURANCA DO CLA', /CODIGO DE SEGURANCA DO CLA\s*[:\n ]\s*([A-Z0-9.-]+)/i);
+  const capacity = findAfterLabel(normalized, 'CAPACIDADE', /CAPACIDADE\s*[:\n ]\s*([0-9.,]+)/i);
+  const chassis = findAfterLabel(normalized, 'CHASSI', /CHASSI\s*[:\n ]\s*([A-Z0-9*.-]+)/i);
+
+  if (!plate) warnings.push('Placa nao identificada automaticamente.');
+  if (!renavam) warnings.push('RENAVAM nao identificado automaticamente.');
+  if (!issueDate) warnings.push('Data de emissao nao identificada automaticamente.');
+  warnings.push('Vencimento de CRLV/licenciamento pode depender do calendario do estado; confira antes de salvar.');
+
+  const docNumber = crvNumber || securityCode || exerciseYear || renavam;
+  const titleParts = ['CRLV'];
+  if (exerciseYear) titleParts.push(exerciseYear);
+  if (plate) titleParts.push(plate);
+
+  return normalizeExtraction({
+    confidence: plate && renavam ? 0.88 : 0.62,
+    vehicle: {
+      plate,
+      renavam,
+      name: [modelVersion, plate].filter(Boolean).join(' - '),
+      type: inferVehicleType(`${modelVersion} ${normalized}`),
+      brand: modelVersion ? modelVersion.split(/\s+/)[0] : '',
+      model: modelVersion,
+      year: modelYear || manufactureYear,
+      serial_number: chassis,
+      asset_number: '',
+      capacity,
+      owner
+    },
+    document: {
+      type: 'CRLV',
+      title: titleParts.join(' - '),
+      number: docNumber,
+      issue_date: normalizeDate(issueDate),
+      expiration_date: null,
+      exercise_year: exerciseYear,
+      notes: 'Leitura offline do PDF oficial. Conferir vencimento conforme calendario do estado.'
+    },
+    warnings
+  });
+}
+
 function normalizeExtraction(raw) {
   const data = raw && typeof raw === 'object' ? raw : {};
   const vehicle = data.vehicle && typeof data.vehicle === 'object' ? data.vehicle : {};
@@ -117,20 +202,41 @@ router.post('/analyze', authenticate, upload.single('file'), async (req, res) =>
       return res.status(400).json({ message: 'Envie um PDF ou imagem para a IA ler.' });
     }
 
-    if (!process.env.OPENAI_API_KEY) {
-      return res.status(503).json({ message: 'OPENAI_API_KEY nao configurada nas variaveis de ambiente.' });
-    }
-
     const mime = getMime(req.file);
     if (!/^application\/pdf$|^image\/(png|jpe?g)$/i.test(mime)) {
       return res.status(400).json({ message: 'Para leitura com IA, envie PDF, JPG ou PNG.' });
     }
 
     const bytes = fs.readFileSync(req.file.path);
+    const fileUrl = buildPublicUrl(req.file.filename);
+
+    if (mime === 'application/pdf') {
+      const parsed = await pdfParse(bytes);
+      const text = parsed && parsed.text ? parsed.text : '';
+      if (text.trim().length >= 30) {
+        const extracted = extractCrlvOffline(text);
+        console.log('Vehicle offline extraction:', {
+          file: req.file.filename,
+          confidence: extracted.confidence,
+          plate: extracted.vehicle.plate,
+          documentType: extracted.document.type
+        });
+        return res.json({
+          file_url: fileUrl,
+          original_name: req.file.originalname,
+          mode: 'offline-pdf',
+          extraction: extracted
+        });
+      }
+      return res.status(422).json({ message: 'Nao consegui ler texto nesse PDF. Envie o PDF digital baixado do Detran, nao imagem escaneada.' });
+    }
+
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(503).json({ message: 'Leitura de imagem exige OPENAI_API_KEY. Para modo offline, envie o PDF digital do Detran.' });
+    }
+
     const fileData = `data:${mime};base64,${bytes.toString('base64')}`;
-    const filePart = mime === 'application/pdf'
-      ? { type: 'input_file', filename: req.file.originalname || req.file.filename, file_data: fileData }
-      : { type: 'input_image', image_url: fileData };
+    const filePart = { type: 'input_image', image_url: fileData };
 
     const openaiResponse = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
@@ -165,7 +271,6 @@ router.post('/analyze', authenticate, upload.single('file'), async (req, res) =>
 
     const text = extractOutputText(payload);
     const extracted = normalizeExtraction(parseJsonLoose(text));
-    const fileUrl = buildPublicUrl(req.file.filename);
 
     console.log('Vehicle AI extraction:', {
       file: req.file.filename,

@@ -205,7 +205,7 @@
     var expiring = docs.filter(function (doc) { return statusOf(doc.expiration_date, ((db().settings || {}).expiration_alert_days || 30)) === 'vencendo'; }).length;
     var capacity = vehicles().filter(isCapacityEquipment);
     var vehicleCards = vehicles().length ? vehicles().map(vehicleCard).join('') : '<div class="vehicle-empty">Cadastre o primeiro carro, caminh&atilde;o ou guindaste da empresa.</div>';
-    return '<div class="vehicle-docs fade-in"><section class="vehicle-hero"><div><p class="vehicle-kicker">Controle de frota</p><h2>Frota, ve&iacute;culos e laudos de capacidade</h2><p>Cadastre carros, caminh&otilde;es, guindastes e Munck, anexe CRLV/IPVA/licenciamento e controle o vencimento dos laudos de capacidade.</p></div><div class="vehicle-actions"><button class="btn btn-outline" onclick="openVehicleRegister()">Cadastrar ve&iacute;culo</button><button class="btn btn-outline" onclick="openCapacityReport()">' + icon('crane') + 'Laudo de capacidade</button><button class="btn btn-outline vehicle-ai-button" onclick="openVehicleAi()">' + icon('spark') + 'Ler com IA</button><button class="btn btn-primary" onclick="openVehicleDoc()">' + icon('plus') + 'Novo documento</button></div></section>'
+    return '<div class="vehicle-docs fade-in"><section class="vehicle-hero"><div><p class="vehicle-kicker">Controle de frota</p><h2>Frota, ve&iacute;culos e laudos de capacidade</h2><p>Cadastre carros, caminh&otilde;es, guindastes e Munck, anexe CRLV/IPVA/licenciamento e controle o vencimento dos laudos de capacidade.</p></div><div class="vehicle-actions"><button class="btn btn-outline" onclick="openVehicleRegister()">Cadastrar ve&iacute;culo</button><button class="btn btn-outline" onclick="openCapacityReport()">' + icon('crane') + 'Laudo de capacidade</button><button class="btn btn-outline vehicle-ai-button" onclick="openVehicleAi()">' + icon('spark') + 'Ler PDF offline</button><button class="btn btn-primary" onclick="openVehicleDoc()">' + icon('plus') + 'Novo documento</button></div></section>'
       + '<div class="vehicle-kpis">' + metricCard('Ve&iacute;culos ativos', activeVehicles.length, 'car', '#1269ff') + metricCard('Laudos capacidade', laudoDocs().length, 'crane', '#7c3aed') + metricCard('Documentos', docs.length, 'doc', '#1269ff') + metricCard('Vencendo', expiring, 'calendar', '#d97706') + metricCard('Vencidos', expired, 'warning', '#dc2626') + '</div>'
       + '<section class="vehicle-section"><div class="vehicle-section-head"><div><h2>Cadastro da frota</h2><p>Carros, caminh&otilde;es, guindastes e Munck da empresa com placa, capacidade e status operacional.</p></div><button class="btn btn-primary btn-sm" onclick="openVehicleRegister()">' + icon('plus') + 'Novo ve&iacute;culo</button></div><div class="vehicle-card-grid">' + vehicleCards + '</div></section>'
       + '<div class="vehicle-grid"><section class="vehicle-section"><div class="vehicle-section-head"><div><h2>' + preview.title + '</h2><p>' + preview.hint + '</p></div></div><div class="vehicle-queue">' + (preview.items.length ? preview.items.map(function (doc) { return queueRow(doc, preview.isQueue); }).join('') : '<div class="vehicle-empty">Nenhum documento de ve&iacute;culo cadastrado ainda.</div>') + '</div></section>'
@@ -213,11 +213,11 @@
   }
 
   window.openVehicleAi = function () {
-    var html = '<div class="p-6 vehicle-ai-modal"><div class="vehicle-ai-head">' + icon('spark') + '<div><h2>Leitura inteligente de documento</h2><p>Envie CRLV, licenciamento, IPVA, seguro ou laudo. A IA preenche os campos e voc&ecirc; confere antes de salvar.</p></div></div>'
+    var html = '<div class="p-6 vehicle-ai-modal"><div class="vehicle-ai-head">' + icon('spark') + '<div><h2>Leitura inteligente de documento</h2><p>Envie o PDF digital do Detran. O leitor offline preenche os campos e voc&ecirc; confere antes de salvar.</p></div></div>'
       + '<form onsubmit="analyzeVehicleDocument(event)">'
-      + '<label class="vehicle-ai-drop" for="vehicleAiFile"><span>' + icon('paperclip') + '</span><strong>Selecionar PDF ou imagem</strong><small>PDF, JPG ou PNG at&eacute; 10 MB. O arquivo tamb&eacute;m fica anexado ao cadastro.</small><input type="file" id="vehicleAiFile" accept="application/pdf,.pdf,image/png,image/jpeg,.jpg,.jpeg" required></label>'
-      + '<div class="vehicle-ai-note"><b>Como funciona:</b> a IA tenta identificar placa, RENAVAM, marca/modelo, propriet&aacute;rio, tipo do documento, emiss&atilde;o e vencimento. Campos incertos ficam para confer&ecirc;ncia manual.</div>'
-      + '<div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" type="submit">' + icon('spark') + 'Ler documento</button></div>'
+      + '<label class="vehicle-ai-drop" for="vehicleAiFile"><span>' + icon('paperclip') + '</span><strong>Selecionar PDF do Detran</strong><small>PDF digital at&eacute; 10 MB. O arquivo tamb&eacute;m fica anexado ao cadastro.</small><input type="file" id="vehicleAiFile" accept="application/pdf,.pdf" required></label>'
+      + '<div class="vehicle-ai-note"><b>Como funciona:</b> para PDF oficial baixado do Detran, o sistema l&ecirc; localmente placa, RENAVAM, marca/modelo, propriet&aacute;rio, tipo do documento e emiss&atilde;o. Campos incertos ficam para confer&ecirc;ncia manual.</div>'
+      + '<div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" type="submit">' + icon('spark') + 'Ler PDF</button></div>'
       + '</form></div>';
     if (typeof openModal === 'function') openModal(html);
   };
@@ -242,7 +242,7 @@
       var result = await API.vehicleAi.analyze(fd);
       openVehicleAiReview(result);
     } catch (err) {
-      showToast('IA: ' + (err.message || 'n&atilde;o foi poss&iacute;vel ler o documento'), 'error');
+      showToast('Leitor: ' + (err.message || 'n&atilde;o foi poss&iacute;vel ler o documento'), 'error');
     } finally {
       if (button) {
         button.disabled = false;
@@ -258,6 +258,8 @@
     var match = vehicleByPlate(vehicle.plate);
     var vehicleTypes = ['Carro', 'Caminh&atilde;o', 'Caminh&atilde;o Munck', 'Guindaste', 'Van', 'Pickup', 'Outro'].map(decodeEntities);
     var docTypes = ['CRLV', 'Licenciamento', 'IPVA', 'Seguro', 'ANTT', 'Tac&oacute;grafo', 'Laudo de capacidade', 'Inspe&ccedil;&atilde;o de guindaste', 'Inspe&ccedil;&atilde;o de caminh&atilde;o Munck', 'Outro'].map(decodeEntities);
+    if (vehicle.type === 'Caminhao') vehicle.type = 'Caminh\u00e3o';
+    if (vehicle.type === 'Caminhao Munck') vehicle.type = 'Caminh\u00e3o Munck';
     var warnings = extraction.warnings && extraction.warnings.length ? '<div class="vehicle-ai-warnings"><strong>Conferir:</strong><ul>' + extraction.warnings.map(function (item) { return '<li>' + esc(item) + '</li>'; }).join('') + '</ul></div>' : '';
     var selectedVehicleType = vehicleTypes.indexOf(vehicle.type) >= 0 ? vehicle.type : 'Outro';
     var selectedDocType = docTypes.indexOf(doc.type) >= 0 ? doc.type : 'CRLV';
