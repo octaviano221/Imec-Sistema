@@ -103,60 +103,66 @@
     return html;
   }
 
-  var templates = {
+  var proposalGuides = {
     locacao_equipamento: {
       label: 'Loca&ccedil;&atilde;o Munck / Guindaste',
-      title: 'Loca&ccedil;&atilde;o de equipamento para apoio operacional',
-      scope: 'Fornecimento de loca&ccedil;&atilde;o de equipamento com operador para atendimento de servi&ccedil;os de manuten&ccedil;&atilde;o industrial, movimenta&ccedil;&atilde;o de cargas e apoio operacional em campo.',
-      equipment: '01 equipamento tipo munck/guindaste, com capacidade conforme solicita&ccedil;&atilde;o, incluindo operador habilitado, documenta&ccedil;&atilde;o b&aacute;sica do equipamento e condi&ccedil;&otilde;es adequadas de opera&ccedil;&atilde;o.',
-      contracted: 'Fornecimento do equipamento em perfeitas condi&ccedil;&otilde;es de uso.\nOperador com cursos, experi&ecirc;ncia e habilita&ccedil;&otilde;es aplic&aacute;veis.\nFornecimento das documenta&ccedil;&otilde;es da empresa e do equipamento.\nFornecimento de EPIs, transporte e refei&ccedil;&atilde;o da equipe.\nSubstitui&ccedil;&atilde;o do equipamento em caso de necessidade de manuten&ccedil;&atilde;o.',
-      client: 'Disponibilizar informa&ccedil;&otilde;es t&eacute;cnicas necess&aacute;rias para execu&ccedil;&atilde;o das atividades.\nGarantir condi&ccedil;&otilde;es seguras para execu&ccedil;&atilde;o do trabalho.\nDisponibilizar acesso livre ao local, terreno nivelado e compactado, &aacute;gua pot&aacute;vel e sanit&aacute;rio.',
-      commercial: 'Valor conforme escopo e per&iacute;odo contratado, podendo incluir deslocamento, di&aacute;rias e condi&ccedil;&otilde;es especiais negociadas entre as partes.',
-      payment: '20 dias ap&oacute;s execu&ccedil;&atilde;o da atividade.',
-      delivery: 'Disponibilidade conforme agenda operacional.',
-      warranty: 'Servi&ccedil;o executado conforme boas pr&aacute;ticas operacionais e condi&ccedil;&otilde;es informadas na proposta.'
+      hint: 'Para propostas de apoio operacional, movimenta&ccedil;&atilde;o de cargas e loca&ccedil;&atilde;o com operador.',
+      checklist: [
+        'Equipamento, capacidade e modelo',
+        'Per&iacute;odo, jornada, di&aacute;ria ou horas m&iacute;nimas',
+        'Operador incluso e habilita&ccedil;&otilde;es',
+        'Mobiliza&ccedil;&atilde;o, deslocamento, refei&ccedil;&atilde;o e hospedagem',
+        'Responsabilidades do cliente: acesso, terreno, apoio e libera&ccedil;&otilde;es',
+        'Valor, prazo de pagamento e validade da proposta'
+      ]
     },
     manutencao_industrial: {
       label: 'Manuten&ccedil;&atilde;o Industrial NR-13',
-      title: 'Servi&ccedil;os especializados de manuten&ccedil;&atilde;o industrial',
-      scope: 'Execu&ccedil;&atilde;o de servi&ccedil;os especializados de caldeiraria industrial, desmontagem, reforma, fabrica&ccedil;&atilde;o, adequa&ccedil;&atilde;o e montagem de equipamentos industriais conforme escopo t&eacute;cnico definido.',
-      equipment: 'Equipamentos industriais sujeitos a interven&ccedil;&atilde;o, incluindo colunas, vasos, trocadores, estruturas, componentes de caldeiraria e itens correlatos, conforme levantamento t&eacute;cnico.',
-      contracted: 'Elabora&ccedil;&atilde;o do plano de desmontagem e montagem.\nFornecimento de m&atilde;o de obra especializada.\nFornecimento de m&aacute;quinas, ferramentas e equipamentos operacionais.\nFornecimento de EPIs para equipe pr&oacute;pria.\nExecu&ccedil;&atilde;o conforme boas pr&aacute;ticas de fabrica&ccedil;&atilde;o e montagem industrial.',
-      client: 'Liberar equipamento e &aacute;rea de trabalho.\nFornecer informa&ccedil;&otilde;es t&eacute;cnicas necess&aacute;rias.\nDisponibilizar condi&ccedil;&otilde;es seguras de acesso, energia, apoio operacional e supervis&atilde;o quando necess&aacute;rio.\nResponsabilizar-se por transportes e libera&ccedil;&otilde;es n&atilde;o previstas no escopo.',
-      commercial: 'Valores parciais conforme itens de fornecimento, reforma, desmontagem, montagem e servi&ccedil;os complementares descritos na proposta.',
-      payment: 'Condi&ccedil;&atilde;o sugerida: entrada, medi&ccedil;&otilde;es por avan&ccedil;o e saldo ap&oacute;s entrega/start-up.',
-      delivery: 'Prazo estimado conforme libera&ccedil;&atilde;o formal do equipamento e disponibilidade operacional.',
-      warranty: 'Garantia de 12 meses para servi&ccedil;os executados, limitada ao escopo contratado e condi&ccedil;&otilde;es pr&eacute;-existentes do equipamento.'
+      hint: 'Para servi&ccedil;os com escopo t&eacute;cnico, desmontagem, montagem, reforma e adequa&ccedil;&otilde;es.',
+      checklist: [
+        'Objetivo e equipamento atendido',
+        'Escopo t&eacute;cnico detalhado por etapa',
+        'Normas envolvidas: NR-13, NR-33, NR-35 ou outras',
+        'Materiais inclusos e materiais por conta do cliente',
+        'Prazo, garantia e condi&ccedil;&otilde;es de parada',
+        'Responsabilidades da contratada e contratante'
+      ]
     },
     caldeiraria: {
       label: 'Caldeiraria / Reforma',
-      title: 'Reforma e adequa&ccedil;&atilde;o de equipamento industrial',
-      scope: 'Servi&ccedil;os de caldeiraria para reforma, substitui&ccedil;&atilde;o parcial, adequa&ccedil;&atilde;o estrutural, fabrica&ccedil;&atilde;o e montagem de componentes conforme necessidade identificada em campo.',
-      equipment: 'Componentes met&aacute;licos, costados, bandejas, vertedores, tubula&ccedil;&otilde;es, suportes e conjuntos industriais conforme memorial descritivo.',
-      contracted: 'Fornecimento de m&atilde;o de obra de caldeiraria e soldagem.\nExecu&ccedil;&atilde;o de cortes, ajustes, montagem, solda e acabamento.\nDisponibiliza&ccedil;&atilde;o de equipamentos e ferramentas necess&aacute;rias.\nOrganiza&ccedil;&atilde;o de registros e evid&ecirc;ncias quando aplic&aacute;vel.',
-      client: 'Disponibilizar desenhos, medidas, acesso, libera&ccedil;&otilde;es, acompanhamento e condi&ccedil;&otilde;es seguras para execu&ccedil;&atilde;o dos servi&ccedil;os.',
-      commercial: 'Valores definidos por item de servi&ccedil;o, material, transporte, montagem e condi&ccedil;&otilde;es de campo.',
-      payment: 'A combinar conforme medi&ccedil;&otilde;es e marcos de entrega.',
-      delivery: 'Prazo conforme complexidade do escopo e libera&ccedil;&atilde;o da &aacute;rea.',
-      warranty: 'Garantia limitada aos servi&ccedil;os executados pela IMEC dentro do escopo contratado.'
+      hint: 'Para fabrica&ccedil;&atilde;o, reforma, solda, montagem e adequa&ccedil;&atilde;o de componentes.',
+      checklist: [
+        'Medidas, desenhos, croquis ou fotos recebidas',
+        'Tipo de material, espessuras e quantidade',
+        'Servi&ccedil;os de corte, dobra, solda, montagem e acabamento',
+        'Inspe&ccedil;&otilde;es, ensaios ou registros exigidos',
+        'Transporte, instala&ccedil;&atilde;o e libera&ccedil;&otilde;es de campo',
+        'Condi&ccedil;&otilde;es comerciais e prazo de execu&ccedil;&atilde;o'
+      ]
     },
     laudo_inspecao: {
       label: 'Laudo / Inspe&ccedil;&atilde;o',
-      title: 'Laudo t&eacute;cnico de capacidade e inspe&ccedil;&atilde;o operacional',
-      scope: 'Elabora&ccedil;&atilde;o de laudo t&eacute;cnico, inspe&ccedil;&atilde;o visual, verifica&ccedil;&atilde;o documental e avalia&ccedil;&atilde;o de capacidade operacional de equipamento industrial, munck, guindaste, caminh&atilde;o ou conjunto de movimenta&ccedil;&atilde;o de cargas.',
-      equipment: 'Equipamento informado pelo cliente, incluindo dados de identifica&ccedil;&atilde;o, placa, patrim&ocirc;nio, capacidade nominal, condi&ccedil;&otilde;es de uso, documenta&ccedil;&atilde;o dispon&iacute;vel e evid&ecirc;ncias t&eacute;cnicas anexas.',
-      contracted: 'Realizar inspe&ccedil;&atilde;o t&eacute;cnica conforme escopo contratado.\nRegistrar evid&ecirc;ncias, fotos, dados do equipamento e condi&ccedil;&otilde;es observadas.\nEmitir laudo ou relat&oacute;rio t&eacute;cnico com conclus&atilde;o objetiva.\nIndicar restri&ccedil;&otilde;es, recomenda&ccedil;&otilde;es e prazos quando aplic&aacute;vel.',
-      client: 'Disponibilizar o equipamento para inspe&ccedil;&atilde;o.\nFornecer documentos, manuais, certificados, hist&oacute;rico de manuten&ccedil;&atilde;o e informa&ccedil;&otilde;es operacionais.\nGarantir acesso seguro ao local e acompanhamento respons&aacute;vel quando necess&aacute;rio.',
-      commercial: 'Valor definido conforme quantidade de equipamentos, complexidade da inspe&ccedil;&atilde;o, deslocamento e necessidade de documenta&ccedil;&atilde;o complementar.',
-      payment: '20 dias ap&oacute;s entrega do laudo ou conforme condi&ccedil;&atilde;o negociada.',
-      delivery: 'Prazo estimado conforme libera&ccedil;&atilde;o do equipamento e recebimento das informa&ccedil;&otilde;es necess&aacute;rias.',
-      warranty: 'O laudo reflete as condi&ccedil;&otilde;es observadas na data da inspe&ccedil;&atilde;o e n&atilde;o substitui manuten&ccedil;&otilde;es preventivas, corretivas ou exig&ecirc;ncias legais espec&iacute;ficas.'
+      hint: 'Para laudo de capacidade, inspe&ccedil;&atilde;o de munck, guindaste, caminh&atilde;o e equipamento.',
+      checklist: [
+        'Identifica&ccedil;&atilde;o do equipamento: marca, modelo, placa, s&eacute;rie e patrim&ocirc;nio',
+        'Capacidade nominal e condi&ccedil;&atilde;o operacional',
+        'Documentos recebidos: CRLV, ART, manual, certificados e manuten&ccedil;&otilde;es',
+        'Fotos e evid&ecirc;ncias t&eacute;cnicas',
+        'Respons&aacute;vel t&eacute;cnico, prazo e validade do laudo',
+        'Restri&ccedil;&otilde;es, recomenda&ccedil;&otilde;es e conclus&atilde;o'
+      ]
     }
   };
 
-  function templatePreview(type) {
-    var t = templates[type] || templates.locacao_equipamento;
-    return 'PROPOSTA TECNICA E COMERCIAL\n\n1. OBJETIVO\n' + t.scope + '\n\n2. EQUIPAMENTO / ESCOPO\n' + t.equipment + '\n\n3. OBRIGACOES DA CONTRATADA\n' + t.contracted + '\n\n4. OBRIGACOES DA CONTRATANTE\n' + t.client + '\n\nPROPOSTA COMERCIAL\n' + t.commercial;
+  function guide(type) {
+    return proposalGuides[type] || proposalGuides.locacao_equipamento;
+  }
+
+  function checklistHtml(type) {
+    var item = guide(type);
+    return '<div class="proposal-checklist-preview"><h3>' + item.label + '</h3><p>' + item.hint + '</p><ul>' + item.checklist.map(function (text) {
+      return '<li>' + text + '</li>';
+    }).join('') + '</ul></div>';
   }
 
   function metrics() {
@@ -190,7 +196,7 @@
   function renderTopCards() {
     var rows = proposals().slice(0, 4);
     if (!rows.length) {
-      return '<div class="proposal-card"><div class="proposal-card-icon">' + icon('spark') + '</div><div><h3>Comece com uma proposta modelo</h3><p>Cadastre as propostas antigas em PDF e use o assistente para padronizar novas propostas.</p></div><button class="btn btn-primary btn-sm" onclick="openProposalModal()">' + icon('plus') + ' Nova</button></div>';
+      return '<div class="proposal-card"><div class="proposal-card-icon">' + icon('upload') + '</div><div><h3>Comece pela biblioteca comercial</h3><p>Cadastre o PDF ou Word oficial, informe cliente, valor, status e acompanhe tudo pelo sistema.</p></div><button class="btn btn-primary btn-sm" onclick="openProposalModal()">' + icon('plus') + ' Nova</button></div>';
     }
     return '<div class="proposal-card-list">' + rows.map(function (p) {
       return '<div class="proposal-card"><div class="proposal-card-icon">' + icon('proposal') + '</div><div><h3>' + esc(p.title || p.proposal_number) + '</h3><p>' + esc(p.client_name || 'Sem cliente') + ' &bull; ' + typeLabel(p.proposal_type) + ' &bull; ' + fmt(p.proposal_date) + '</p></div><div>' + chip(p.status) + '</div></div>';
@@ -209,19 +215,19 @@
   }
 
   function renderTemplates() {
-    return '<div class="proposal-template-grid">' + Object.keys(templates).map(function (key) {
-      var item = templates[key];
-      return '<div class="proposal-template"><h3>' + item.label + '</h3><p>' + item.scope.slice(0, 135) + '...</p><button class="btn btn-outline btn-sm" onclick="openProposalModal(null, \'' + key + '\')">' + icon('spark') + ' Usar modelo</button></div>';
+    return '<div class="proposal-template-grid">' + Object.keys(proposalGuides).map(function (key) {
+      var item = proposalGuides[key];
+      return '<div class="proposal-template"><h3>' + item.label + '</h3><p>' + item.hint + '</p><button class="btn btn-outline btn-sm" onclick="openProposalAssistant(\'' + key + '\')">' + icon('spark') + ' Ver checklist</button></div>';
     }).join('') + '</div>';
   }
 
   function renderProposals() {
     var m = metrics();
     return '<div class="proposal-suite">'
-      + '<section class="proposal-hero"><div><p class="proposal-kicker">Centro comercial executivo</p><h2>Propostas T&eacute;cnicas e Comerciais</h2><p>Organize PDFs antigos, controle revis&otilde;es e crie novas propostas no padr&atilde;o IMEC.</p></div><div class="proposal-actions"><button class="btn btn-outline" onclick="openProposalAssistant()">' + icon('spark') + ' Assistente</button><button class="btn btn-primary" onclick="openProposalModal()">' + icon('plus') + ' Nova proposta</button></div></section>'
+      + '<section class="proposal-hero"><div><p class="proposal-kicker">Centro comercial executivo</p><h2>Propostas T&eacute;cnicas e Comerciais</h2><p>Centralize PDFs, Word, revis&otilde;es, valores e status sem alterar o modelo oficial que voc&ecirc;s j&aacute; usam.</p></div><div class="proposal-actions"><button class="btn btn-outline" onclick="openProposalAssistant()">' + icon('spark') + ' Checklist</button><button class="btn btn-primary" onclick="openProposalModal()">' + icon('plus') + ' Nova proposta</button></div></section>'
       + '<div class="proposal-kpis">' + renderKpi('Propostas cadastradas', m.total, 'proposal', '#1269ff', 'hist&oacute;rico comercial') + renderKpi('Em aberto', m.open, 'brief', '#d97706', 'enviadas/negocia&ccedil;&atilde;o') + renderKpi('Aprovadas', m.approved, 'chart', '#16a34a', 'ganhas') + renderKpi('Valor aprovado', money(m.approvedValue), 'money', '#0f766e', 'resultado acumulado') + '</div>'
       + '<section class="proposal-section"><div class="proposal-section-head"><div><h2>Pipeline comercial</h2><p>Vis&atilde;o r&aacute;pida por etapa da proposta.</p></div></div><div class="proposal-section-body">' + renderPipeline() + '</div></section>'
-      + '<div class="proposal-grid"><section class="proposal-section"><div class="proposal-section-head"><div><h2>Propostas recentes</h2><p>&Uacute;ltimos modelos usados pela equipe.</p></div></div><div class="proposal-section-body">' + renderTopCards() + '</div></section><section class="proposal-section"><div class="proposal-section-head"><div><h2>Modelos inteligentes</h2><p>Baseados nas propostas reais de munck, guindaste e manuten&ccedil;&atilde;o.</p></div></div><div class="proposal-section-body">' + renderTemplates() + '</div></section></div>'
+      + '<div class="proposal-grid"><section class="proposal-section"><div class="proposal-section-head"><div><h2>Propostas recentes</h2><p>&Uacute;ltimos documentos oficiais cadastrados.</p></div></div><div class="proposal-section-body">' + renderTopCards() + '</div></section><section class="proposal-section"><div class="proposal-section-head"><div><h2>Checklists por tipo</h2><p>Guia pr&aacute;tico para n&atilde;o esquecer informa&ccedil;&otilde;es importantes antes de anexar a proposta final.</p></div></div><div class="proposal-section-body">' + renderTemplates() + '</div></section></div>'
       + '<section class="proposal-section"><div class="proposal-section-head"><div><h2>Biblioteca de propostas</h2><p>Busque por cliente, n&uacute;mero, servi&ccedil;o, status ou anexo.</p></div><div class="proposal-actions"><div class="search-box" style="min-width:280px">' + icon('search') + '<input id="proposalSearch" oninput="filterProposals()" placeholder="Buscar proposta..."></div><select id="proposalStatusFilter" class="input" onchange="filterProposals()" style="width:190px"><option value="">Todos os status</option><option value="rascunho">Rascunho</option><option value="enviada">Enviada</option><option value="negociacao">Negocia&ccedil;&atilde;o</option><option value="aprovada">Aprovada</option><option value="perdida">Perdida</option></select></div></div><div class="proposal-table-wrap"><table class="proposal-table" id="proposalTable"><thead><tr><th>N&uacute;mero</th><th>Proposta</th><th>Cliente</th><th>Data</th><th>Valor</th><th>Status</th><th>Anexo</th><th>A&ccedil;&otilde;es</th></tr></thead><tbody>' + renderRows() + '</tbody></table></div></section>'
       + '</div>';
   }
@@ -238,52 +244,37 @@
   window.openProposalModal = function (id, modelType, duplicate) {
     var p = id ? proposalById(id) : null;
     var model = modelType || (p && p.proposal_type) || 'locacao_equipamento';
-    var tpl = templates[model] || templates.locacao_equipamento;
+    var currentGuide = guide(model);
     var title = p ? (duplicate ? 'Duplicar proposta' : 'Editar proposta') : 'Nova proposta';
     var proposalNumber = duplicate ? '' : (p ? p.proposal_number : '');
-    var html = '<div class="proposal-modal p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">' + title + '</h2><p class="text-sm text-gray-500 mb-6">Cadastro executivo com anexo, escopo e condi&ccedil;&otilde;es comerciais.</p><form onsubmit="saveProposal(event, \'' + (duplicate ? '' : (id || '')) + '\')"><div class="proposal-form-grid">'
-      + '<div><label class="label">Modelo</label><select class="input" id="proposalModel" onchange="applyProposalTemplate(this.value)"><option value="locacao_equipamento"' + (model === 'locacao_equipamento' ? ' selected' : '') + '>Loca&ccedil;&atilde;o Munck / Guindaste</option><option value="manutencao_industrial"' + (model === 'manutencao_industrial' ? ' selected' : '') + '>Manuten&ccedil;&atilde;o industrial</option><option value="caldeiraria"' + (model === 'caldeiraria' ? ' selected' : '') + '>Caldeiraria / reforma</option><option value="laudo_inspecao"' + (model === 'laudo_inspecao' ? ' selected' : '') + '>Laudo / inspe&ccedil;&atilde;o</option></select></div>'
+    var html = '<div class="proposal-modal p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">' + title + '</h2><p class="text-sm text-gray-500 mb-6">Controle do documento oficial: cadastre o resumo, anexe o arquivo final e acompanhe o status comercial.</p><form onsubmit="saveProposal(event, \'' + (duplicate ? '' : (id || '')) + '\')"><div class="proposal-form-grid">'
+      + '<div><label class="label">Tipo de proposta</label><select class="input" id="proposalModel" onchange="updateProposalChecklist(this.value)"><option value="locacao_equipamento"' + (model === 'locacao_equipamento' ? ' selected' : '') + '>Loca&ccedil;&atilde;o Munck / Guindaste</option><option value="manutencao_industrial"' + (model === 'manutencao_industrial' ? ' selected' : '') + '>Manuten&ccedil;&atilde;o industrial</option><option value="caldeiraria"' + (model === 'caldeiraria' ? ' selected' : '') + '>Caldeiraria / reforma</option><option value="laudo_inspecao"' + (model === 'laudo_inspecao' ? ' selected' : '') + '>Laudo / inspe&ccedil;&atilde;o</option></select></div>'
       + '<div><label class="label">Status</label><select class="input" id="proposalStatus"><option value="rascunho"' + (p && p.status === 'rascunho' ? ' selected' : '') + '>Rascunho</option><option value="enviada"' + (p && p.status === 'enviada' ? ' selected' : '') + '>Enviada</option><option value="negociacao"' + (p && p.status === 'negociacao' ? ' selected' : '') + '>Em negocia&ccedil;&atilde;o</option><option value="aprovada"' + (p && p.status === 'aprovada' ? ' selected' : '') + '>Aprovada</option><option value="perdida"' + (p && p.status === 'perdida' ? ' selected' : '') + '>Perdida</option></select></div>'
+      + '<div class="span-2" id="proposalChecklistHint">' + checklistHtml(model) + '</div>'
       + '<div><label class="label">N&uacute;mero</label><input class="input" id="proposalNumber" value="' + esc(proposalNumber) + '" placeholder="2851"></div><div><label class="label">Revis&atilde;o</label><input class="input" id="proposalRevision" value="' + esc(p && !duplicate ? p.revision : 'R00') + '"></div>'
-      + '<div class="span-2"><label class="label">T&iacute;tulo *</label><input class="input" id="proposalTitle" value="' + esc(p && !duplicate ? p.title : tpl.title) + '" required></div>'
+      + '<div class="span-2"><label class="label">T&iacute;tulo *</label><input class="input" id="proposalTitle" value="' + esc(p && !duplicate ? p.title : '') + '" placeholder="' + currentGuide.label + ' - Cliente / servi&ccedil;o" required></div>'
       + '<div><label class="label">Cliente</label><select class="input" id="proposalClient">' + clientOptions(p && !duplicate ? p.client_id : '') + '</select></div><div><label class="label">Obra vinculada</label><select class="input" id="proposalProject">' + projectOptions(p && !duplicate ? p.project_id : '') + '</select></div>'
       + '<div><label class="label">Contato</label><input class="input" id="proposalContact" value="' + esc(p && !duplicate ? p.contact_name : '') + '"></div><div><label class="label">&Aacute;rea / setor</label><input class="input" id="proposalArea" value="' + esc(p && !duplicate ? p.contact_area : '') + '"></div>'
       + '<div><label class="label">Data da proposta</label><input type="date" class="input" id="proposalDate" value="' + esc(p && !duplicate ? inputDateValue(p.proposal_date) : todayValue()) + '"></div><div><label class="label">Validade</label><input type="date" class="input" id="proposalValidity" value="' + esc(p && !duplicate ? inputDateValue(p.validity_date) : addMonthsValue(todayValue(), 1)) + '"></div>'
       + '<div><label class="label">Valor total</label><input type="number" step="0.01" class="input" id="proposalValue" value="' + esc(p && !duplicate ? (p.total_value || '') : '') + '"></div><div><label class="label">Local</label><input class="input" id="proposalLocation" value="' + esc(p && !duplicate ? p.location : '') + '"></div>'
-      + '<div class="span-2"><label class="label">Resumo do escopo</label><textarea class="input" rows="2" id="proposalSummary">' + esc(p && !duplicate ? p.scope_summary : tpl.scope) + '</textarea></div>'
-      + '<div class="span-2"><label class="label">Escopo t&eacute;cnico</label><textarea class="input" rows="4" id="proposalTechnical">' + esc(p && !duplicate ? p.technical_scope : tpl.scope) + '</textarea></div>'
-      + '<div class="span-2"><label class="label">Equipamentos / servi&ccedil;o</label><textarea class="input" rows="3" id="proposalEquipment">' + esc(p && !duplicate ? p.equipment_description : tpl.equipment) + '</textarea></div>'
-      + '<div><label class="label">Obriga&ccedil;&otilde;es da IMEC</label><textarea class="input" rows="5" id="proposalContracted">' + esc(p && !duplicate ? p.contracted_obligations : tpl.contracted) + '</textarea></div><div><label class="label">Obriga&ccedil;&otilde;es do cliente</label><textarea class="input" rows="5" id="proposalClientObligations">' + esc(p && !duplicate ? p.client_obligations : tpl.client) + '</textarea></div>'
-      + '<div class="span-2"><label class="label">Condi&ccedil;&otilde;es comerciais</label><textarea class="input" rows="3" id="proposalCommercial">' + esc(p && !duplicate ? p.commercial_terms : tpl.commercial) + '</textarea></div>'
-      + '<div><label class="label">Pagamento</label><textarea class="input" rows="2" id="proposalPayment">' + esc(p && !duplicate ? p.payment_terms : tpl.payment) + '</textarea></div><div><label class="label">Prazo / disponibilidade</label><textarea class="input" rows="2" id="proposalDelivery">' + esc(p && !duplicate ? p.delivery_time : tpl.delivery) + '</textarea></div>'
-      + '<div class="span-2"><label class="label">Garantia / observa&ccedil;&otilde;es</label><textarea class="input" rows="2" id="proposalWarranty">' + esc(p && !duplicate ? p.warranty_terms : tpl.warranty) + '</textarea></div>'
-      + '<div class="span-2 proposal-upload-box"><label class="label">Anexo da proposta (PDF, Word ou Excel)</label><input type="file" class="input" id="proposalFile" accept=".pdf,.doc,.docx,.xls,.xlsx"><input type="hidden" id="proposalFileUrl" value="' + esc(p && !duplicate ? p.file_url : '') + '">' + (p && p.file_url && !duplicate ? '<p class="mt-2 text-xs"><a class="text-imec-blue font-bold" href="' + esc(p.file_url) + '" target="_blank" rel="noopener">Arquivo atual cadastrado</a></p>' : '') + '</div>'
+      + '<div class="span-2"><label class="label">Resumo r&aacute;pido para busca</label><textarea class="input" rows="2" id="proposalSummary" placeholder="Ex.: Loca&ccedil;&atilde;o de munck 10 ton para apoio em manuten&ccedil;&atilde;o...">' + esc(p && !duplicate ? p.scope_summary : '') + '</textarea></div>'
+      + '<div class="span-2"><label class="label">Equipamento / servi&ccedil;o principal</label><textarea class="input" rows="2" id="proposalEquipment" placeholder="Ex.: Munck 10 ton, guindaste 30 ton, coluna A-2600, laudo de capacidade...">' + esc(p && !duplicate ? p.equipment_description : '') + '</textarea></div>'
+      + '<div><label class="label">Condi&ccedil;&otilde;es comerciais principais</label><textarea class="input" rows="3" id="proposalCommercial" placeholder="Valor, forma de medi&ccedil;&atilde;o, observa&ccedil;&otilde;es comerciais importantes...">' + esc(p && !duplicate ? p.commercial_terms : '') + '</textarea></div><div><label class="label">Pagamento / prazo</label><textarea class="input" rows="3" id="proposalPayment" placeholder="Ex.: 20 dias ap&oacute;s execu&ccedil;&atilde;o, entrada + medi&ccedil;&otilde;es, prazo de entrega...">' + esc(p && !duplicate ? p.payment_terms : '') + '</textarea></div>'
+      + '<input type="hidden" id="proposalTechnical" value="' + esc(p && !duplicate ? p.technical_scope : '') + '"><input type="hidden" id="proposalContracted" value="' + esc(p && !duplicate ? p.contracted_obligations : '') + '"><input type="hidden" id="proposalClientObligations" value="' + esc(p && !duplicate ? p.client_obligations : '') + '"><input type="hidden" id="proposalDelivery" value="' + esc(p && !duplicate ? p.delivery_time : '') + '"><input type="hidden" id="proposalWarranty" value="' + esc(p && !duplicate ? p.warranty_terms : '') + '">'
+      + '<div class="span-2 proposal-upload-box"><label class="label">Documento oficial da proposta (PDF, Word ou Excel)</label><input type="file" class="input" id="proposalFile" accept=".pdf,.doc,.docx,.xls,.xlsx"><input type="hidden" id="proposalFileUrl" value="' + esc(p && !duplicate ? p.file_url : '') + '">' + (p && p.file_url && !duplicate ? '<p class="mt-2 text-xs"><a class="text-imec-blue font-bold" href="' + esc(p.file_url) + '" target="_blank" rel="noopener">Arquivo oficial cadastrado</a></p>' : '<p class="mt-2 text-xs text-gray-500">Anexe aqui a proposta final exatamente como foi enviada ao cliente.</p>') + '</div>'
       + '<div class="span-2"><label class="label">Notas internas</label><textarea class="input" rows="2" id="proposalNotes">' + esc(p && !duplicate ? p.notes : '') + '</textarea></div>'
       + '</div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Salvar proposta</button></div></form></div>';
     openModal(html);
   };
 
-  window.applyProposalTemplate = function (type) {
-    var tpl = templates[type] || templates.locacao_equipamento;
-    var pairs = {
-      proposalTitle: tpl.title,
-      proposalSummary: tpl.scope,
-      proposalTechnical: tpl.scope,
-      proposalEquipment: tpl.equipment,
-      proposalContracted: tpl.contracted,
-      proposalClientObligations: tpl.client,
-      proposalCommercial: tpl.commercial,
-      proposalPayment: tpl.payment,
-      proposalDelivery: tpl.delivery,
-      proposalWarranty: tpl.warranty
-    };
-    Object.keys(pairs).forEach(function (id) {
-      var el = document.getElementById(id);
-      if (el && !el.value.trim()) el.value = pairs[id];
-    });
+  window.updateProposalChecklist = function (type) {
+    var box = document.getElementById('proposalChecklistHint');
+    if (box) box.innerHTML = checklistHtml(type);
     var preview = document.getElementById('proposalAssistantPreview');
-    if (preview) preview.textContent = templatePreview(type);
+    if (preview) preview.innerHTML = checklistHtml(type);
   };
+
+  window.applyProposalTemplate = window.updateProposalChecklist;
 
   window.saveProposal = async function (event, id) {
     event.preventDefault();
@@ -364,9 +355,9 @@
     });
   };
 
-  window.openProposalAssistant = function () {
-    var html = '<div class="proposal-modal p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Assistente de proposta IMEC</h2><p class="text-sm text-gray-500 mb-5">Escolha um modelo e use o texto-base como rascunho executivo.</p><div class="proposal-form-grid"><div><label class="label">Modelo</label><select class="input" onchange="document.getElementById(\'proposalAssistantPreview\').textContent = window.proposalTemplatePreview(this.value)"><option value="locacao_equipamento">Loca&ccedil;&atilde;o Munck / Guindaste</option><option value="manutencao_industrial">Manuten&ccedil;&atilde;o industrial</option><option value="caldeiraria">Caldeiraria / Reforma</option><option value="laudo_inspecao">Laudo / inspe&ccedil;&atilde;o</option></select></div><div style="display:flex;align-items:end"><button class="btn btn-primary" onclick="openProposalModal(null, document.querySelector(\'.proposal-modal select\').value)">' + icon('plus') + ' Criar com este modelo</button></div><div class="span-2"><div class="proposal-preview" id="proposalAssistantPreview">' + esc(templatePreview('locacao_equipamento')) + '</div></div></div><div class="flex justify-end mt-6"><button class="btn btn-outline" onclick="closeModal()">Fechar</button></div></div>';
-    window.proposalTemplatePreview = templatePreview;
+  window.openProposalAssistant = function (selectedType) {
+    var selected = selectedType || 'locacao_equipamento';
+    var html = '<div class="proposal-modal p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Checklist de proposta</h2><p class="text-sm text-gray-500 mb-5">Use como confer&ecirc;ncia antes de anexar o documento oficial. O sistema n&atilde;o altera o texto da proposta.</p><div class="proposal-form-grid"><div><label class="label">Tipo de proposta</label><select class="input" onchange="updateProposalChecklist(this.value)"><option value="locacao_equipamento"' + (selected === 'locacao_equipamento' ? ' selected' : '') + '>Loca&ccedil;&atilde;o Munck / Guindaste</option><option value="manutencao_industrial"' + (selected === 'manutencao_industrial' ? ' selected' : '') + '>Manuten&ccedil;&atilde;o industrial</option><option value="caldeiraria"' + (selected === 'caldeiraria' ? ' selected' : '') + '>Caldeiraria / Reforma</option><option value="laudo_inspecao"' + (selected === 'laudo_inspecao' ? ' selected' : '') + '>Laudo / inspe&ccedil;&atilde;o</option></select></div><div style="display:flex;align-items:end"><button class="btn btn-primary" onclick="openProposalModal(null, document.querySelector(\'.proposal-modal select\').value)">' + icon('plus') + ' Cadastrar proposta</button></div><div class="span-2"><div id="proposalAssistantPreview">' + checklistHtml(selected) + '</div></div></div><div class="flex justify-end mt-6"><button class="btn btn-outline" onclick="closeModal()">Fechar</button></div></div>';
     openModal(html);
   };
 

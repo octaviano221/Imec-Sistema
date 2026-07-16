@@ -287,6 +287,55 @@
   white-space: pre-wrap;
 }
 
+.proposal-checklist-preview {
+  border: 1px solid #dbe5f1;
+  border-left: 4px solid #1269ff;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #fff, #f8fbff);
+  padding: 14px 16px;
+}
+
+.proposal-checklist-preview h3 {
+  margin: 0;
+  color: #06265a;
+  font: 900 15px/1.2 Outfit, sans-serif;
+}
+
+.proposal-checklist-preview p {
+  margin: 5px 0 10px;
+  color: #60708d;
+  font-size: 12px;
+}
+
+.proposal-checklist-preview ul {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 14px;
+  list-style: none;
+}
+
+.proposal-checklist-preview li {
+  position: relative;
+  padding-left: 20px;
+  color: #1d355d;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.proposal-checklist-preview li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: .42em;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #1269ff;
+  box-shadow: 0 0 0 4px #eaf2ff;
+}
+
 .proposal-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -324,7 +373,8 @@
 
   .proposal-kpis,
   .proposal-pipeline,
-  .proposal-form-grid {
+  .proposal-form-grid,
+  .proposal-checklist-preview ul {
     grid-template-columns: 1fr;
   }
 }
