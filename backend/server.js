@@ -164,4 +164,6 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 
+console.log('Upload directory configured:', upload.uploadDir || path.join(__dirname, 'uploads'));
+
 module.exports = app;
