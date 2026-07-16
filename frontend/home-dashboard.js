@@ -27,8 +27,34 @@
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (icons[name] || icons.certificate) + '</svg>';
   }
 
+  function decodeEntities(value) {
+    var entities = {
+      amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ',
+      aacute: 'á', eacute: 'é', iacute: 'í', oacute: 'ó', uacute: 'ú',
+      Aacute: 'Á', Eacute: 'É', Iacute: 'Í', Oacute: 'Ó', Uacute: 'Ú',
+      agrave: 'à', egrave: 'è', igrave: 'ì', ograve: 'ò', ugrave: 'ù',
+      Agrave: 'À', Egrave: 'È', Igrave: 'Ì', Ograve: 'Ò', Ugrave: 'Ù',
+      acirc: 'â', ecirc: 'ê', icirc: 'î', ocirc: 'ô', ucirc: 'û',
+      Acirc: 'Â', Ecirc: 'Ê', Icirc: 'Î', Ocirc: 'Ô', Ucirc: 'Û',
+      atilde: 'ã', otilde: 'õ', Atilde: 'Ã', Otilde: 'Õ',
+      ccedil: 'ç', Ccedil: 'Ç',
+      uuml: 'ü', Uuml: 'Ü',
+      ordm: 'º', ordf: 'ª',
+      ndash: '-', mdash: '-', hellip: '...', rsaquo: '›', laquo: '«', raquo: '»'
+    };
+    return String(value == null ? '' : value).replace(/&(#x?[0-9a-fA-F]+|[a-zA-Z]+);/g, function (match, entity) {
+      if (entity.charAt(0) === '#') {
+        var code = entity.charAt(1).toLowerCase() === 'x'
+          ? parseInt(entity.slice(2), 16)
+          : parseInt(entity.slice(1), 10);
+        return Number.isFinite(code) ? String.fromCharCode(code) : match;
+      }
+      return Object.prototype.hasOwnProperty.call(entities, entity) ? entities[entity] : match;
+    });
+  }
+
   function esc(value) {
-    return String(value == null ? '' : value).replace(/[&<>"']/g, function (char) {
+    return decodeEntities(value).replace(/[&<>"']/g, function (char) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[char];
     });
   }
