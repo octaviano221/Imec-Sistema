@@ -1,7 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const pdfParse = require('pdf-parse');
+const { PDFParse } = require('pdf-parse');
 const router = express.Router();
 const upload = require('../middleware/upload');
 const { authenticate } = require('../middleware/auth');
@@ -66,14 +66,29 @@ function normalizeDate(value) {
   return null;
 }
 
+async function parsePdfText(bytes) {
+  const parser = new PDFParse({ data: bytes });
+  try {
+    const result = await parser.getText();
+    return result && result.text ? result.text : '';
+  } finally {
+    await parser.destroy().catch(() => {});
+  }
+}
+
+function stripMarks(value) {
+  return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 function findAfterLabel(text, label, fallbackPattern) {
   const compact = String(text || '').replace(/\r/g, '');
-  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const search = stripMarks(compact);
+  const escaped = stripMarks(label).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const labelPattern = new RegExp(`${escaped}\\s*\\n\\s*([^\\n]+)`, 'i');
-  const labelMatch = compact.match(labelPattern);
+  const labelMatch = search.match(labelPattern);
   if (labelMatch) return str(labelMatch[1]);
   if (fallbackPattern) {
-    const fallbackMatch = compact.match(fallbackPattern);
+    const fallbackMatch = search.match(fallbackPattern);
     if (fallbackMatch) return str(fallbackMatch[1] || fallbackMatch[0]);
   }
   return '';
@@ -85,12 +100,58 @@ function normalizePlate(value) {
 }
 
 function inferVehicleType(text) {
-  const source = String(text || '').toLowerCase();
+  const source = stripMarks(String(text || '')).toLowerCase();
   if (/guindaste|guindauto|munck/.test(source)) return 'Caminhao Munck';
   if (/carga|caminhao|camioneta|prancha/.test(source)) return 'Caminhao';
+  if (/onibus|microonibus|micro-onibus/.test(source)) return 'Onibus';
   if (/pick[\s-]?up/.test(source)) return 'Pickup';
   if (/van|microonibus|micro-onibus/.test(source)) return 'Van';
   return 'Carro';
+}
+
+function extractCrlvDataBlock(text) {
+  const lines = String(text || '')
+    .split(/\r?\n/)
+    .map((line) => str(line))
+    .filter(Boolean);
+  const qrIndex = lines.findIndex((line) => stripMarks(line).toLowerCase() === 'qrcode');
+  if (qrIndex < 0) return {};
+
+  const block = lines.slice(qrIndex + 1);
+  const renavamIndex = block.findIndex((line) => /^\d{9,13}$/.test(line));
+  if (renavamIndex < 0) return {};
+
+  const data = block.slice(renavamIndex);
+  const plateLine = data.find((line) => /\b[A-Z]{3}\d[A-Z0-9]\d{2}\b/i.test(line));
+  const plateMatch = plateLine ? plateLine.match(/\b([A-Z]{3}\d[A-Z0-9]\d{2})\b/i) : null;
+  const exerciseMatch = plateLine ? plateLine.match(/\b(20\d{2}|19\d{2})\b/) : null;
+  const yearsLine = data.find((line) => /^\d{4}\s+\d{4}$/.test(line));
+  const years = yearsLine ? yearsLine.match(/\d{4}/g) : [];
+  const crvLine = data.find((line) => /^\d{8,}\s+\*{3}/.test(line));
+  const modelLine = data.find((line) => /\/|FORD|MARCOPOLO|VOLKSWAGEN|MERCEDES|IVECO|SCANIA|FIAT|CHEVROLET|TOYOTA|HYUNDAI|XCMG/i.test(line));
+  const specieTypeLine = data.find((line) => /(PASSAGEIRO|CARGA|CAMINHAO|CAMINH[ÃA]O|ONIBUS|[ÔO]NIBUS|AUTOMOVEL|AUTOM[ÓO]VEL|MISTO)/i.test(line));
+  const chassisLine = data.find((line) => /[A-Z0-9*]{6,}\/\*{2}|\*{3,}\/\*{2}|[A-Z0-9]{12,}/i.test(line));
+  const chassisMatch = chassisLine ? chassisLine.match(/\b([A-Z0-9*]{12,})\b/i) : null;
+  const ownerIndex = data.findIndex((line) => /IMEC|LTDA|EIRELI|INDUSTRIA|METALURGICA|SOLUCOES|SERVICOS/i.test(stripMarks(line)));
+  const issueLine = data.find((line) => /\b\d{2}\/\d{2}\/\d{4}\b/.test(line));
+  const issueMatch = issueLine ? issueLine.match(/\b(\d{2}\/\d{2}\/\d{4})\b/) : null;
+  const motorCapacityLine = data.find((line) => /^\d{8,}\s+[\d.,]+\s+\d+\s+\w+/i.test(line));
+  const capacityMatch = motorCapacityLine ? motorCapacityLine.match(/^\d{8,}\s+([\d.,]+)/) : null;
+
+  return {
+    plate: plateMatch ? plateMatch[1].toUpperCase() : '',
+    renavam: data[0] || '',
+    exerciseYear: exerciseMatch ? exerciseMatch[1] : '',
+    manufactureYear: years[0] || '',
+    modelYear: years[1] || '',
+    crvNumber: crvLine ? crvLine.split(/\s+/)[0] : '',
+    modelVersion: modelLine || '',
+    specieType: specieTypeLine || '',
+    chassis: chassisMatch ? chassisMatch[1] : '',
+    capacity: capacityMatch ? capacityMatch[1] : '',
+    owner: ownerIndex >= 0 ? data[ownerIndex] : '',
+    issueDate: issueMatch ? issueMatch[1] : ''
+  };
 }
 
 function extractCrlvOffline(text) {
@@ -98,19 +159,20 @@ function extractCrlvOffline(text) {
     .replace(/\u00a0/g, ' ')
     .replace(/[ \t]+/g, ' ')
     .replace(/\n{2,}/g, '\n');
+  const dataBlock = extractCrlvDataBlock(normalized);
   const warnings = [];
-  const plate = normalizePlate(findAfterLabel(normalized, 'PLACA', /\b([A-Z]{3}\d[A-Z0-9]\d{2})\b/i));
-  const renavam = findAfterLabel(normalized, 'CODIGO RENAVAM', /\bRENAVAM\s*[:\n ]\s*(\d{9,13})/i);
-  const exerciseYear = findAfterLabel(normalized, 'EXERCICIO', /\bEXERCICIO\s*[:\n ]\s*(\d{4})/i);
-  const manufactureYear = findAfterLabel(normalized, 'ANO FABRICACAO', /ANO FABRICACAO\s*[:\n ]\s*(\d{4})/i);
-  const modelYear = findAfterLabel(normalized, 'ANO MODELO', /ANO MODELO\s*[:\n ]\s*(\d{4})/i);
-  const modelVersion = findAfterLabel(normalized, 'MARCA / MODELO / VERSAO', /MARCA\s*\/\s*MODELO\s*\/\s*VERSAO\s*[:\n ]\s*([^\n]+)/i);
-  const owner = findAfterLabel(normalized, 'NOME', /NOME\s*[:\n ]\s*([^\n]+)/i);
-  const issueDate = findAfterLabel(normalized, 'DATA', /\bDATA\s*[:\n ]\s*(\d{2}[/-]\d{2}[/-]\d{4})/i);
-  const crvNumber = findAfterLabel(normalized, 'NUMERO DO CRV', /NUMERO DO CRV\s*[:\n ]\s*([A-Z0-9.-]+)/i);
+  const plate = normalizePlate(dataBlock.plate || findAfterLabel(normalized, 'PLACA', /\b([A-Z]{3}\d[A-Z0-9]\d{2})\b/i));
+  const renavam = dataBlock.renavam || findAfterLabel(normalized, 'CODIGO RENAVAM', /\bRENAVAM\s*[:\n ]\s*(\d{9,13})/i);
+  const exerciseYear = dataBlock.exerciseYear || findAfterLabel(normalized, 'EXERCICIO', /\bEXERCICIO\s*[:\n ]\s*(\d{4})/i);
+  const manufactureYear = dataBlock.manufactureYear || findAfterLabel(normalized, 'ANO FABRICACAO', /ANO FABRICACAO\s*[:\n ]\s*(\d{4})/i);
+  const modelYear = dataBlock.modelYear || findAfterLabel(normalized, 'ANO MODELO', /ANO MODELO\s*[:\n ]\s*(\d{4})/i);
+  const modelVersion = dataBlock.modelVersion || findAfterLabel(normalized, 'MARCA / MODELO / VERSAO', /MARCA\s*\/\s*MODELO\s*\/\s*VERSAO\s*[:\n ]\s*([^\n]+)/i);
+  const owner = dataBlock.owner || findAfterLabel(normalized, 'NOME', /NOME\s*[:\n ]\s*([^\n]+)/i);
+  const issueDate = dataBlock.issueDate || findAfterLabel(normalized, 'DATA', /\bDATA\s*[:\n ]\s*(\d{2}[/-]\d{2}[/-]\d{4})/i);
+  const crvNumber = dataBlock.crvNumber || findAfterLabel(normalized, 'NUMERO DO CRV', /NUMERO DO CRV\s*[:\n ]\s*([A-Z0-9.-]+)/i);
   const securityCode = findAfterLabel(normalized, 'CODIGO DE SEGURANCA DO CLA', /CODIGO DE SEGURANCA DO CLA\s*[:\n ]\s*([A-Z0-9.-]+)/i);
-  const capacity = findAfterLabel(normalized, 'CAPACIDADE', /CAPACIDADE\s*[:\n ]\s*([0-9.,]+)/i);
-  const chassis = findAfterLabel(normalized, 'CHASSI', /CHASSI\s*[:\n ]\s*([A-Z0-9*.-]+)/i);
+  const capacity = dataBlock.capacity || findAfterLabel(normalized, 'CAPACIDADE', /CAPACIDADE\s*[:\n ]\s*([0-9.,]+)/i);
+  const chassis = dataBlock.chassis || findAfterLabel(normalized, 'CHASSI', /CHASSI\s*[:\n ]\s*([A-Z0-9*.-]+)/i);
 
   if (!plate) warnings.push('Placa nao identificada automaticamente.');
   if (!renavam) warnings.push('RENAVAM nao identificado automaticamente.');
@@ -128,7 +190,7 @@ function extractCrlvOffline(text) {
       plate,
       renavam,
       name: [modelVersion, plate].filter(Boolean).join(' - '),
-      type: inferVehicleType(`${modelVersion} ${normalized}`),
+      type: inferVehicleType(`${dataBlock.specieType || ''} ${modelVersion} ${normalized}`),
       brand: modelVersion ? modelVersion.split(/\s+/)[0] : '',
       model: modelVersion,
       year: modelYear || manufactureYear,
@@ -199,20 +261,19 @@ function buildPrompt() {
 router.post('/analyze', authenticate, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ message: 'Envie um PDF ou imagem para a IA ler.' });
+      return res.status(400).json({ message: 'Envie o PDF digital do Detran para o leitor offline.' });
     }
 
     const mime = getMime(req.file);
     if (!/^application\/pdf$|^image\/(png|jpe?g)$/i.test(mime)) {
-      return res.status(400).json({ message: 'Para leitura com IA, envie PDF, JPG ou PNG.' });
+      return res.status(400).json({ message: 'Para leitura offline, envie PDF digital do Detran.' });
     }
 
     const bytes = fs.readFileSync(req.file.path);
     const fileUrl = buildPublicUrl(req.file.filename);
 
     if (mime === 'application/pdf') {
-      const parsed = await pdfParse(bytes);
-      const text = parsed && parsed.text ? parsed.text : '';
+      const text = await parsePdfText(bytes);
       if (text.trim().length >= 30) {
         const extracted = extractCrlvOffline(text);
         console.log('Vehicle offline extraction:', {
@@ -285,8 +346,8 @@ router.post('/analyze', authenticate, upload.single('file'), async (req, res) =>
       extraction: extracted
     });
   } catch (error) {
-    console.error('Erro na leitura IA de documento veicular:', error);
-    res.status(500).json({ message: 'Nao foi possivel ler o documento com IA. Confira o arquivo e tente novamente.' });
+    console.error('Erro na leitura offline de documento veicular:', error);
+    res.status(500).json({ message: 'Nao foi possivel ler o PDF offline. Confira se ele e o CRLV digital do Detran e tente novamente.' });
   }
 });
 
