@@ -224,7 +224,7 @@
   function renderProposals() {
     var m = metrics();
     return '<div class="proposal-suite">'
-      + '<section class="proposal-hero"><div><p class="proposal-kicker">Centro comercial executivo</p><h2>Propostas T&eacute;cnicas e Comerciais</h2><p>Centralize PDFs, Word, revis&otilde;es, valores e status sem alterar o modelo oficial que voc&ecirc;s j&aacute; usam.</p></div><div class="proposal-actions"><button class="btn btn-outline" onclick="openProposalAssistant()">' + icon('spark') + ' Checklist</button><button class="btn btn-primary" onclick="openProposalModal()">' + icon('plus') + ' Nova proposta</button></div></section>'
+      + '<section class="proposal-hero"><div><p class="proposal-kicker">Centro comercial executivo</p><h2>Propostas T&eacute;cnicas e Comerciais</h2><p>Centralize PDFs, Word, revis&otilde;es, valores e status sem alterar o modelo oficial que voc&ecirc;s j&aacute; usam.</p></div><div class="proposal-actions"><button class="btn btn-outline" onclick="openProposalAssistant()">' + icon('spark') + ' Checklist</button><button class="btn btn-outline" onclick="openProposalImportPreview()">' + icon('upload') + ' Importar pasta</button><button class="btn btn-primary" onclick="openProposalModal()">' + icon('plus') + ' Nova proposta</button></div></section>'
       + '<div class="proposal-kpis">' + renderKpi('Propostas cadastradas', m.total, 'proposal', '#1269ff', 'hist&oacute;rico comercial') + renderKpi('Em aberto', m.open, 'brief', '#d97706', 'enviadas/negocia&ccedil;&atilde;o') + renderKpi('Aprovadas', m.approved, 'chart', '#16a34a', 'ganhas') + renderKpi('Valor aprovado', money(m.approvedValue), 'money', '#0f766e', 'resultado acumulado') + '</div>'
       + '<section class="proposal-section"><div class="proposal-section-head"><div><h2>Pipeline comercial</h2><p>Vis&atilde;o r&aacute;pida por etapa da proposta.</p></div></div><div class="proposal-section-body">' + renderPipeline() + '</div></section>'
       + '<div class="proposal-grid"><section class="proposal-section"><div class="proposal-section-head"><div><h2>Propostas recentes</h2><p>&Uacute;ltimos documentos oficiais cadastrados.</p></div></div><div class="proposal-section-body">' + renderTopCards() + '</div></section><section class="proposal-section"><div class="proposal-section-head"><div><h2>Checklists por tipo</h2><p>Guia pr&aacute;tico para n&atilde;o esquecer informa&ccedil;&otilde;es importantes antes de anexar a proposta final.</p></div></div><div class="proposal-section-body">' + renderTemplates() + '</div></section></div>'
@@ -359,6 +359,47 @@
     var selected = selectedType || 'locacao_equipamento';
     var html = '<div class="proposal-modal p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Checklist de proposta</h2><p class="text-sm text-gray-500 mb-5">Use como confer&ecirc;ncia antes de anexar o documento oficial. O sistema n&atilde;o altera o texto da proposta.</p><div class="proposal-form-grid"><div><label class="label">Tipo de proposta</label><select class="input" onchange="updateProposalChecklist(this.value)"><option value="locacao_equipamento"' + (selected === 'locacao_equipamento' ? ' selected' : '') + '>Loca&ccedil;&atilde;o Munck / Guindaste</option><option value="manutencao_industrial"' + (selected === 'manutencao_industrial' ? ' selected' : '') + '>Manuten&ccedil;&atilde;o industrial</option><option value="caldeiraria"' + (selected === 'caldeiraria' ? ' selected' : '') + '>Caldeiraria / Reforma</option><option value="laudo_inspecao"' + (selected === 'laudo_inspecao' ? ' selected' : '') + '>Laudo / inspe&ccedil;&atilde;o</option></select></div><div style="display:flex;align-items:end"><button class="btn btn-primary" onclick="openProposalModal(null, document.querySelector(\'.proposal-modal select\').value)">' + icon('plus') + ' Cadastrar proposta</button></div><div class="span-2"><div id="proposalAssistantPreview">' + checklistHtml(selected) + '</div></div></div><div class="flex justify-end mt-6"><button class="btn btn-outline" onclick="closeModal()">Fechar</button></div></div>';
     openModal(html);
+  };
+
+  function renderImportItems(items) {
+    if (!items || !items.length) {
+      return '<div class="proposal-import-empty">Nenhum PDF encontrado na pasta configurada.</div>';
+    }
+    return '<div class="proposal-import-table-wrap"><table class="proposal-import-table"><thead><tr><th>Arquivo</th><th>Cliente</th><th>Proposta</th><th>Revis&atilde;o</th><th>Confian&ccedil;a</th></tr></thead><tbody>' + items.map(function (item) {
+      var tone = item.warnings && item.warnings.length ? 'warn' : 'ok';
+      return '<tr><td><strong>' + esc(item.original_name) + '</strong><br><small>' + esc(item.relative_path) + '</small></td><td>' + esc(item.client && item.client.name) + '</td><td>' + esc(item.proposal && item.proposal.proposal_number) + '<br><small>' + esc(item.proposal && item.proposal.title) + '</small></td><td>' + esc(item.proposal && item.proposal.revision) + '</td><td><span class="proposal-import-score ' + tone + '">' + Math.round(Number(item.confidence || 0) * 100) + '%</span>' + (item.warnings && item.warnings.length ? '<small>' + esc(item.warnings.join(' ')) + '</small>' : '') + '</td></tr>';
+    }).join('') + '</tbody></table></div>';
+  }
+
+  window.openProposalImportPreview = async function () {
+    try {
+      showToast('Lendo pasta de propostas...', 'info');
+      var preview = await API.technicalProposals.importPreview(80);
+      var html = '<div class="proposal-modal proposal-import-modal p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Importa&ccedil;&atilde;o em lote de propostas</h2><p class="text-sm text-gray-500 mb-5">O sistema l&ecirc; a pasta configurada no servidor, cadastra clientes sem repetir e anexa cada PDF &agrave; proposta.</p>'
+        + '<div class="proposal-import-summary"><div><span>Pasta</span><strong>' + esc(preview.sourceDir) + '</strong></div><div><span>PDFs encontrados</span><strong>' + esc(preview.totalFiles) + '</strong></div><div><span>Reconhecidos</span><strong>' + esc(preview.recognized) + '</strong></div><div><span>Revisar</span><strong>' + esc(preview.reviewNeeded) + '</strong></div></div>'
+        + '<div class="proposal-import-clients"><h3>Clientes mais encontrados</h3><div>' + (preview.clients || []).slice(0, 18).map(function (client) { return '<span>' + esc(client.name) + ' <b>' + esc(client.count) + '</b></span>'; }).join('') + '</div></div>'
+        + renderImportItems(preview.items)
+        + '<div class="proposal-import-note">Antes de importar tudo, use o bot&atilde;o de teste para gravar apenas 20 propostas. Se ficar certo, rode a importa&ccedil;&atilde;o completa.</div>'
+        + '<div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Fechar</button><button type="button" class="btn btn-outline" onclick="runProposalBulkImport(20)">Importar teste 20</button><button type="button" class="btn btn-primary" onclick="runProposalBulkImport()">Importar tudo</button></div></div>';
+      openModal(html);
+    } catch (err) {
+      showToast('Erro na pr&eacute;via: ' + err.message, 'error');
+    }
+  };
+
+  window.runProposalBulkImport = async function (limit) {
+    var label = limit ? ('Importar ' + limit + ' propostas de teste?') : 'Importar todas as propostas da pasta?';
+    if (!confirm(label + ' Clientes duplicados e arquivos j&aacute; importados ser&atilde;o ignorados.')) return;
+    try {
+      showToast('Importando propostas, aguarde...', 'info');
+      var result = await API.technicalProposals.importRun(limit ? { limit: limit } : {});
+      await refreshData();
+      closeModal();
+      await renderPage();
+      showToast('Importa&ccedil;&atilde;o conclu&iacute;da: ' + result.imported + ' importadas, ' + result.skipped + ' ignoradas.', 'success');
+    } catch (err) {
+      showToast('Erro ao importar: ' + err.message, 'error');
+    }
   };
 
   function installSidebar() {

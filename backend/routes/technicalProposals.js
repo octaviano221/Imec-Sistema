@@ -2,6 +2,11 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const { authenticate, authorize } = require('../middleware/auth');
+const {
+  scanProposals,
+  importProposals,
+  getImportSourceDir
+} = require('../services/proposalImporter');
 
 const editableRoles = ['admin', 'engenharia'];
 
@@ -50,6 +55,38 @@ router.get('/', authenticate, async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Erro ao buscar propostas tecnicas comerciais' });
+  }
+});
+
+router.get('/bulk-import/preview', authenticate, authorize('admin', 'engenharia'), async (req, res) => {
+  try {
+    const limit = Math.max(0, Number(req.query.limit || 50));
+    const scan = scanProposals(req.query.sourceDir || getImportSourceDir());
+    res.json({
+      sourceDir: scan.sourceDir,
+      totalFiles: scan.totalFiles,
+      recognized: scan.recognized,
+      reviewNeeded: scan.reviewNeeded,
+      clients: scan.clients.slice(0, 80),
+      items: limit ? scan.items.slice(0, limit) : scan.items
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao gerar previa de importacao de propostas' });
+  }
+});
+
+router.post('/bulk-import/run', authenticate, authorize('admin', 'engenharia'), async (req, res) => {
+  try {
+    const summary = await importProposals(db, {
+      sourceDir: req.body.sourceDir || getImportSourceDir(),
+      limit: req.body.limit,
+      userId: req.user.id
+    });
+    res.json(summary);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao importar propostas em lote' });
   }
 });
 
