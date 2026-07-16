@@ -159,6 +159,7 @@ app.use('/api/medical-exams', require('./routes/medicalExams'));
 app.use('/api/epi', require('./routes/epi'));
 app.use('/api/equipment', require('./routes/equipment'));
 app.use('/api/equipment-documents', require('./routes/equipmentDocuments'));
+app.use('/api/vehicle-ai', require('./routes/vehicleAi'));
 app.use('/api/clients', require('./routes/clients'));
 app.use('/api/projects', require('./routes/projects'));
 app.use('/api/technical-documents', require('./routes/technicalDocuments'));

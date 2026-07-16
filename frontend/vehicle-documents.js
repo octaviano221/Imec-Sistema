@@ -12,13 +12,21 @@
       plus: '<path d="M12 5v14M5 12h14"/>',
       search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
       download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>',
-      paperclip: '<path d="m21.4 11.6-8.7 8.7a6 6 0 0 1-8.5-8.5l9.3-9.3a4 4 0 0 1 5.7 5.7l-9.3 9.3a2 2 0 0 1-2.8-2.8l8.7-8.7"/>'
+      paperclip: '<path d="m21.4 11.6-8.7 8.7a6 6 0 0 1-8.5-8.5l9.3-9.3a4 4 0 0 1 5.7 5.7l-9.3 9.3a2 2 0 0 1-2.8-2.8l8.7-8.7"/>',
+      spark: '<path d="m12 3-1.9 5.7L4 11l6.1 2.3L12 19l1.9-5.7L20 11l-6.1-2.3Z"/><path d="M5 3v4"/><path d="M3 5h4"/><path d="M19 17v4"/><path d="M17 19h4"/>'
     };
     return '<svg style="width:1.25rem;height:1.25rem;flex:0 0 1.25rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (icons[name] || icons.doc) + '</svg>';
   }
 
+  function decodeEntities(value) {
+    if (typeof document === 'undefined') return String(value == null ? '' : value);
+    var textarea = document.createElement('textarea');
+    textarea.innerHTML = String(value == null ? '' : value);
+    return textarea.value;
+  }
+
   function esc(value) {
-    return String(value == null ? '' : value).replace(/[&<>"']/g, function (char) {
+    return decodeEntities(value).replace(/[&<>"']/g, function (char) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[char];
     });
   }
@@ -154,6 +162,26 @@
     }).join('');
   }
 
+  function vehicleByPlate(plate) {
+    var clean = String(plate || '').replace(/[^a-z0-9]/gi, '').toUpperCase();
+    if (!clean) return null;
+    return vehicles().find(function (eq) {
+      return String(eq.plate || '').replace(/[^a-z0-9]/gi, '').toUpperCase() === clean;
+    }) || null;
+  }
+
+  function optionList(values, selected) {
+    return values.map(function (value) {
+      return '<option value="' + esc(value) + '"' + (value === selected ? ' selected' : '') + '>' + esc(value) + '</option>';
+    }).join('');
+  }
+
+  function confidenceLabel(value) {
+    var score = Math.round((Number(value) || 0) * 100);
+    var tone = score >= 80 ? 'ok' : score >= 55 ? 'warn' : 'low';
+    return '<span class="vehicle-ai-confidence ' + tone + '">' + score + '% de confian&ccedil;a</span>';
+  }
+
   function vehicleCard(eq) {
     var isCapacity = isCapacityEquipment(eq);
     var docs = vehicleDocs().filter(function (doc) { return same(doc.equipment_id, eq.id); });
@@ -177,12 +205,150 @@
     var expiring = docs.filter(function (doc) { return statusOf(doc.expiration_date, ((db().settings || {}).expiration_alert_days || 30)) === 'vencendo'; }).length;
     var capacity = vehicles().filter(isCapacityEquipment);
     var vehicleCards = vehicles().length ? vehicles().map(vehicleCard).join('') : '<div class="vehicle-empty">Cadastre o primeiro carro, caminh&atilde;o ou guindaste da empresa.</div>';
-    return '<div class="vehicle-docs fade-in"><section class="vehicle-hero"><div><p class="vehicle-kicker">Controle de frota</p><h2>Frota, ve&iacute;culos e laudos de capacidade</h2><p>Cadastre carros, caminh&otilde;es, guindastes e Munck, anexe CRLV/IPVA/licenciamento e controle o vencimento dos laudos de capacidade.</p></div><div class="vehicle-actions"><button class="btn btn-outline" onclick="openVehicleRegister()">Cadastrar ve&iacute;culo</button><button class="btn btn-outline" onclick="openCapacityReport()">' + icon('crane') + 'Laudo de capacidade</button><button class="btn btn-primary" onclick="openVehicleDoc()">' + icon('plus') + 'Novo documento</button></div></section>'
+    return '<div class="vehicle-docs fade-in"><section class="vehicle-hero"><div><p class="vehicle-kicker">Controle de frota</p><h2>Frota, ve&iacute;culos e laudos de capacidade</h2><p>Cadastre carros, caminh&otilde;es, guindastes e Munck, anexe CRLV/IPVA/licenciamento e controle o vencimento dos laudos de capacidade.</p></div><div class="vehicle-actions"><button class="btn btn-outline" onclick="openVehicleRegister()">Cadastrar ve&iacute;culo</button><button class="btn btn-outline" onclick="openCapacityReport()">' + icon('crane') + 'Laudo de capacidade</button><button class="btn btn-outline vehicle-ai-button" onclick="openVehicleAi()">' + icon('spark') + 'Ler com IA</button><button class="btn btn-primary" onclick="openVehicleDoc()">' + icon('plus') + 'Novo documento</button></div></section>'
       + '<div class="vehicle-kpis">' + metricCard('Ve&iacute;culos ativos', activeVehicles.length, 'car', '#1269ff') + metricCard('Laudos capacidade', laudoDocs().length, 'crane', '#7c3aed') + metricCard('Documentos', docs.length, 'doc', '#1269ff') + metricCard('Vencendo', expiring, 'calendar', '#d97706') + metricCard('Vencidos', expired, 'warning', '#dc2626') + '</div>'
       + '<section class="vehicle-section"><div class="vehicle-section-head"><div><h2>Cadastro da frota</h2><p>Carros, caminh&otilde;es, guindastes e Munck da empresa com placa, capacidade e status operacional.</p></div><button class="btn btn-primary btn-sm" onclick="openVehicleRegister()">' + icon('plus') + 'Novo ve&iacute;culo</button></div><div class="vehicle-card-grid">' + vehicleCards + '</div></section>'
       + '<div class="vehicle-grid"><section class="vehicle-section"><div class="vehicle-section-head"><div><h2>' + preview.title + '</h2><p>' + preview.hint + '</p></div></div><div class="vehicle-queue">' + (preview.items.length ? preview.items.map(function (doc) { return queueRow(doc, preview.isQueue); }).join('') : '<div class="vehicle-empty">Nenhum documento de ve&iacute;culo cadastrado ainda.</div>') + '</div></section>'
       + '<section class="vehicle-section"><div class="vehicle-section-head"><div><h2>Controle documental</h2><p>Consulte, filtre e atualize os documentos da frota.</p></div><button class="btn btn-outline btn-sm" onclick="exportVehicleDocsCSV()">Exportar CSV</button></div><div class="vehicle-filterbar"><div class="search-box flex-1 min-w-[240px]">' + icon('search') + '<input class="input" id="vehicleDocSearch" placeholder="Buscar ve&iacute;culo, placa ou documento..." onkeyup="filterVehicleDocs()"></div><select class="input w-auto" id="vehicleDocStatus" onchange="filterVehicleDocs()"><option value="">Todos os status</option><option value="vencido">Vencidos</option><option value="vencendo">Vencendo</option><option value="valido">V&aacute;lidos</option></select></div><div class="vehicle-table-wrap"><table class="vehicle-table" id="vehicleDocsTable"><thead><tr><th>Documento</th><th>Ve&iacute;culo</th><th>N&uacute;mero</th><th>Emiss&atilde;o</th><th>Vencimento</th><th>Status</th><th>Anexo</th><th>A&ccedil;&otilde;es</th></tr></thead><tbody>' + (docs.length ? docs.map(tableRow).join('') : '<tr><td colspan="8"><div class="vehicle-empty">Cadastre o primeiro IPVA ou licenciamento.</div></td></tr>') + '</tbody></table></div></section></div></div>';
   }
+
+  window.openVehicleAi = function () {
+    var html = '<div class="p-6 vehicle-ai-modal"><div class="vehicle-ai-head">' + icon('spark') + '<div><h2>Leitura inteligente de documento</h2><p>Envie CRLV, licenciamento, IPVA, seguro ou laudo. A IA preenche os campos e voc&ecirc; confere antes de salvar.</p></div></div>'
+      + '<form onsubmit="analyzeVehicleDocument(event)">'
+      + '<label class="vehicle-ai-drop" for="vehicleAiFile"><span>' + icon('paperclip') + '</span><strong>Selecionar PDF ou imagem</strong><small>PDF, JPG ou PNG at&eacute; 10 MB. O arquivo tamb&eacute;m fica anexado ao cadastro.</small><input type="file" id="vehicleAiFile" accept="application/pdf,.pdf,image/png,image/jpeg,.jpg,.jpeg" required></label>'
+      + '<div class="vehicle-ai-note"><b>Como funciona:</b> a IA tenta identificar placa, RENAVAM, marca/modelo, propriet&aacute;rio, tipo do documento, emiss&atilde;o e vencimento. Campos incertos ficam para confer&ecirc;ncia manual.</div>'
+      + '<div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" type="submit">' + icon('spark') + 'Ler documento</button></div>'
+      + '</form></div>';
+    if (typeof openModal === 'function') openModal(html);
+  };
+
+  window.analyzeVehicleDocument = async function (event) {
+    event.preventDefault();
+    var input = document.getElementById('vehicleAiFile');
+    var file = input && input.files && input.files[0] ? input.files[0] : null;
+    if (!file) {
+      showToast('Selecione um PDF ou imagem.', 'error');
+      return;
+    }
+    var button = event.target.querySelector('button[type="submit"]');
+    var original = button ? button.innerHTML : '';
+    if (button) {
+      button.disabled = true;
+      button.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px"></div> Lendo...';
+    }
+    try {
+      var fd = new FormData();
+      fd.append('file', file);
+      var result = await API.vehicleAi.analyze(fd);
+      openVehicleAiReview(result);
+    } catch (err) {
+      showToast('IA: ' + (err.message || 'n&atilde;o foi poss&iacute;vel ler o documento'), 'error');
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.innerHTML = original;
+      }
+    }
+  };
+
+  window.openVehicleAiReview = function (result) {
+    var extraction = (result && result.extraction) || {};
+    var vehicle = extraction.vehicle || {};
+    var doc = extraction.document || {};
+    var match = vehicleByPlate(vehicle.plate);
+    var vehicleTypes = ['Carro', 'Caminh&atilde;o', 'Caminh&atilde;o Munck', 'Guindaste', 'Van', 'Pickup', 'Outro'].map(decodeEntities);
+    var docTypes = ['CRLV', 'Licenciamento', 'IPVA', 'Seguro', 'ANTT', 'Tac&oacute;grafo', 'Laudo de capacidade', 'Inspe&ccedil;&atilde;o de guindaste', 'Inspe&ccedil;&atilde;o de caminh&atilde;o Munck', 'Outro'].map(decodeEntities);
+    var warnings = extraction.warnings && extraction.warnings.length ? '<div class="vehicle-ai-warnings"><strong>Conferir:</strong><ul>' + extraction.warnings.map(function (item) { return '<li>' + esc(item) + '</li>'; }).join('') + '</ul></div>' : '';
+    var selectedVehicleType = vehicleTypes.indexOf(vehicle.type) >= 0 ? vehicle.type : 'Outro';
+    var selectedDocType = docTypes.indexOf(doc.type) >= 0 ? doc.type : 'CRLV';
+    var suggestedName = vehicle.name || [vehicle.brand, vehicle.model, vehicle.plate].filter(Boolean).join(' - ') || 'Veiculo da frota';
+    var html = '<div class="p-6 vehicle-ai-modal"><div class="vehicle-ai-head">' + icon('spark') + '<div><h2>Conferir dados lidos pela IA</h2><p>Revise os campos abaixo. Nada vai para o banco antes de clicar em salvar.</p></div>' + confidenceLabel(extraction.confidence) + '</div>' + warnings
+      + '<form onsubmit="saveVehicleAiResult(event)">'
+      + '<input type="hidden" id="aiFileUrl" value="' + esc(result && result.file_url) + '">'
+      + '<div class="vehicle-ai-review">'
+      + '<section><h3>Ve&iacute;culo</h3><div class="grid md:grid-cols-2 gap-4">'
+      + '<div class="md:col-span-2"><label class="label">Vincular cadastro</label><select class="input" id="aiExistingVehicle"><option value="">Criar novo ve&iacute;culo</option>' + vehicleOptions(match && match.id) + '</select><p class="vehicle-file-hint">' + (match ? 'Encontramos um ve&iacute;culo com essa placa. Ele j&aacute; vem selecionado.' : 'Se este ve&iacute;culo j&aacute; existe, selecione-o aqui para anexar o documento nele.') + '</p></div>'
+      + '<div><label class="label">Nome *</label><input class="input" id="aiFleetName" value="' + esc(suggestedName) + '" required></div>'
+      + '<div><label class="label">Tipo *</label><select class="input" id="aiFleetType" required>' + optionList(vehicleTypes, selectedVehicleType) + '</select></div>'
+      + '<div><label class="label">Marca</label><input class="input" id="aiFleetBrand" value="' + esc(vehicle.brand) + '"></div>'
+      + '<div><label class="label">Modelo</label><input class="input" id="aiFleetModel" value="' + esc(vehicle.model) + '"></div>'
+      + '<div><label class="label">Placa</label><input class="input" id="aiFleetPlate" value="' + esc(vehicle.plate) + '"></div>'
+      + '<div><label class="label">Ano</label><input class="input" id="aiFleetYear" value="' + esc(vehicle.year) + '"></div>'
+      + '<div><label class="label">Chassi / s&eacute;rie</label><input class="input" id="aiFleetSerial" value="' + esc(vehicle.serial_number) + '"></div>'
+      + '<div><label class="label">Propriet&aacute;rio</label><input class="input" id="aiFleetOwner" value="' + esc(vehicle.owner) + '"></div>'
+      + '</div></section>'
+      + '<section><h3>Documento</h3><div class="grid md:grid-cols-2 gap-4">'
+      + '<div><label class="label">Tipo *</label><select class="input" id="aiDocType" required>' + optionList(docTypes, selectedDocType) + '</select></div>'
+      + '<div><label class="label">N&uacute;mero / refer&ecirc;ncia</label><input class="input" id="aiDocNumber" value="' + esc(doc.number || doc.exercise_year) + '"></div>'
+      + '<div><label class="label">Data de emiss&atilde;o</label><input type="date" class="input" id="aiDocIssue" value="' + esc(doc.issue_date || '') + '"></div>'
+      + '<div><label class="label">Data de vencimento *</label><input type="date" class="input" id="aiDocExp" value="' + esc(doc.expiration_date || '') + '" required></div>'
+      + '<div><label class="label">Respons&aacute;vel</label><input class="input" id="aiDocResponsible" value=""></div>'
+      + '<div><label class="label">Arquivo</label><a class="vehicle-download vehicle-ai-file" href="' + esc(result && result.file_url) + '" target="_blank" download>' + icon('download') + 'Baixar anexo</a></div>'
+      + '<div class="md:col-span-2"><label class="label">Observa&ccedil;&otilde;es</label><textarea class="input" rows="3" id="aiDocNotes">' + esc(doc.notes) + '</textarea></div>'
+      + '</div></section></div>'
+      + '<div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="openVehicleAi()">Voltar</button><button class="btn btn-primary" type="submit">Salvar ve&iacute;culo e documento</button></div></form></div>';
+    if (typeof openModal === 'function') openModal(html);
+  };
+
+  window.saveVehicleAiResult = async function (event) {
+    event.preventDefault();
+    var selectedVehicleId = document.getElementById('aiExistingVehicle').value;
+    var vehicleData = {
+      name: document.getElementById('aiFleetName').value,
+      type: document.getElementById('aiFleetType').value,
+      brand: document.getElementById('aiFleetBrand').value,
+      model: document.getElementById('aiFleetModel').value,
+      serial_number: document.getElementById('aiFleetSerial').value,
+      asset_number: '',
+      plate: document.getElementById('aiFleetPlate').value,
+      year: document.getElementById('aiFleetYear').value,
+      capacity: '',
+      owner: document.getElementById('aiFleetOwner').value,
+      status: 'ativo',
+      photo_url: '',
+      notes: 'Cadastro auxiliado por IA a partir de documento anexado.'
+    };
+    var docType = document.getElementById('aiDocType').value;
+    var exp = document.getElementById('aiDocExp').value;
+    try {
+      var equipmentId = selectedVehicleId;
+      if (equipmentId) {
+        var current = (db().equipment || []).find(function (item) { return same(item.id, equipmentId); }) || {};
+        await API.equipment.update(equipmentId, Object.assign({}, current, {
+          name: current.name || vehicleData.name,
+          type: current.type || vehicleData.type,
+          brand: current.brand || vehicleData.brand,
+          model: current.model || vehicleData.model,
+          serial_number: current.serial_number || vehicleData.serial_number,
+          plate: current.plate || vehicleData.plate,
+          year: current.year || vehicleData.year,
+          owner: current.owner || vehicleData.owner,
+          status: current.status || 'ativo'
+        }));
+      } else {
+        var created = await API.equipment.create(vehicleData);
+        equipmentId = created.id;
+      }
+      await API.equipmentDocs.create({
+        equipment_id: equipmentId,
+        document_type: docType,
+        title: docType + ' - ' + (selectedVehicleId ? vehicleName(equipmentId) : vehicleData.name),
+        document_number: document.getElementById('aiDocNumber').value,
+        issue_date: document.getElementById('aiDocIssue').value || null,
+        expiration_date: exp,
+        responsible_name: document.getElementById('aiDocResponsible').value,
+        file_url: document.getElementById('aiFileUrl').value,
+        status: statusOf(exp, ((db().settings || {}).expiration_alert_days || 30)),
+        notes: document.getElementById('aiDocNotes').value
+      });
+      await refreshData();
+      closeModal();
+      await renderPage();
+      showToast('Documento importado com IA e salvo com sucesso!', 'success');
+    } catch (err) {
+      showToast('Erro ao salvar: ' + err.message, 'error');
+    }
+  };
 
   window.openVehicleDoc = function (id) {
     var doc = id ? vehicleDocs().find(function (item) { return same(item.id, id); }) : null;

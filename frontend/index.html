@@ -433,7 +433,8 @@ const API = {
   },
   auditLogs: { list: () => apiFetch('/api/audit-logs') },
   dashboard: { get: () => apiFetch('/api/dashboard') },
-  upload: (fd) => apiFetch('/api/upload', { method: 'POST', body: fd })
+  upload: (fd) => apiFetch('/api/upload', { method: 'POST', body: fd }),
+  vehicleAi: { analyze: (fd) => apiFetch('/api/vehicle-ai/analyze', { method: 'POST', body: fd }) }
 };
 
 let _cache = {};
