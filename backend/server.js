@@ -14,6 +14,10 @@ const PORT = process.env.PORT || 3000;
 const frontendDir = path.join(__dirname, '../frontend');
 const indexFile = path.join(frontendDir, 'index.html');
 
+// Hostinger runs the Node app behind a reverse proxy. Trusting the first proxy
+// lets express-rate-limit read the real client IP without raising warnings.
+app.set('trust proxy', 1);
+
 process.on('unhandledRejection', (err) => {
   console.error('Unhandled rejection capturada:', err && err.message ? err.message : err);
 });
