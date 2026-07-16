@@ -38,3 +38,27 @@ node scripts/import-proposals.js --source "/home/u974096246/uploads-imec/propost
 - Clientes conhecidos sao normalizados para evitar repeticoes.
 - Arquivos com baixa confianca aparecem na previa para revisao.
 - Os PDFs sao copiados para `UPLOAD_DIR/proposals` e ficam vinculados no campo de anexo da proposta.
+
+## Carga inicial sem anexar PDFs
+
+O projeto tambem inclui:
+
+```text
+database/proposals-import-manifest.json
+```
+
+Esse arquivo foi gerado a partir da pasta local com 2.476 PDFs e contem apenas os dados para cadastrar clientes e propostas, sem salvar os PDFs no Git.
+
+Ao reimplantar o site, o backend le esse manifesto e cadastra automaticamente os clientes/propostas que ainda nao existem no banco. A importacao e idempotente: se rodar de novo, ele pula o que ja foi cadastrado.
+
+Para desativar essa carga automatica, crie a variavel:
+
+```text
+DISABLE_PROPOSAL_MANIFEST_IMPORT=true
+```
+
+Para importar manualmente sem copiar os PDFs:
+
+```powershell
+node scripts/import-proposals.js --source "C:\Users\Octaviano\OneDrive\Documentos\Propostas IMEC" --import --no-files
+```

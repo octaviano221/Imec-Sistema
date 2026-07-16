@@ -8,6 +8,7 @@ const path = require('path');
 const fs = require('fs');
 const db = require('./config/db');
 const upload = require('./middleware/upload');
+const { importProposals } = require('./services/proposalImporter');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -101,6 +102,29 @@ async function applyCompatibilityMigrations() {
         console.warn('Compatibilidade do banco nao aplicada:', msg || err.code || 'erro desconhecido');
       }
     }
+  }
+}
+
+async function importBundledProposalManifest() {
+  if (String(process.env.DISABLE_PROPOSAL_MANIFEST_IMPORT || '').toLowerCase() === 'true') return;
+
+  const manifestPath = process.env.PROPOSALS_MANIFEST_PATH || path.join(__dirname, '../database/proposals-import-manifest.json');
+  if (!fs.existsSync(manifestPath)) return;
+
+  try {
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    const items = Array.isArray(manifest.items) ? manifest.items : [];
+    if (!items.length) return;
+
+    const result = await importProposals(db, {
+      items,
+      sourceDir: manifest.sourceDir || 'proposals-import-manifest',
+      attachFiles: false
+    });
+
+    console.log(`Propostas do manifesto: ${result.imported} importadas, ${result.skipped} ja existentes, ${result.failed} falhas.`);
+  } catch (err) {
+    console.warn('Importacao automatica de propostas ignorada:', err && err.message ? err.message : err);
   }
 }
 
@@ -199,9 +223,11 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Rota não encontrada' });
 });
 
-applyCompatibilityMigrations().catch((err) => {
-  console.warn('Migracoes de compatibilidade ignoradas:', err && err.message ? err.message : err);
-});
+applyCompatibilityMigrations()
+  .then(importBundledProposalManifest)
+  .catch((err) => {
+    console.warn('Migracoes/importacao de compatibilidade ignoradas:', err && err.message ? err.message : err);
+  });
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 IMEC Compliance Industrial API running on port ${PORT}`);

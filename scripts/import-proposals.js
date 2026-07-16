@@ -13,6 +13,7 @@ function parseArgs(argv) {
     source: '',
     preview: false,
     import: false,
+    noFiles: false,
     limit: 0,
     json: false
   };
@@ -22,6 +23,7 @@ function parseArgs(argv) {
     if (item === '--source') args.source = argv[++index] || '';
     else if (item === '--preview') args.preview = true;
     else if (item === '--import') args.import = true;
+    else if (item === '--no-files') args.noFiles = true;
     else if (item === '--limit') args.limit = Number(argv[++index] || 0);
     else if (item === '--json') args.json = true;
     else if (item === '--help' || item === '-h') args.help = true;
@@ -40,6 +42,7 @@ Uso:
 Opcoes:
   --preview       So analisa a pasta e gera relatorios em tmp/.
   --import        Importa para o banco configurado nas variaveis DB_*.
+  --no-files      Cadastra clientes/propostas sem copiar/anexar os PDFs.
   --limit N       Limita a quantidade para teste.
   --json          Imprime JSON completo no terminal.
 `);
@@ -133,7 +136,8 @@ async function main() {
   if (args.limit) console.log(`Modo teste: ${args.limit} arquivo(s).`);
   const result = await importProposals(db, {
     sourceDir,
-    limit: args.limit
+    limit: args.limit,
+    attachFiles: !args.noFiles
   });
   console.log(JSON.stringify(result, null, 2));
   await db.end();

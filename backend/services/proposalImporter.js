@@ -315,9 +315,16 @@ function copyProposalFile(item, uploadDir = getUploadDir()) {
 }
 
 async function importProposals(db, options = {}) {
-  const scan = scanProposals(options.sourceDir);
+  const scan = Array.isArray(options.items)
+    ? {
+        sourceDir: options.sourceDir || 'manifest',
+        totalFiles: options.items.length,
+        items: options.items
+      }
+    : scanProposals(options.sourceDir);
   const limit = Number(options.limit || 0);
   const items = limit > 0 ? scan.items.slice(0, limit) : scan.items;
+  const attachFiles = options.attachFiles !== false;
   const summary = {
     sourceDir: scan.sourceDir,
     totalFiles: scan.totalFiles,
@@ -339,7 +346,7 @@ async function importProposals(db, options = {}) {
       }
       const clientId = await findOrCreateClient(db, item.client, options.userId);
       summary.clientsCreatedOrFound.add(clientId);
-      const fileUrl = copyProposalFile(item, options.uploadDir);
+      const fileUrl = attachFiles ? copyProposalFile(item, options.uploadDir) : null;
       const p = item.proposal;
       const [result] = await db.query(`
         INSERT INTO technical_proposals (
