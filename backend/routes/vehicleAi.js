@@ -153,7 +153,10 @@ router.post('/analyze', authenticate, upload.single('file'), async (req, res) =>
 
     const payload = await openaiResponse.json().catch(() => ({}));
     if (!openaiResponse.ok) {
-      const message = payload.error && payload.error.message ? payload.error.message : 'Erro ao consultar a IA.';
+      const openaiMessage = payload.error && payload.error.message ? payload.error.message : '';
+      const message = openaiResponse.status === 401
+        ? 'Chave da OpenAI invalida. Confira a variavel OPENAI_API_KEY na Hostinger.'
+        : openaiMessage || 'Erro ao consultar a IA.';
       return res.status(502).json({ message });
     }
 
