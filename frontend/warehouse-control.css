@@ -4,6 +4,38 @@
   gap: 18px;
 }
 
+#sidebar .sidebar-link[data-page="warehouse"] {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 8px 16px !important;
+  margin: 1px 10px !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
+#sidebar .sidebar-link[data-page="warehouse"] svg {
+  width: 20px !important;
+  height: 20px !important;
+  flex: 0 0 20px !important;
+  position: static !important;
+  transform: none !important;
+}
+
+#sidebar .sidebar-link[data-page="warehouse"] span {
+  display: inline !important;
+  min-width: 0;
+  white-space: normal;
+}
+
+#sidebar .sidebar-link[data-page="warehouse"].active::before,
+#sidebar .sidebar-link[data-page="warehouse"].active::after {
+  content: none !important;
+  display: none !important;
+}
+
 .warehouse-hero,
 .warehouse-card,
 .warehouse-panel {
