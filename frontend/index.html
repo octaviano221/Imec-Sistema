@@ -107,6 +107,76 @@ tr:hover td{background:#f8fafc}
 .spinner{width:40px;height:40px;border:4px solid #e5e7eb;border-top-color:#145DA0;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .btn:disabled{opacity:.6;cursor:not-allowed;transform:none!important}
+body.modal-open{overflow:hidden}
+#modalOverlay{
+background:rgba(5,17,35,.58)!important;
+backdrop-filter:blur(10px);
+align-items:flex-start;
+overflow-y:auto;
+padding:clamp(14px,2vw,30px);
+}
+#modalContent{
+border:1px solid rgba(191,211,238,.95);
+box-shadow:0 30px 90px rgba(9,31,62,.30),0 0 0 1px rgba(255,255,255,.55) inset;
+max-height:calc(100dvh - 28px);
+scrollbar-gutter:stable;
+}
+#modalContent.modal-form-mode{
+border-radius:20px;
+background:linear-gradient(180deg,#fff 0%,#f8fbff 100%);
+}
+#modalContent.modal-wide{max-width:min(1040px,96vw)!important}
+#modalContent.modal-extra-wide{max-width:min(1120px,96vw)!important}
+#modalContent .app-modal-body{
+padding:28px!important;
+}
+#modalContent .app-modal-body>h2,
+#modalContent .app-modal-body .vehicle-ai-head h2{
+font-size:24px;
+line-height:1.15;
+letter-spacing:0;
+}
+#modalContent form{
+display:block;
+}
+#modalContent .input{
+background:#fbfdff;
+border-color:#dbe6f5;
+min-height:44px;
+}
+#modalContent .input:focus{
+background:#fff;
+border-color:#0B6FE8;
+box-shadow:0 0 0 4px rgba(11,111,232,.10);
+}
+#modalContent .label{
+color:#263852;
+font-size:13px;
+font-weight:800;
+}
+#modalContent .app-modal-actions{
+position:sticky;
+bottom:0;
+z-index:8;
+margin:22px -28px -28px;
+padding:16px 28px;
+background:rgba(255,255,255,.96);
+border-top:1px solid #dbe6f5;
+backdrop-filter:blur(10px);
+box-shadow:0 -12px 32px rgba(15,35,65,.08);
+}
+@media(max-width:768px){
+#modalOverlay{padding:0;align-items:stretch}
+#modalContent{
+width:100vw!important;
+max-width:100vw!important;
+min-height:100dvh;
+max-height:100dvh;
+border-radius:0!important;
+}
+#modalContent .app-modal-body{padding:20px!important}
+#modalContent .app-modal-actions{margin:20px -20px -20px;padding:14px 20px}
+}
 </style>
 </head>
 <body class="font-body bg-imec-gray min-h-screen">
@@ -563,9 +633,42 @@ function showToast(msg, type) {
   setTimeout(() => { div.style.opacity = '0'; setTimeout(() => div.remove(), 300); }, 3500);
 }
 
-function openModal(html) { document.getElementById('modalContent').innerHTML = html; document.getElementById('modalOverlay').classList.remove('hidden'); }
-function closeModal() { document.getElementById('modalOverlay').classList.add('hidden'); }
-document.getElementById('modalOverlay').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+const MODAL_CONTENT_BASE = 'bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto';
+function enhanceModalContent(content) {
+  content.className = MODAL_CONTENT_BASE;
+  const body = content.firstElementChild;
+  if (body) body.classList.add('app-modal-body');
+  if (content.querySelector('form')) content.classList.add('modal-form-mode');
+  if (content.querySelector('.warehouse-modal-wide, .proposal-modal, .vehicle-ai-modal')) content.classList.add('modal-wide');
+  if (content.querySelector('.warehouse-modal-wide')) content.classList.add('modal-extra-wide');
+  content.querySelectorAll('.flex.justify-end, .modal-actions, .warehouse-form-actions').forEach(function(row) {
+    row.classList.add('app-modal-actions');
+  });
+  const firstField = content.querySelector('input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])');
+  if (firstField) setTimeout(function() { firstField.focus({ preventScroll: true }); }, 40);
+}
+function openModal(html) {
+  const content = document.getElementById('modalContent');
+  content.innerHTML = html;
+  enhanceModalContent(content);
+  document.getElementById('modalOverlay').classList.remove('hidden');
+  document.body.classList.add('modal-open');
+}
+function closeModal() {
+  document.getElementById('modalOverlay').classList.add('hidden');
+  document.getElementById('modalContent').innerHTML = '';
+  document.body.classList.remove('modal-open');
+}
+document.getElementById('modalOverlay').addEventListener('click', function(e) {
+  if (e.target === this) showToast('Use Cancelar ou Salvar para fechar sem perder os dados.', 'info');
+});
+document.addEventListener('keydown', function(e) {
+  const overlay = document.getElementById('modalOverlay');
+  if (e.key === 'Escape' && overlay && !overlay.classList.contains('hidden')) {
+    e.preventDefault();
+    showToast('Use Cancelar ou Salvar para fechar sem perder os dados.', 'info');
+  }
+});
 
 function openPublicConsult() { document.getElementById('appShell').classList.add('hidden'); document.getElementById('publicPage').classList.remove('hidden'); document.getElementById('publicConsultForm').classList.remove('hidden'); document.getElementById('publicResult').innerHTML = ''; }
 function closePublicPage() { const u = getUser(); if (u) { document.getElementById('publicPage').classList.add('hidden'); document.getElementById('appShell').classList.remove('hidden'); } else { document.getElementById('publicPage').classList.add('hidden'); document.getElementById('loginScreen').classList.remove('hidden'); } }
