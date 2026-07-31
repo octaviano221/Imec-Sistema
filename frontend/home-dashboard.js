@@ -28,29 +28,10 @@
   }
 
   function decodeEntities(value) {
-    var entities = {
-      amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ',
-      aacute: 'á', eacute: 'é', iacute: 'í', oacute: 'ó', uacute: 'ú',
-      Aacute: 'Á', Eacute: 'É', Iacute: 'Í', Oacute: 'Ó', Uacute: 'Ú',
-      agrave: 'à', egrave: 'è', igrave: 'ì', ograve: 'ò', ugrave: 'ù',
-      Agrave: 'À', Egrave: 'È', Igrave: 'Ì', Ograve: 'Ò', Ugrave: 'Ù',
-      acirc: 'â', ecirc: 'ê', icirc: 'î', ocirc: 'ô', ucirc: 'û',
-      Acirc: 'Â', Ecirc: 'Ê', Icirc: 'Î', Ocirc: 'Ô', Ucirc: 'Û',
-      atilde: 'ã', otilde: 'õ', Atilde: 'Ã', Otilde: 'Õ',
-      ccedil: 'ç', Ccedil: 'Ç',
-      uuml: 'ü', Uuml: 'Ü',
-      ordm: 'º', ordf: 'ª',
-      ndash: '-', mdash: '-', hellip: '...', rsaquo: '›', laquo: '«', raquo: '»'
-    };
-    return String(value == null ? '' : value).replace(/&(#x?[0-9a-fA-F]+|[a-zA-Z]+);/g, function (match, entity) {
-      if (entity.charAt(0) === '#') {
-        var code = entity.charAt(1).toLowerCase() === 'x'
-          ? parseInt(entity.slice(2), 16)
-          : parseInt(entity.slice(1), 10);
-        return Number.isFinite(code) ? String.fromCharCode(code) : match;
-      }
-      return Object.prototype.hasOwnProperty.call(entities, entity) ? entities[entity] : match;
-    });
+    if (typeof document === 'undefined') return String(value == null ? '' : value);
+    var textarea = document.createElement('textarea');
+    textarea.innerHTML = String(value == null ? '' : value);
+    return textarea.value;
   }
 
   function esc(value) {
@@ -672,6 +653,7 @@
       + reportCard('rpt_aso_expired', 'ASOs vencidos', 'Exames m&eacute;dicos vencidos por colaborador.', 'heart', 'Sa&uacute;de')
       + reportCard('rpt_eq_expired', 'Equipamentos com laudo vencido', 'Equipamentos que exigem regulariza&ccedil;&atilde;o.', 'crane', 'Equipamentos')
       + reportNavCard('vehicleDocuments', 'Documentos de ve&iacute;culos', 'Fila de IPVA, licenciamento, CRLV, seguro, ANTT e laudos de capacidade.', 'certificate', 'Frota')
+      + reportNavCard('warehouse', 'Almoxarifado e compras', 'Fornecedores, pedidos de compra, estoque minimo e materiais por obra.', 'certificate', 'Compras')
       + '</div></section><div id="reportOutput" class="mt-6"></div></div>';
   }
 
@@ -702,6 +684,7 @@
       + actionCard('Cadastrar funcion&aacute;rio', 'users', 'editEmployee()')
       + actionCard('Nova obra', 'crane', 'editProject()')
       + actionCard('Docs. ve&iacute;culos', 'certificate', "navigate('vehicleDocuments')")
+      + actionCard('Almoxarifado', 'certificate', "navigate('warehouse')")
       + actionCard('Carteirinha', 'clipboard', "navigate('idcards')")
       + '</div></section></div>'
       + '</div>';

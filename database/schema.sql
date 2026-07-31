@@ -196,6 +196,74 @@ CREATE TABLE equipment_documents (
 ) ENGINE=InnoDB;
 
 -- ============================================
+-- WAREHOUSE / PURCHASE CONTROL
+-- ============================================
+CREATE TABLE stock_suppliers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    cnpj VARCHAR(20),
+    contact_name VARCHAR(255),
+    phone VARCHAR(30),
+    email VARCHAR(255),
+    address TEXT,
+    status ENUM('ativo', 'inativo') NOT NULL DEFAULT 'ativo',
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE stock_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    category VARCHAR(100),
+    unit VARCHAR(30) DEFAULT 'un',
+    ca_number VARCHAR(80),
+    supplier_id INT,
+    current_stock DECIMAL(12,2) NOT NULL DEFAULT 0,
+    minimum_stock DECIMAL(12,2) NOT NULL DEFAULT 0,
+    average_cost DECIMAL(12,2) NOT NULL DEFAULT 0,
+    location VARCHAR(255),
+    status ENUM('ativo', 'inativo') NOT NULL DEFAULT 'ativo',
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (supplier_id) REFERENCES stock_suppliers(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE purchase_orders (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    order_number VARCHAR(80) NOT NULL UNIQUE,
+    supplier_id INT,
+    requester_name VARCHAR(255),
+    department VARCHAR(255),
+    priority ENUM('baixa', 'normal', 'alta', 'urgente') NOT NULL DEFAULT 'normal',
+    status ENUM('solicitado', 'aprovado', 'comprado', 'recebido', 'cancelado') NOT NULL DEFAULT 'solicitado',
+    order_date DATE,
+    expected_date DATE,
+    received_date DATE,
+    total_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+    file_url MEDIUMTEXT,
+    notes TEXT,
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (supplier_id) REFERENCES stock_suppliers(id) ON DELETE SET NULL,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE purchase_order_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    purchase_order_id INT NOT NULL,
+    stock_item_id INT,
+    description VARCHAR(255) NOT NULL,
+    quantity DECIMAL(12,2) NOT NULL DEFAULT 1,
+    unit_price DECIMAL(12,2) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(id) ON DELETE CASCADE,
+    FOREIGN KEY (stock_item_id) REFERENCES stock_items(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+-- ============================================
 -- CLIENTS
 -- ============================================
 CREATE TABLE clients (
@@ -395,6 +463,12 @@ CREATE INDEX idx_certificates_code ON certificates(certificate_code);
 CREATE INDEX idx_medical_exams_employee ON medical_exams(employee_id);
 CREATE INDEX idx_epi_employee ON epi_records(employee_id);
 CREATE INDEX idx_equipment_docs_equipment ON equipment_documents(equipment_id);
+CREATE INDEX idx_stock_items_supplier ON stock_items(supplier_id);
+CREATE INDEX idx_stock_items_stock ON stock_items(current_stock, minimum_stock);
+CREATE INDEX idx_purchase_orders_supplier ON purchase_orders(supplier_id);
+CREATE INDEX idx_purchase_orders_status ON purchase_orders(status);
+CREATE INDEX idx_purchase_orders_expected ON purchase_orders(expected_date);
+CREATE INDEX idx_purchase_order_items_order ON purchase_order_items(purchase_order_id);
 CREATE INDEX idx_projects_client ON projects(client_id);
 CREATE INDEX idx_project_employees_project ON project_employees(project_id);
 CREATE INDEX idx_project_equipment_project ON project_equipment(project_id);
