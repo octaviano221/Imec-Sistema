@@ -86,6 +86,36 @@
   justify-content: flex-end;
 }
 
+.warehouse-page .btn {
+  min-height: 44px;
+  justify-content: center;
+  line-height: 1.15;
+}
+
+.warehouse-page .btn svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  stroke-width: 2.2;
+}
+
+.warehouse-page .btn-primary svg {
+  width: 20px;
+  height: 20px;
+  flex-basis: 20px;
+}
+
+.warehouse-actions .btn {
+  min-width: 118px;
+  max-width: 172px;
+  padding: 12px 18px;
+  white-space: normal;
+}
+
+.warehouse-actions .btn-primary {
+  min-width: 172px;
+}
+
 .warehouse-kpis {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -332,6 +362,13 @@
   .warehouse-filterbar {
     align-items: stretch;
     flex-direction: column;
+  }
+  .warehouse-actions {
+    width: 100%;
+  }
+  .warehouse-actions .btn {
+    max-width: none;
+    width: 100%;
   }
   .warehouse-kpis {
     grid-template-columns: 1fr;
