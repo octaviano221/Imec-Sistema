@@ -543,65 +543,189 @@ function drawBox(doc, x, y, w, h, title, value, options = {}) {
     .text(String(value || '-'), x + 7, y + 19, { width: w - 14, height: h - 24 });
 }
 
+function formatDateTime(value) {
+  if (!value) return '-';
+  const text = String(value).trim();
+  const date = normalizeDate(text);
+  const time = (text.match(/T(\d{2}:\d{2}:\d{2})/) || text.match(/\s(\d{2}:\d{2}:\d{2})/) || [])[1];
+  return date ? `${formatDate(date)}${time ? ' ' + time : ''}` : text;
+}
+
+function formatCep(value) {
+  const d = digits(value);
+  return d.length === 8 ? d.replace(/^(\d{5})(\d{3})$/, '$1-$2') : (value || '-');
+}
+
+function fiscalParty(block) {
+  const address = firstBlock(block, 'enderEmit') || firstBlock(block, 'enderDest');
+  const street = [firstTag(address, 'xLgr'), firstTag(address, 'nro')].filter(Boolean).join(', ');
+  const city = [firstTag(address, 'xMun'), firstTag(address, 'UF')].filter(Boolean).join(' - ');
+  return {
+    name: firstTag(block, 'xNome'),
+    doc: digits(firstTag(block, 'CNPJ') || firstTag(block, 'CPF')),
+    ie: firstTag(block, 'IE'),
+    phone: firstTag(address, 'fone'),
+    address: [
+      street,
+      firstTag(address, 'xBairro'),
+      city,
+      formatCep(firstTag(address, 'CEP'))
+    ].filter((item) => item && item !== '-').join(' | ')
+  };
+}
+
+function fiscalXmlExtras(invoice) {
+  const xmlPath = resolveFiscalXmlPath(invoice && invoice.xml_url);
+  if (!xmlPath) return {};
+  try {
+    const raw = fs.readFileSync(xmlPath, 'utf8');
+    const xml = stripNs(raw);
+    const emit = fiscalParty(firstBlock(xml, 'emit'));
+    const dest = fiscalParty(firstBlock(xml, 'dest'));
+    const total = firstBlock(firstBlock(xml, 'total'), 'ICMSTot') || firstBlock(xml, 'ICMSTot');
+    const infProt = firstBlock(xml, 'infProt');
+    return {
+      emit,
+      dest,
+      protocol: firstTag(infProt, 'nProt'),
+      auth_date: firstTag(infProt, 'dhRecbto'),
+      status_code: firstTag(infProt, 'cStat'),
+      status_reason: firstTag(infProt, 'xMotivo'),
+      tp_nf: firstTag(xml, 'tpNF'),
+      state_tax_subst_base: num(firstTag(total, 'vBCST')),
+      state_tax_subst: num(firstTag(total, 'vST')),
+      insurance_value: num(firstTag(total, 'vSeg')),
+      other_value: num(firstTag(total, 'vOutro')),
+      import_tax: num(firstTag(total, 'vII'))
+    };
+  } catch (err) {
+    return {};
+  }
+}
+
+function drawBarcode(doc, value, x, y, w, h) {
+  const key = digits(value);
+  if (!key) {
+    doc.rect(x, y, w, h).strokeColor('#cbd5e1').lineWidth(0.5).stroke();
+    doc.fillColor('#64748b').font('Helvetica').fontSize(6).text('Chave nao informada', x, y + h / 2 - 3, { width: w, align: 'center' });
+    return;
+  }
+  doc.save();
+  doc.rect(x, y, w, h).fill('#ffffff');
+  let cursor = x + 2;
+  for (let i = 0; i < key.length && cursor < x + w - 2; i += 1) {
+    const n = Number(key[i]);
+    const bar = 0.8 + (n % 4) * 0.45;
+    const gap = 0.7 + (n % 3) * 0.28;
+    doc.rect(cursor, y + 2, bar, h - 4).fill('#111827');
+    cursor += bar + gap;
+  }
+  doc.restore();
+  doc.rect(x, y, w, h).strokeColor('#334155').lineWidth(0.4).stroke();
+}
+
+function drawDanfeCell(doc, x, y, w, h, title, value, opts = {}) {
+  doc.rect(x, y, w, h).strokeColor('#1f2937').lineWidth(0.35).stroke();
+  doc.fillColor('#334155').font('Helvetica-Bold').fontSize(5.8).text(String(title || '').toUpperCase(), x + 3, y + 3, { width: w - 6 });
+  doc.fillColor('#111827').font(opts.bold === false ? 'Helvetica' : 'Helvetica-Bold').fontSize(opts.size || 7.2)
+    .text(String(value || '-'), x + 3, y + 13, { width: w - 6, height: h - 16 });
+}
+
 function drawTableHeader(doc, y) {
   const cols = [
-    [36, 28, 'ITEM'],
-    [64, 58, 'CODIGO'],
-    [122, 184, 'DESCRICAO'],
-    [306, 38, 'NCM'],
-    [344, 32, 'CFOP'],
-    [376, 38, 'QTD'],
-    [414, 36, 'UN'],
-    [450, 53, 'UNITARIO'],
-    [503, 56, 'TOTAL']
+    [24, 24, 'ITEM'],
+    [48, 60, 'COD. PROD.'],
+    [108, 164, 'DESCRICAO DO PRODUTO / SERVICO'],
+    [272, 44, 'NCM/SH'],
+    [316, 34, 'CFOP'],
+    [350, 26, 'UN'],
+    [376, 44, 'QTD'],
+    [420, 54, 'V. UNIT.'],
+    [474, 54, 'V. TOTAL'],
+    [528, 44, 'V. ICMS']
   ];
-  doc.rect(36, y, 523, 20).fill('#eef4fb');
+  doc.rect(24, y, 548, 21).fill('#eef4fb');
   doc.fillColor('#263b58').font('Helvetica-Bold').fontSize(6.5);
-  cols.forEach(([x, w, label]) => doc.text(label, x + 3, y + 7, { width: w - 6, align: x >= 414 ? 'right' : 'left' }));
-  doc.strokeColor('#c8d5e6').lineWidth(0.5).rect(36, y, 523, 20).stroke();
+  cols.forEach(([x, w, label]) => doc.text(label, x + 3, y + 4, { width: w - 6, align: x >= 376 ? 'right' : 'left' }));
+  doc.strokeColor('#1f2937').lineWidth(0.35).rect(24, y, 548, 21).stroke();
 }
 
 function drawFiscalDanfe(doc, invoice, items) {
-  const pageBottom = 790;
+  const pageBottom = 802;
   const supplier = shortText(invoice.linked_supplier_name || invoice.supplier_name);
   const fileNumber = shortText(invoice.number, String(invoice.id));
   const accessKey = digits(invoice.access_key);
+  const extras = fiscalXmlExtras(invoice);
+  const emit = extras.emit || {};
+  const dest = extras.dest || {};
+  const isFullXml = Boolean(items && items.length) || Boolean(extras.protocol);
+  const emitName = shortText(emit.name || supplier);
+  const destName = shortText(dest.name || invoice.client_name, 'IMEC INDUSTRIA DE BASE METALURGICA EIRELI');
+  const destDoc = dest.doc || invoice.client_cnpj;
+  const serieModel = 'Serie ' + shortText(invoice.series) + ' | Modelo ' + shortText(invoice.model, '55');
+  const operationKind = extras.tp_nf === '1' ? 'SAIDA' : 'ENTRADA';
 
-  doc.fillColor('#0b2344').font('Helvetica-Bold').fontSize(18).text('DANFE', 36, 34);
-  doc.fontSize(8).fillColor('#53657d').text('Documento Auxiliar da Nota Fiscal Eletronica', 36, 56);
-  doc.roundedRect(410, 32, 149, 42, 6).fill('#0b4fb3');
-  doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(9).text('IMEC COMPLIANCE', 426, 43);
-  doc.font('Helvetica').fontSize(7).text('Modulo fiscal e almoxarifado', 426, 57);
+  doc.rect(20, 20, 555, 804).strokeColor('#111827').lineWidth(0.8).stroke();
+  doc.rect(20, 20, 555, 70).fillAndStroke('#f8fafc', '#111827');
+  doc.fillColor('#0b2344').font('Helvetica-Bold').fontSize(11).text(emitName, 30, 32, { width: 185 });
+  doc.font('Helvetica').fontSize(6.8).fillColor('#334155')
+    .text((emit.address || 'Endereco do emitente no XML') + '\nCNPJ/CPF ' + formatDocument(emit.doc || invoice.supplier_cnpj) + '  IE ' + shortText(emit.ie || invoice.supplier_ie), 30, 48, { width: 185, height: 34 });
 
-  doc.roundedRect(36, 86, 523, 66, 5).strokeColor('#0b2344').lineWidth(1).stroke();
-  doc.fillColor('#0b2344').font('Helvetica-Bold').fontSize(10).text('NF-e ' + fileNumber, 48, 98);
-  doc.fillColor('#53657d').font('Helvetica').fontSize(8).text('Serie ' + shortText(invoice.series) + ' | Modelo ' + shortText(invoice.model, '55'), 48, 115);
-  doc.font('Helvetica-Bold').fontSize(7).text('CHAVE DE ACESSO', 190, 98);
-  doc.font('Courier-Bold').fontSize(10).fillColor('#0b2344').text(accessKey || 'Chave nao informada', 190, 113, { width: 350 });
-  doc.fillColor('#53657d').font('Helvetica').fontSize(7).text('PDF gerado pelo sistema IMEC para conferencia interna. Consulte a validade fiscal no portal oficial da NF-e.', 48, 136, { width: 495 });
+  doc.rect(220, 20, 134, 70).strokeColor('#111827').lineWidth(0.5).stroke();
+  doc.fillColor('#111827').font('Helvetica-Bold').fontSize(17).text('DANFE', 220, 28, { width: 134, align: 'center' });
+  doc.font('Helvetica').fontSize(6.8).text('Documento Auxiliar da Nota Fiscal Eletronica', 226, 49, { width: 122, align: 'center' });
+  doc.font('Helvetica-Bold').fontSize(8).text(operationKind, 226, 66, { width: 122, align: 'center' });
+  doc.font('Helvetica').fontSize(7).text('NF-e ' + fileNumber + '  ' + serieModel, 226, 78, { width: 122, align: 'center' });
 
-  let y = 166;
-  drawBox(doc, 36, y, 252, 46, 'Emitente / Fornecedor', supplier + '\n' + formatDocument(invoice.supplier_cnpj), { size: 8.5 });
-  drawBox(doc, 300, y, 259, 46, 'Destinatario', shortText(invoice.client_name, 'IMEC Servicos de Manutencao Industrial Ltda.') + '\n' + formatDocument(invoice.client_cnpj), { size: 8.5 });
-  y += 56;
+  doc.rect(354, 20, 221, 70).strokeColor('#111827').lineWidth(0.5).stroke();
+  doc.fillColor('#334155').font('Helvetica-Bold').fontSize(6).text('CHAVE DE ACESSO', 364, 28);
+  drawBarcode(doc, accessKey, 364, 39, 195, 22);
+  doc.fillColor('#111827').font('Courier-Bold').fontSize(7.5).text(accessKey || 'Chave nao informada', 364, 64, { width: 195, align: 'center' });
+  doc.fillColor('#475569').font('Helvetica').fontSize(5.7).text('Consulta de autenticidade no portal nacional da NF-e.', 364, 78, { width: 195, align: 'center' });
 
-  drawBox(doc, 36, y, 120, 40, 'Emissao', formatDate(invoice.issue_date));
-  drawBox(doc, 166, y, 120, 40, 'Entrada', formatDate(invoice.entry_date));
-  drawBox(doc, 296, y, 120, 40, 'Natureza da operacao', shortText(invoice.operation_type));
-  drawBox(doc, 426, y, 133, 40, 'Status', shortText(invoice.status, 'conferencia'));
-  y += 52;
+  let y = 90;
+  drawDanfeCell(doc, 20, y, 278, 28, 'Natureza da operacao', shortText(invoice.operation_type), { size: 7 });
+  drawDanfeCell(doc, 298, y, 277, 28, 'Protocolo de autorizacao de uso', extras.protocol ? `${extras.protocol} - ${formatDateTime(extras.auth_date)}` : (isFullXml ? 'Autorizacao nao localizada no XML' : 'Resumo SEFAZ - XML completo ainda nao disponivel'), { size: 7 });
+  y += 28;
 
-  drawBox(doc, 36, y, 100, 40, 'Total produtos', formatMoney(invoice.total_products));
-  drawBox(doc, 146, y, 100, 40, 'Frete', formatMoney(invoice.freight_value));
-  drawBox(doc, 256, y, 100, 40, 'Desconto', formatMoney(invoice.discount_value));
-  drawBox(doc, 366, y, 90, 40, 'ICMS', formatMoney(invoice.icms_value));
-  drawBox(doc, 466, y, 93, 40, 'Total NF-e', formatMoney(invoice.total_invoice), { color: '#0b4fb3', size: 10 });
-  y += 58;
+  doc.rect(20, y, 555, 14).fillAndStroke('#eef4fb', '#111827');
+  doc.fillColor('#111827').font('Helvetica-Bold').fontSize(8).text('DESTINATARIO / REMETENTE', 26, y + 4);
+  y += 14;
+  drawDanfeCell(doc, 20, y, 266, 31, 'Nome / Razao social', destName, { size: 7 });
+  drawDanfeCell(doc, 286, y, 130, 31, 'CNPJ / CPF', formatDocument(destDoc), { size: 7 });
+  drawDanfeCell(doc, 416, y, 74, 31, 'Data emissao', formatDate(invoice.issue_date), { size: 7 });
+  drawDanfeCell(doc, 490, y, 85, 31, 'Data entrada/saida', formatDate(invoice.entry_date), { size: 7 });
+  y += 31;
+  drawDanfeCell(doc, 20, y, 396, 31, 'Endereco', shortText(dest.address, 'Endereco nao informado'), { size: 6.7, bold: false });
+  drawDanfeCell(doc, 416, y, 74, 31, 'Inscricao estadual', shortText(dest.ie), { size: 7 });
+  drawDanfeCell(doc, 490, y, 85, 31, 'Telefone', shortText(dest.phone), { size: 7 });
+  y += 39;
 
-  doc.fillColor('#0b2344').font('Helvetica-Bold').fontSize(11).text('Produtos e servicos', 36, y);
-  y += 18;
+  doc.rect(20, y, 555, 14).fillAndStroke('#eef4fb', '#111827');
+  doc.fillColor('#111827').font('Helvetica-Bold').fontSize(8).text('CALCULO DO IMPOSTO', 26, y + 4);
+  y += 14;
+  drawDanfeCell(doc, 20, y, 82, 30, 'Base ICMS', formatMoney(invoice.icms_base), { size: 7 });
+  drawDanfeCell(doc, 102, y, 82, 30, 'Valor ICMS', formatMoney(invoice.icms_value), { size: 7 });
+  drawDanfeCell(doc, 184, y, 82, 30, 'Base ICMS ST', formatMoney(extras.state_tax_subst_base), { size: 7 });
+  drawDanfeCell(doc, 266, y, 82, 30, 'Valor ICMS ST', formatMoney(extras.state_tax_subst), { size: 7 });
+  drawDanfeCell(doc, 348, y, 76, 30, 'Valor IPI', formatMoney(invoice.ipi_value), { size: 7 });
+  drawDanfeCell(doc, 424, y, 75, 30, 'Valor produtos', formatMoney(invoice.total_products), { size: 7 });
+  drawDanfeCell(doc, 499, y, 76, 30, 'Valor NF-e', formatMoney(invoice.total_invoice), { size: 7.6 });
+  y += 30;
+  drawDanfeCell(doc, 20, y, 82, 30, 'Frete', formatMoney(invoice.freight_value), { size: 7 });
+  drawDanfeCell(doc, 102, y, 82, 30, 'Seguro', formatMoney(extras.insurance_value), { size: 7 });
+  drawDanfeCell(doc, 184, y, 82, 30, 'Desconto', formatMoney(invoice.discount_value), { size: 7 });
+  drawDanfeCell(doc, 266, y, 82, 30, 'Outras despesas', formatMoney(extras.other_value), { size: 7 });
+  drawDanfeCell(doc, 348, y, 76, 30, 'II', formatMoney(extras.import_tax), { size: 7 });
+  drawDanfeCell(doc, 424, y, 75, 30, 'PIS', formatMoney(invoice.pis_value), { size: 7 });
+  drawDanfeCell(doc, 499, y, 76, 30, 'COFINS', formatMoney(invoice.cofins_value), { size: 7 });
+  y += 38;
+
+  doc.rect(20, y, 555, 14).fillAndStroke('#eef4fb', '#111827');
+  doc.fillColor('#111827').font('Helvetica-Bold').fontSize(8).text('DADOS DOS PRODUTOS / SERVICOS', 26, y + 4);
+  y += 14;
   drawTableHeader(doc, y);
-  y += 20;
+  y += 21;
 
   const rows = items && items.length ? items : [{
     item_number: 1,
@@ -619,38 +743,44 @@ function drawFiscalDanfe(doc, invoice, items) {
 
   rows.forEach((item) => {
     const desc = shortText(item.description);
-    const rowHeight = Math.max(24, doc.heightOfString(desc, { width: 176, fontSize: 7 }) + 12);
+    const rowHeight = Math.max(24, doc.heightOfString(desc, { width: 158 }) + 12);
     if (y + rowHeight > pageBottom) {
       doc.addPage();
-      y = 42;
+      doc.rect(20, 20, 555, 804).strokeColor('#111827').lineWidth(0.8).stroke();
+      y = 36;
       drawTableHeader(doc, y);
-      y += 20;
+      y += 21;
     }
-    doc.strokeColor('#e2e8f0').lineWidth(0.5).rect(36, y, 523, rowHeight).stroke();
-    doc.fillColor('#0b2344').font('Helvetica').fontSize(7);
-    doc.text(String(item.item_number || '-'), 39, y + 8, { width: 22 });
-    doc.text(shortText(item.product_code), 67, y + 8, { width: 52 });
-    doc.text(desc, 125, y + 8, { width: 176 });
-    doc.text(shortText(item.ncm), 309, y + 8, { width: 32 });
-    doc.text(shortText(item.cfop), 347, y + 8, { width: 26 });
-    doc.text(String(num(item.quantity) || '-'), 379, y + 8, { width: 32, align: 'right' });
-    doc.text(shortText(item.unit), 417, y + 8, { width: 30, align: 'right' });
-    doc.text(formatMoney(item.unit_value), 453, y + 8, { width: 47, align: 'right' });
-    doc.font('Helvetica-Bold').text(formatMoney(item.total_value), 506, y + 8, { width: 50, align: 'right' });
+    doc.strokeColor('#1f2937').lineWidth(0.25).rect(24, y, 548, rowHeight).stroke();
+    doc.fillColor('#111827').font('Helvetica').fontSize(6.5);
+    doc.text(String(item.item_number || '-'), 27, y + 7, { width: 18 });
+    doc.text(shortText(item.product_code), 51, y + 7, { width: 54 });
+    doc.text(desc, 111, y + 7, { width: 158, height: rowHeight - 9 });
+    doc.text(shortText(item.ncm), 275, y + 7, { width: 38 });
+    doc.text(shortText(item.cfop), 319, y + 7, { width: 28 });
+    doc.text(shortText(item.unit), 353, y + 7, { width: 20, align: 'right' });
+    doc.text(String(num(item.quantity) || '-'), 379, y + 7, { width: 38, align: 'right' });
+    doc.text(formatMoney(item.unit_value), 423, y + 7, { width: 48, align: 'right' });
+    doc.font('Helvetica-Bold').text(formatMoney(item.total_value), 477, y + 7, { width: 48, align: 'right' });
+    doc.font('Helvetica').text(formatMoney(item.icms_value || 0), 531, y + 7, { width: 38, align: 'right' });
     y += rowHeight;
   });
 
-  y += 18;
-  if (y + 106 > pageBottom) {
+  y += 10;
+  if (y + 98 > pageBottom) {
     doc.addPage();
-    y = 42;
+    doc.rect(20, 20, 555, 804).strokeColor('#111827').lineWidth(0.8).stroke();
+    y = 36;
   }
-  doc.roundedRect(36, y, 523, 78, 5).strokeColor('#d8e2f0').lineWidth(0.7).stroke();
-  doc.fillColor('#0b2344').font('Helvetica-Bold').fontSize(9).text('Observacoes fiscais', 48, y + 12);
-  doc.fillColor('#53657d').font('Helvetica').fontSize(8).text(shortText(invoice.notes, 'Sem observacoes.'), 48, y + 28, { width: 495, height: 42 });
-  y += 94;
-  doc.fillColor('#71819a').font('Helvetica').fontSize(7)
-    .text('Emitido em ' + new Date().toLocaleString('pt-BR') + ' pelo IMEC Compliance Industrial.', 36, y, { width: 523, align: 'center' });
+  doc.rect(20, y, 555, 58).strokeColor('#111827').lineWidth(0.35).stroke();
+  doc.fillColor('#0b2344').font('Helvetica-Bold').fontSize(8).text('INFORMACOES COMPLEMENTARES', 28, y + 8);
+  const notes = isFullXml
+    ? shortText(invoice.notes, 'XML oficial armazenado no sistema. Baixe o XML para guardar o documento fiscal eletronico.')
+    : 'Esta nota foi recebida como resumo da SEFAZ. Para ter a NF-e completa, mantenha o XML oficial baixado pelo robo fiscal ou importe o XML completo.';
+  doc.fillColor('#334155').font('Helvetica').fontSize(7).text(notes, 28, y + 22, { width: 520, height: 28 });
+  y += 68;
+  doc.fillColor('#64748b').font('Helvetica').fontSize(6.5)
+    .text('DANFE gerado pelo IMEC Compliance para conferencia. O documento fiscal eletronico valido e o arquivo XML autorizado pela SEFAZ.', 20, y, { width: 555, align: 'center' });
 }
 
 async function getInvoiceWithItems(id) {

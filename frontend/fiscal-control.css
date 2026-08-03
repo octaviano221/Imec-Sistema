@@ -230,6 +230,24 @@
   margin-bottom: 16px;
 }
 
+.fiscal-official-note {
+  align-items: center;
+  background: linear-gradient(135deg, #eff6ff, #ecfdf5);
+  border: 1px solid rgba(59, 130, 246, 0.18);
+  border-radius: 8px;
+  color: #334155;
+  display: flex;
+  font-size: 13px;
+  gap: 8px;
+  line-height: 1.45;
+  margin: -4px 0 16px;
+  padding: 10px 12px;
+}
+
+.fiscal-official-note strong {
+  color: #0b4fb3;
+}
+
 .fiscal-detail-grid {
   display: grid;
   gap: 12px;
@@ -331,6 +349,10 @@
   place-items: center;
   color: #0b63f6;
   background: #fff;
+}
+
+.fiscal-icon-btn-xml {
+  color: #047857;
 }
 
 .fiscal-sefaz-grid {
