@@ -127,6 +127,7 @@ background:linear-gradient(180deg,#fff 0%,#f8fbff 100%);
 }
 #modalContent.modal-wide{max-width:min(1040px,96vw)!important}
 #modalContent.modal-extra-wide{max-width:min(1120px,96vw)!important}
+#modalContent.modal-profile{max-width:min(1240px,96vw)!important}
 #modalContent .app-modal-body{
 padding:28px!important;
 }
@@ -639,11 +640,15 @@ function enhanceModalContent(content) {
   const body = content.firstElementChild;
   if (body) body.classList.add('app-modal-body');
   if (content.querySelector('form')) content.classList.add('modal-form-mode');
-  if (content.querySelector('.warehouse-modal-wide, .proposal-modal, .vehicle-ai-modal')) content.classList.add('modal-wide');
-  if (content.querySelector('.warehouse-modal-wide')) content.classList.add('modal-extra-wide');
-  content.querySelectorAll('.flex.justify-end, .modal-actions, .warehouse-form-actions').forEach(function(row) {
-    row.classList.add('app-modal-actions');
-  });
+  const isProfileModal = !!content.querySelector('.profile-modal');
+  if (content.querySelector('.warehouse-modal-wide, .proposal-modal, .vehicle-ai-modal, .profile-modal')) content.classList.add('modal-wide');
+  if (content.querySelector('.warehouse-modal-wide, .profile-modal')) content.classList.add('modal-extra-wide');
+  if (isProfileModal) content.classList.add('modal-profile');
+  if (!isProfileModal) {
+    content.querySelectorAll('.flex.justify-end, .modal-actions, .warehouse-form-actions').forEach(function(row) {
+      row.classList.add('app-modal-actions');
+    });
+  }
   const firstField = content.querySelector('input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])');
   if (firstField) setTimeout(function() { firstField.focus({ preventScroll: true }); }, 40);
 }
