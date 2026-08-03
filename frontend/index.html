@@ -524,7 +524,9 @@ const API = {
     create: (d) => apiFetch('/api/fiscal/invoices', { method: 'POST', body: JSON.stringify(d) }),
     update: (id, d) => apiFetch('/api/fiscal/invoices/' + id, { method: 'PUT', body: JSON.stringify(d) }),
     delete: (id) => apiFetch('/api/fiscal/invoices/' + id, { method: 'DELETE' }),
-    importXml: (fd) => apiFetch('/api/fiscal/xml/import', { method: 'POST', body: fd })
+    importXml: (fd) => apiFetch('/api/fiscal/xml/import', { method: 'POST', body: fd }),
+    sefazStatus: () => apiFetch('/api/fiscal/sefaz/status'),
+    sefazSync: (d) => apiFetch('/api/fiscal/sefaz/sync', { method: 'POST', body: JSON.stringify(d || {}) })
   },
   competency: {
     list: () => apiFetch('/api/competency'),

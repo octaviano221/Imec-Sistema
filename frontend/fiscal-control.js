@@ -85,7 +85,7 @@
       + fiscalKpi('upload', 'Fornecedores', metrics.suppliers || 0, 'sem repeti&ccedil;&atilde;o')
       + '</section>'
       + '<section class="fiscal-grid"><div class="fiscal-panel"><div class="fiscal-panel-head"><div><h3 class="text-xl">Controle de notas fiscais</h3><p class="text-sm text-slate-500">Consulte por fornecedor, CNPJ, CFOP, n&uacute;mero ou chave da nota.</p></div><button class="btn btn-outline btn-sm" onclick="exportFiscalCsv()">Exportar CSV</button></div><div class="fiscal-panel-body fiscal-filters"><input class="input" id="fiscalSearch" oninput="filterFiscalInvoices()" placeholder="Buscar nota, fornecedor, CNPJ ou CFOP..."><select class="input" id="fiscalStatus" onchange="filterFiscalInvoices()"><option value="">Todos os status</option><option value="conferencia">Confer&ecirc;ncia</option><option value="conferida">Conferida</option><option value="pendente">Pendente</option><option value="cancelada">Cancelada</option></select></div><div class="fiscal-table-wrap"><table class="fiscal-table"><thead><tr><th>Nota</th><th>Fornecedor</th><th>Emiss&atilde;o</th><th>CFOP</th><th>Total</th><th>ICMS</th><th>Status</th><th>A&ccedil;&otilde;es</th></tr></thead><tbody>' + renderInvoiceRows(list) + '</tbody></table></div></div>'
-      + '<aside class="fiscal-panel"><div class="fiscal-panel-head"><div><h3>SPED e CFOP</h3><p class="text-sm text-slate-500">Leitura executiva para confer&ecirc;ncia fiscal.</p></div></div><div class="fiscal-panel-body"><div class="fiscal-upload-box mb-4">' + icon('robot') + '<h4 class="font-bold mt-3 text-imec-dark">Rob&ocirc; fiscal preparado</h4><p class="text-sm text-slate-500 mt-1">A base j&aacute; recebe XML. Depois podemos ligar certificado digital/contador para buscar notas na SEFAZ.</p></div><div class="fiscal-cfop-list">' + (cfops.length ? cfops.map(function (row) { return '<div class="fiscal-cfop-row"><div><b>CFOP ' + esc(row.cfop) + '</b><p class="text-xs text-slate-500">' + row.count + ' nota(s)</p></div><strong>' + money(row.total) + '</strong></div>'; }).join('') : '<div class="fiscal-empty">Nenhum CFOP importado ainda.</div>') + '</div></div></aside></section>'
+      + '<aside class="fiscal-panel"><div class="fiscal-panel-head"><div><h3>SEFAZ, SPED e CFOP</h3><p class="text-sm text-slate-500">Leitura executiva para confer&ecirc;ncia fiscal.</p></div><button class="btn btn-primary btn-sm" onclick="openSefazModal()">' + icon('robot') + ' SEFAZ / A1</button></div><div class="fiscal-panel-body"><div class="fiscal-upload-box mb-4">' + icon('robot') + '<h4 class="font-bold mt-3 text-imec-dark">Rob&ocirc; fiscal por CNPJ</h4><p class="text-sm text-slate-500 mt-1">Com o certificado A1 configurado, o sistema fica pronto para buscar notas emitidas contra o CNPJ da empresa.</p></div><div class="fiscal-cfop-list">' + (cfops.length ? cfops.map(function (row) { return '<div class="fiscal-cfop-row"><div><b>CFOP ' + esc(row.cfop) + '</b><p class="text-xs text-slate-500">' + row.count + ' nota(s)</p></div><strong>' + money(row.total) + '</strong></div>'; }).join('') : '<div class="fiscal-empty">Nenhum CFOP importado ainda.</div>') + '</div></div></aside></section>'
       + '</div>';
   }
   function fiscalKpi(iconName, label, value, note) {
@@ -93,6 +93,37 @@
   }
   window.openFiscalXmlModal = function () {
     openModal('<div class="p-6 fiscal-modal-wide"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Importar XML da NF-e</h2><p class="text-sm text-slate-500 mb-5">Envie o XML oficial. O sistema cadastra a nota e o fornecedor automaticamente.</p><form onsubmit="importFiscalXml(event)"><div class="fiscal-upload-box"><div class="fiscal-kpi-icon mx-auto mb-3">' + icon('upload') + '</div><h3 class="font-bold text-imec-dark mb-2">Selecionar XML da nota fiscal</h3><p class="text-sm text-slate-500 mb-4">Arquivo .xml at&eacute; 10 MB.</p><input class="input max-w-md mx-auto" type="file" id="fiscalXmlFile" accept=".xml,application/xml,text/xml" required></div><div class="bg-blue-50 border border-blue-100 rounded-lg p-4 mt-4 text-sm text-blue-900"><b>Como funciona:</b> o leitor pega chave, n&uacute;mero, fornecedor, CNPJ, emiss&atilde;o, CFOP, produtos, valor total e ICMS. Depois voc&ecirc; confere e ajusta se precisar.</div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary">' + icon('robot') + ' Ler XML</button></div></form></div>');
+  };
+  window.openSefazModal = async function () {
+    openModal('<div class="p-6 fiscal-modal-wide"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Rob&ocirc; SEFAZ por CNPJ</h2><p class="text-sm text-slate-500 mb-5">Consultando configura&ccedil;&atilde;o segura do certificado A1...</p><div class="fiscal-upload-box">' + icon('robot') + '<h3 class="font-bold text-imec-dark mt-3">Verificando ambiente</h3></div></div>');
+    try {
+      var status = await API.fiscal.sefazStatus();
+      var missing = status.missing || [];
+      var checklist = [
+        ['SEFAZ_ENABLED=true', status.enabled],
+        ['SEFAZ_CNPJ configurado', !!status.cnpj],
+        ['SEFAZ_UF configurado', !!status.uf],
+        ['SEFAZ_CERT_PATH configurado', !!status.cert_path_set],
+        ['Arquivo .pfx encontrado', !!status.cert_exists],
+        ['SEFAZ_CERT_PASSWORD configurada', !!status.cert_password_set]
+      ].map(function (item) {
+        return '<li class="' + (item[1] ? 'ok' : 'warn') + '"><span>' + (item[1] ? '&#10003;' : '!') + '</span>' + item[0] + '</li>';
+      }).join('');
+      var readyBox = status.ready
+        ? '<div class="fiscal-sefaz-ready">Certificado A1 localizado. Pronto para instalar a consulta autom&aacute;tica na SEFAZ.</div>'
+        : '<div class="fiscal-sefaz-warn">Ainda falta: ' + esc(missing.join(', ') || 'configura&ccedil;&atilde;o') + '.</div>';
+      openModal('<div class="p-6 fiscal-modal-wide"><div class="fiscal-panel-head px-0 pt-0"><div><h2 class="font-display text-xl font-bold text-imec-dark">Rob&ocirc; SEFAZ por CNPJ</h2><p class="text-sm text-slate-500 mt-1">Busca futura de NF-e emitida contra o CNPJ usando certificado A1.</p></div><span class="fiscal-chip ' + (status.ready ? 'ok' : 'warn') + '">' + (status.ready ? 'A1 pronto' : 'Configurar A1') + '</span></div><div class="fiscal-sefaz-grid"><section><h3>Vari&aacute;veis na Hostinger</h3><ul class="fiscal-sefaz-list">' + checklist + '</ul></section><section><h3>Dados detectados</h3><div class="fiscal-cfop-list"><div class="fiscal-cfop-row"><span>CNPJ</span><b>' + esc(status.cnpj || '-') + '</b></div><div class="fiscal-cfop-row"><span>UF</span><b>' + esc(status.uf || '-') + '</b></div><div class="fiscal-cfop-row"><span>Ambiente</span><b>' + esc(status.environment || '-') + '</b></div></div></section></div>' + readyBox + '<div class="bg-blue-50 border border-blue-100 rounded-lg p-4 mt-4 text-sm text-blue-900"><b>Onde colocar o A1:</b> envie o .pfx para uma pasta fora do public_html, por exemplo <code>/home/u974096246/certificados/imec-a1.pfx</code>. A senha fica somente na vari&aacute;vel <code>SEFAZ_CERT_PASSWORD</code>.</div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Fechar</button><button type="button" class="btn btn-primary" onclick="startSefazSync()">' + icon('robot') + ' Testar consulta</button></div></div>');
+    } catch (err) {
+      showToast('Erro: ' + err.message, 'error');
+    }
+  };
+  window.startSefazSync = async function () {
+    try {
+      await API.fiscal.sefazSync({});
+      showToast('Consulta SEFAZ iniciada', 'success');
+    } catch (err) {
+      showToast('SEFAZ: ' + err.message, 'error');
+    }
   };
   window.importFiscalXml = async function (event) {
     event.preventDefault();

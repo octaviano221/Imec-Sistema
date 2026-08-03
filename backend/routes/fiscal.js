@@ -8,6 +8,30 @@ const { authenticate, authorize } = require('../middleware/auth');
 
 const writeRoles = ['admin', 'rh', 'engenharia'];
 
+function sefazConfig() {
+  const certPath = clean(process.env.SEFAZ_CERT_PATH);
+  return {
+    enabled: String(process.env.SEFAZ_ENABLED || '').toLowerCase() === 'true',
+    cnpj: digits(process.env.SEFAZ_CNPJ),
+    uf: clean(process.env.SEFAZ_UF || 'SP'),
+    environment: clean(process.env.SEFAZ_ENV || 'production'),
+    cert_path: certPath,
+    cert_password_set: Boolean(process.env.SEFAZ_CERT_PASSWORD),
+    cert_exists: certPath ? fs.existsSync(certPath) : false
+  };
+}
+
+function sefazMissing(config) {
+  const missing = [];
+  if (!config.enabled) missing.push('SEFAZ_ENABLED=true');
+  if (!config.cnpj) missing.push('SEFAZ_CNPJ');
+  if (!config.uf) missing.push('SEFAZ_UF');
+  if (!config.cert_path) missing.push('SEFAZ_CERT_PATH');
+  if (!config.cert_password_set) missing.push('SEFAZ_CERT_PASSWORD');
+  if (config.cert_path && !config.cert_exists) missing.push('arquivo .pfx nao encontrado no caminho informado');
+  return missing;
+}
+
 function clean(value) {
   const text = value == null ? '' : String(value).trim();
   return text || null;
@@ -197,6 +221,38 @@ router.get('/invoices', authenticate, async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: 'Erro ao buscar notas fiscais' });
   }
+});
+
+router.get('/sefaz/status', authenticate, authorize(...writeRoles), async (req, res) => {
+  const config = sefazConfig();
+  const missing = sefazMissing(config);
+  res.json({
+    ready: missing.length === 0,
+    enabled: config.enabled,
+    cnpj: config.cnpj ? config.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : null,
+    uf: config.uf,
+    environment: config.environment,
+    cert_exists: config.cert_exists,
+    cert_password_set: config.cert_password_set,
+    cert_path_set: Boolean(config.cert_path),
+    missing
+  });
+});
+
+router.post('/sefaz/sync', authenticate, authorize(...writeRoles), async (req, res) => {
+  const config = sefazConfig();
+  const missing = sefazMissing(config);
+  if (missing.length) {
+    return res.status(400).json({
+      error: 'Configuracao SEFAZ incompleta',
+      missing
+    });
+  }
+
+  res.status(501).json({
+    error: 'Consulta SEFAZ ainda nao ativada',
+    message: 'O certificado A1 foi detectado. Falta instalar o conector SEFAZ para distribuicao de NF-e por CNPJ.'
+  });
 });
 
 router.post('/invoices', authenticate, authorize(...writeRoles), async (req, res) => {
