@@ -521,6 +521,7 @@ const API = {
   fiscal: {
     summary: () => apiFetch('/api/fiscal/summary'),
     list: () => apiFetch('/api/fiscal/invoices'),
+    detail: (id) => apiFetch('/api/fiscal/invoices/' + id),
     create: (d) => apiFetch('/api/fiscal/invoices', { method: 'POST', body: JSON.stringify(d) }),
     update: (id, d) => apiFetch('/api/fiscal/invoices/' + id, { method: 'PUT', body: JSON.stringify(d) }),
     delete: (id) => apiFetch('/api/fiscal/invoices/' + id, { method: 'DELETE' }),

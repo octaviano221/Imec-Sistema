@@ -647,6 +647,7 @@ router.get('/summary', authenticate, async (req, res) => {
       return d.getMonth() === month && d.getFullYear() === year;
     });
     const pending = invoices.filter((invoice) => invoice.status === 'conferencia' || invoice.status === 'pendente');
+    const divergent = invoices.filter((invoice) => invoice.status === 'divergente');
     const supplierNames = new Set(invoices.map((invoice) => invoice.supplier_cnpj || invoice.supplier_name).filter(Boolean));
     res.json({
       invoices,
@@ -655,7 +656,11 @@ router.get('/summary', authenticate, async (req, res) => {
         month_total: monthInvoices.reduce((sum, invoice) => sum + num(invoice.total_invoice), 0),
         icms_value: invoices.reduce((sum, invoice) => sum + num(invoice.icms_value), 0),
         pending: pending.length,
-        suppliers: supplierNames.size
+        divergent: divergent.length,
+        suppliers: supplierNames.size,
+        with_xml: invoices.filter((invoice) => invoice.xml_url).length,
+        unlinked_orders: invoices.filter((invoice) => !invoice.purchase_order_id).length,
+        conference_total: pending.concat(divergent).reduce((sum, invoice) => sum + num(invoice.total_invoice), 0)
       }
     });
   } catch (error) {
@@ -669,6 +674,16 @@ router.get('/invoices', authenticate, async (req, res) => {
     res.json(await listInvoices());
   } catch (error) {
     res.status(500).json({ error: 'Erro ao buscar notas fiscais' });
+  }
+});
+
+router.get('/invoices/:id', authenticate, async (req, res) => {
+  try {
+    const result = await getInvoiceWithItems(req.params.id);
+    if (!result) return res.status(404).json({ error: 'Nota fiscal nao encontrada' });
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar nota fiscal' });
   }
 });
 
