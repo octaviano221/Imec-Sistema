@@ -128,6 +128,7 @@ background:linear-gradient(180deg,#fff 0%,#f8fbff 100%);
 #modalContent.modal-wide{max-width:min(1040px,96vw)!important}
 #modalContent.modal-extra-wide{max-width:min(1120px,96vw)!important}
 #modalContent.modal-profile{max-width:min(1240px,96vw)!important}
+#modalContent.modal-epi-ficha{max-width:min(1320px,98vw)!important;background:linear-gradient(180deg,#f8fbff 0%,#eef6ff 100%)!important}
 #modalContent .app-modal-body{
 padding:28px!important;
 }
@@ -641,10 +642,12 @@ function enhanceModalContent(content) {
   if (body) body.classList.add('app-modal-body');
   if (content.querySelector('form')) content.classList.add('modal-form-mode');
   const isProfileModal = !!content.querySelector('.profile-modal');
-  if (content.querySelector('.warehouse-modal-wide, .proposal-modal, .vehicle-ai-modal, .profile-modal')) content.classList.add('modal-wide');
-  if (content.querySelector('.warehouse-modal-wide, .profile-modal')) content.classList.add('modal-extra-wide');
+  const isEpiFichaModal = !!content.querySelector('.epi-ficha-modal');
+  if (content.querySelector('.warehouse-modal-wide, .proposal-modal, .vehicle-ai-modal, .profile-modal, .epi-ficha-modal')) content.classList.add('modal-wide');
+  if (content.querySelector('.warehouse-modal-wide, .profile-modal, .epi-ficha-modal')) content.classList.add('modal-extra-wide');
   if (isProfileModal) content.classList.add('modal-profile');
-  if (!isProfileModal) {
+  if (isEpiFichaModal) content.classList.add('modal-epi-ficha');
+  if (!isProfileModal && !isEpiFichaModal) {
     content.querySelectorAll('.flex.justify-end, .modal-actions, .warehouse-form-actions').forEach(function(row) {
       row.classList.add('app-modal-actions');
     });

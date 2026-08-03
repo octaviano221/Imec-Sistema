@@ -251,7 +251,11 @@
     if (!emp) return;
     var records = recordsFor(employeeId).sort(function (a, b) { return new Date(a.delivery_date) - new Date(b.delivery_date); });
     var sheet = buildFicha(emp, records);
-    openModal('<div class="p-4"><div class="epi-no-print flex flex-wrap justify-end gap-2 mb-4"><button class="btn btn-outline btn-sm" onclick="openEpiDelivery(\'' + esc(employeeId) + '\')">Nova entrega</button><button class="btn btn-primary btn-sm" onclick="printEpiFicha()">Imprimir / PDF</button><button class="btn btn-outline btn-sm" onclick="closeModal()">Fechar</button></div>' + sheet + '</div>');
+    openModal('<div class="epi-ficha-modal">'
+      + '<div class="epi-ficha-toolbar epi-no-print"><div><p>Ficha Individual de EPI</p><h2>' + esc(emp.full_name || 'Funcionario') + '</h2></div>'
+      + '<div class="epi-ficha-actions"><button class="btn btn-outline btn-sm" onclick="openEpiDelivery(\'' + esc(employeeId) + '\')">Nova entrega</button><button class="btn btn-primary btn-sm" onclick="printEpiFicha()">Baixar PDF</button><button class="btn btn-outline btn-sm" onclick="closeModal()">Fechar</button></div></div>'
+      + '<div class="epi-ficha-preview">' + sheet + '</div>'
+      + '</div>');
   };
 
   window.printEpiFicha = function () {

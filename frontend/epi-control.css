@@ -81,6 +81,69 @@
   touch-action: none;
 }
 
+.epi-ficha-modal {
+  display: grid;
+  gap: 0;
+  width: 100%;
+}
+
+.epi-ficha-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: -28px -28px 18px;
+  padding: 16px 22px;
+  border-bottom: 1px solid #dbe7f5;
+  background: rgba(255, 255, 255, .96);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 14px 34px rgba(15, 35, 65, .08);
+}
+
+.epi-ficha-toolbar p {
+  margin: 0 0 3px;
+  color: #0b6fe8;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.epi-ficha-toolbar h2 {
+  margin: 0;
+  color: #08284d;
+  font-size: 21px;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.epi-ficha-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.epi-ficha-preview {
+  max-height: calc(100dvh - 185px);
+  overflow: auto;
+  padding: 24px;
+  border: 1px solid #dbe7f5;
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(11, 111, 232, .07), rgba(30, 158, 85, .06)),
+    #f7fbff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9);
+}
+
+.epi-ficha-preview .epi-print-sheet {
+  width: 980px;
+  max-width: none;
+}
+
 .epi-print-sheet {
   max-width: 1080px;
   margin: 0 auto;
@@ -152,6 +215,32 @@
 .epi-print-table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.epi-print-table th:nth-child(1),
+.epi-print-table td:nth-child(1) {
+  width: 58px;
+  text-align: center;
+}
+
+.epi-print-table th:nth-child(3),
+.epi-print-table td:nth-child(3) {
+  width: 76px;
+}
+
+.epi-print-table th:nth-child(4),
+.epi-print-table td:nth-child(4),
+.epi-print-table th:nth-child(6),
+.epi-print-table td:nth-child(6) {
+  width: 104px;
+}
+
+.epi-print-table th:nth-child(5),
+.epi-print-table td:nth-child(5),
+.epi-print-table th:nth-child(7),
+.epi-print-table td:nth-child(7) {
+  width: 170px;
 }
 
 .epi-print-table th,
@@ -206,6 +295,27 @@
 @media (max-width: 900px) {
   .epi-kpis {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .epi-ficha-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+    margin: -20px -20px 14px;
+    padding: 14px 18px;
+  }
+
+  .epi-ficha-actions {
+    justify-content: flex-start;
+  }
+
+  .epi-ficha-preview {
+    max-height: calc(100dvh - 210px);
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .epi-ficha-preview .epi-print-sheet {
+    width: 920px;
   }
 
   .epi-print-header,
