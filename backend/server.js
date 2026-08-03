@@ -143,6 +143,58 @@ async function applyCompatibilityMigrations() {
       FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(id) ON DELETE CASCADE,
       FOREIGN KEY (stock_item_id) REFERENCES stock_items(id) ON DELETE SET NULL
     ) ENGINE=InnoDB`,
+    `CREATE TABLE IF NOT EXISTS fiscal_invoices (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      access_key VARCHAR(60) UNIQUE,
+      model VARCHAR(20) DEFAULT '55',
+      series VARCHAR(30),
+      number VARCHAR(60),
+      issue_date DATE,
+      entry_date DATE,
+      operation_type VARCHAR(255),
+      supplier_id INT NULL,
+      supplier_name VARCHAR(255),
+      supplier_cnpj VARCHAR(30),
+      supplier_ie VARCHAR(60),
+      client_name VARCHAR(255),
+      client_cnpj VARCHAR(30),
+      purchase_order_id INT NULL,
+      total_products DECIMAL(14,2) NOT NULL DEFAULT 0,
+      total_invoice DECIMAL(14,2) NOT NULL DEFAULT 0,
+      freight_value DECIMAL(14,2) NOT NULL DEFAULT 0,
+      discount_value DECIMAL(14,2) NOT NULL DEFAULT 0,
+      icms_base DECIMAL(14,2) NOT NULL DEFAULT 0,
+      icms_value DECIMAL(14,2) NOT NULL DEFAULT 0,
+      ipi_value DECIMAL(14,2) NOT NULL DEFAULT 0,
+      pis_value DECIMAL(14,2) NOT NULL DEFAULT 0,
+      cofins_value DECIMAL(14,2) NOT NULL DEFAULT 0,
+      cfop VARCHAR(120),
+      status VARCHAR(40) NOT NULL DEFAULT 'conferencia',
+      xml_url MEDIUMTEXT,
+      danfe_url MEDIUMTEXT,
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (supplier_id) REFERENCES stock_suppliers(id) ON DELETE SET NULL,
+      FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(id) ON DELETE SET NULL
+    ) ENGINE=InnoDB`,
+    `CREATE TABLE IF NOT EXISTS fiscal_invoice_items (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      invoice_id INT NOT NULL,
+      item_number INT,
+      product_code VARCHAR(120),
+      description VARCHAR(255),
+      ncm VARCHAR(30),
+      cfop VARCHAR(30),
+      unit VARCHAR(30),
+      quantity DECIMAL(14,4) NOT NULL DEFAULT 0,
+      unit_value DECIMAL(14,4) NOT NULL DEFAULT 0,
+      total_value DECIMAL(14,2) NOT NULL DEFAULT 0,
+      icms_value DECIMAL(14,2) NOT NULL DEFAULT 0,
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (invoice_id) REFERENCES fiscal_invoices(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB`,
     'ALTER TABLE technical_proposals MODIFY file_url MEDIUMTEXT',
     'ALTER TABLE purchase_orders MODIFY file_url MEDIUMTEXT',
     'CREATE INDEX idx_technical_proposals_client ON technical_proposals(client_id)',
@@ -169,7 +221,11 @@ async function applyCompatibilityMigrations() {
     'CREATE INDEX idx_purchase_orders_supplier ON purchase_orders(supplier_id)',
     'CREATE INDEX idx_purchase_orders_status ON purchase_orders(status)',
     'CREATE INDEX idx_purchase_orders_expected ON purchase_orders(expected_date)',
-    'CREATE INDEX idx_purchase_order_items_order ON purchase_order_items(purchase_order_id)'
+    'CREATE INDEX idx_purchase_order_items_order ON purchase_order_items(purchase_order_id)',
+    'CREATE INDEX idx_fiscal_invoices_issue ON fiscal_invoices(issue_date)',
+    'CREATE INDEX idx_fiscal_invoices_supplier ON fiscal_invoices(supplier_id)',
+    'CREATE INDEX idx_fiscal_invoices_status ON fiscal_invoices(status)',
+    'CREATE INDEX idx_fiscal_invoice_items_invoice ON fiscal_invoice_items(invoice_id)'
   ];
 
   for (const statement of statements) {
@@ -213,7 +269,7 @@ function sendFrontendApp(req, res, next) {
 
     const enhancedHtml = html
       .replace('</head>', '<link rel="stylesheet" href="/pro-dashboard.css">\n<link rel="stylesheet" href="/pro-polish.css">\n</head>')
-.replace('</body>', '<script src="/pro-dashboard.js"></script>\n<script src="/pro-polish.js"></script>\n<link rel="stylesheet" href="/nr-idcards.css">\n<script src="/nr-idcards.js"></script>\n<script src="/site-fixes.js"></script>\n<link rel="stylesheet" href="/system-enhancements.css?v=20260803a">\n<script src="/system-enhancements.js?v=20260803a"></script>\n<link rel="stylesheet" href="/production-readiness.css">\n<script src="/production-readiness.js"></script>\n<link rel="stylesheet" href="/executive-control.css">\n<script src="/executive-control.js"></script>\n<link rel="stylesheet" href="/professional-suite.css">\n<script src="/professional-suite.js"></script>\n<link rel="stylesheet" href="/premium-improvements.css">\n<script src="/premium-improvements.js"></script>\n<link rel="stylesheet" href="/epi-control.css?v=20260803a">\n<script src="/epi-control.js?v=20260803a"></script>\n<link rel="stylesheet" href="/home-dashboard.css">\n<script src="/home-dashboard.js"></script>\n<link rel="stylesheet" href="/vehicle-documents.css">\n<script src="/vehicle-documents.js"></script>\n<link rel="stylesheet" href="/proposals-control.css">\n<script src="/proposals-control.js"></script>\n<link rel="stylesheet" href="/warehouse-control.css?v=20260731c">\n<script src="/warehouse-control.js?v=20260731c"></script>\n</body>');
+.replace('</body>', '<script src="/pro-dashboard.js"></script>\n<script src="/pro-polish.js"></script>\n<link rel="stylesheet" href="/nr-idcards.css">\n<script src="/nr-idcards.js"></script>\n<script src="/site-fixes.js"></script>\n<link rel="stylesheet" href="/system-enhancements.css?v=20260803a">\n<script src="/system-enhancements.js?v=20260803a"></script>\n<link rel="stylesheet" href="/production-readiness.css">\n<script src="/production-readiness.js"></script>\n<link rel="stylesheet" href="/executive-control.css">\n<script src="/executive-control.js"></script>\n<link rel="stylesheet" href="/professional-suite.css">\n<script src="/professional-suite.js"></script>\n<link rel="stylesheet" href="/premium-improvements.css">\n<script src="/premium-improvements.js"></script>\n<link rel="stylesheet" href="/epi-control.css?v=20260803a">\n<script src="/epi-control.js?v=20260803a"></script>\n<link rel="stylesheet" href="/home-dashboard.css">\n<script src="/home-dashboard.js"></script>\n<link rel="stylesheet" href="/vehicle-documents.css">\n<script src="/vehicle-documents.js"></script>\n<link rel="stylesheet" href="/proposals-control.css">\n<script src="/proposals-control.js"></script>\n<link rel="stylesheet" href="/warehouse-control.css?v=20260731c">\n<script src="/warehouse-control.js?v=20260731c"></script>\n<link rel="stylesheet" href="/fiscal-control.css?v=20260803a">\n<script src="/fiscal-control.js?v=20260803a"></script>\n</body>');
 
     res.type('html').send(enhancedHtml);
   });
@@ -268,6 +324,7 @@ app.use('/api/projects', require('./routes/projects'));
 app.use('/api/technical-documents', require('./routes/technicalDocuments'));
 app.use('/api/technical-proposals', require('./routes/technicalProposals'));
 app.use('/api/warehouse', require('./routes/warehouse'));
+app.use('/api/fiscal', require('./routes/fiscal'));
 app.use('/api/competency', require('./routes/competency'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/audit-logs', require('./routes/auditLogs'));

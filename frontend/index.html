@@ -518,6 +518,14 @@ const API = {
       delete: (id) => apiFetch('/api/warehouse/orders/' + id, { method: 'DELETE' })
     }
   },
+  fiscal: {
+    summary: () => apiFetch('/api/fiscal/summary'),
+    list: () => apiFetch('/api/fiscal/invoices'),
+    create: (d) => apiFetch('/api/fiscal/invoices', { method: 'POST', body: JSON.stringify(d) }),
+    update: (id, d) => apiFetch('/api/fiscal/invoices/' + id, { method: 'PUT', body: JSON.stringify(d) }),
+    delete: (id) => apiFetch('/api/fiscal/invoices/' + id, { method: 'DELETE' }),
+    importXml: (fd) => apiFetch('/api/fiscal/xml/import', { method: 'POST', body: fd })
+  },
   competency: {
     list: () => apiFetch('/api/competency'),
     create: (d) => apiFetch('/api/competency', { method: 'POST', body: JSON.stringify(d) }),
@@ -537,16 +545,17 @@ let _cache = {};
 
 async function refreshData() {
   try {
-    const [employees, trainings, certificates, medicalExams, epiRecords, equipment, equipmentDocs, clients, projects, technicalDocs, technicalProposals, warehouse, competency, settings, dashboard] = await Promise.all([
+    const [employees, trainings, certificates, medicalExams, epiRecords, equipment, equipmentDocs, clients, projects, technicalDocs, technicalProposals, warehouse, fiscal, competency, settings, dashboard] = await Promise.all([
       API.employees.list(), API.trainings.list(), API.certificates.list(),
       API.medicalExams.list(), API.epi.list(), API.equipment.list(),
       API.equipmentDocs.list(),
       API.clients.list(), API.projects.list(), API.technicalDocuments.list(),
       API.technicalProposals.list(),
       API.warehouse.summary().catch(() => ({ suppliers: [], items: [], orders: [], metrics: {} })),
+      API.fiscal.summary().catch(() => ({ invoices: [], metrics: {} })),
       API.competency.list(), API.settings.get(), API.dashboard.get()
     ]);
-    _cache = { employees, trainings, certificates, medical_exams: medicalExams, epi_records: epiRecords, equipment, equipment_documents: equipmentDocs, clients, projects, technical_documents: technicalDocs, technical_proposals: technicalProposals, warehouse, competency_requirements: competency, settings, dashboard };
+    _cache = { employees, trainings, certificates, medical_exams: medicalExams, epi_records: epiRecords, equipment, equipment_documents: equipmentDocs, clients, projects, technical_documents: technicalDocs, technical_proposals: technicalProposals, warehouse, fiscal, competency_requirements: competency, settings, dashboard };
   } catch (err) { console.error('Refresh error:', err); }
 }
 
@@ -577,7 +586,7 @@ function canAccess(page) {
   if (u.role==='admin') return true;
   if (u.role==='client') return ['dashboard','projects','documents'].includes(page);
   if (u.role==='viewer') return true;
-  const p = {'engenharia':['dashboard','employees','trainings','certificates','idcards','equipment','cranes','vehicleDocuments','warehouse','clients','projects','proposals','documents','matrix','reports','settings'],'rh':['dashboard','employees','trainings','certificates','idcards','aso','epi','vehicleDocuments','warehouse','reports','settings']};
+  const p = {'engenharia':['dashboard','employees','trainings','certificates','idcards','equipment','cranes','vehicleDocuments','warehouse','fiscal','clients','projects','proposals','documents','matrix','reports','settings'],'rh':['dashboard','employees','trainings','certificates','idcards','aso','epi','vehicleDocuments','warehouse','fiscal','reports','settings']};
   return (p[u.role]||[]).includes(page);
 }
 
@@ -643,8 +652,8 @@ function enhanceModalContent(content) {
   if (content.querySelector('form')) content.classList.add('modal-form-mode');
   const isProfileModal = !!content.querySelector('.profile-modal');
   const isEpiFichaModal = !!content.querySelector('.epi-ficha-modal');
-  if (content.querySelector('.warehouse-modal-wide, .proposal-modal, .vehicle-ai-modal, .profile-modal, .epi-ficha-modal')) content.classList.add('modal-wide');
-  if (content.querySelector('.warehouse-modal-wide, .profile-modal, .epi-ficha-modal')) content.classList.add('modal-extra-wide');
+  if (content.querySelector('.warehouse-modal-wide, .fiscal-modal-wide, .proposal-modal, .vehicle-ai-modal, .profile-modal, .epi-ficha-modal')) content.classList.add('modal-wide');
+  if (content.querySelector('.warehouse-modal-wide, .fiscal-modal-wide, .profile-modal, .epi-ficha-modal')) content.classList.add('modal-extra-wide');
   if (isProfileModal) content.classList.add('modal-profile');
   if (isEpiFichaModal) content.classList.add('modal-epi-ficha');
   if (!isProfileModal && !isEpiFichaModal) {
@@ -713,7 +722,7 @@ async function handlePublicConsult(e) {
 }
 
 async function renderPage() {
-  const titles = {dashboard:['Dashboard','Vis\u00e3o geral do sistema'],employees:['Funcion\u00e1rios','Gest\u00e3o de colaboradores'],trainings:['NRs / Treinamentos','Tipos de treinamento e NRs'],certificates:['Certificados','Certificados e valida\u00e7\u00f5es'],idcards:['Carteirinhas','Carteirinhas digitais'],aso:['ASO','Atestados de Sa\u00fade Ocupacional'],epi:['EPI','Equipamentos de Prote\u00e7\u00e3o Individual'],equipment:['Equipamentos','Gest\u00e3o de equipamentos'],cranes:['Guindastes / Munck','Guindastes e cami\u00f5es Munck'],vehicleDocuments:['Documentos de Ve\u00edculos','IPVA, licenciamento e laudos'],warehouse:['Almoxarifado','Compras, fornecedores e estoque'],clients:['Clientes','Base de clientes'],projects:['Obras','Obras e servi\u00e7os'],proposals:['Propostas','T\u00e9cnicas e comerciais'],documents:['ART / APR / Rigging','Documentos t\u00e9cnicos'],matrix:['Matriz de Compet\u00eancia','An\u00e1lise de aptid\u00e3o'],reports:['Relat\u00f3rios','Relat\u00f3rios e exporta\u00e7\u00f5es'],settings:['Configura\u00e7\u00f5es','Configura\u00e7\u00f5es do sistema']};
+  const titles = {dashboard:['Dashboard','Vis\u00e3o geral do sistema'],employees:['Funcion\u00e1rios','Gest\u00e3o de colaboradores'],trainings:['NRs / Treinamentos','Tipos de treinamento e NRs'],certificates:['Certificados','Certificados e valida\u00e7\u00f5es'],idcards:['Carteirinhas','Carteirinhas digitais'],aso:['ASO','Atestados de Sa\u00fade Ocupacional'],epi:['EPI','Equipamentos de Prote\u00e7\u00e3o Individual'],equipment:['Equipamentos','Gest\u00e3o de equipamentos'],cranes:['Guindastes / Munck','Guindastes e cami\u00f5es Munck'],vehicleDocuments:['Documentos de Ve\u00edculos','IPVA, licenciamento e laudos'],warehouse:['Almoxarifado','Compras, fornecedores e estoque'],fiscal:['Fiscal / NF-e','Notas fiscais, XML, ICMS e SPED'],clients:['Clientes','Base de clientes'],projects:['Obras','Obras e servi\u00e7os'],proposals:['Propostas','T\u00e9cnicas e comerciais'],documents:['ART / APR / Rigging','Documentos t\u00e9cnicos'],matrix:['Matriz de Compet\u00eancia','An\u00e1lise de aptid\u00e3o'],reports:['Relat\u00f3rios','Relat\u00f3rios e exporta\u00e7\u00f5es'],settings:['Configura\u00e7\u00f5es','Configura\u00e7\u00f5es do sistema']};
   const t = titles[currentPage] || ['',''];
   document.getElementById('pageTitle').textContent = t[0];
   document.getElementById('pageSubtitle').textContent = t[1];

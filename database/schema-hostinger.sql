@@ -261,6 +261,60 @@ CREATE TABLE purchase_order_items (
     FOREIGN KEY (stock_item_id) REFERENCES stock_items(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
+CREATE TABLE fiscal_invoices (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    access_key VARCHAR(60) UNIQUE,
+    model VARCHAR(20) DEFAULT '55',
+    series VARCHAR(30),
+    number VARCHAR(60),
+    issue_date DATE,
+    entry_date DATE,
+    operation_type VARCHAR(255),
+    supplier_id INT,
+    supplier_name VARCHAR(255),
+    supplier_cnpj VARCHAR(30),
+    supplier_ie VARCHAR(60),
+    client_name VARCHAR(255),
+    client_cnpj VARCHAR(30),
+    purchase_order_id INT,
+    total_products DECIMAL(14,2) NOT NULL DEFAULT 0,
+    total_invoice DECIMAL(14,2) NOT NULL DEFAULT 0,
+    freight_value DECIMAL(14,2) NOT NULL DEFAULT 0,
+    discount_value DECIMAL(14,2) NOT NULL DEFAULT 0,
+    icms_base DECIMAL(14,2) NOT NULL DEFAULT 0,
+    icms_value DECIMAL(14,2) NOT NULL DEFAULT 0,
+    ipi_value DECIMAL(14,2) NOT NULL DEFAULT 0,
+    pis_value DECIMAL(14,2) NOT NULL DEFAULT 0,
+    cofins_value DECIMAL(14,2) NOT NULL DEFAULT 0,
+    cfop VARCHAR(120),
+    status VARCHAR(40) NOT NULL DEFAULT 'conferencia',
+    xml_url MEDIUMTEXT,
+    danfe_url MEDIUMTEXT,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (supplier_id) REFERENCES stock_suppliers(id) ON DELETE SET NULL,
+    FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE fiscal_invoice_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    invoice_id INT NOT NULL,
+    item_number INT,
+    product_code VARCHAR(120),
+    description VARCHAR(255),
+    ncm VARCHAR(30),
+    cfop VARCHAR(30),
+    unit VARCHAR(30),
+    quantity DECIMAL(14,4) NOT NULL DEFAULT 0,
+    unit_value DECIMAL(14,4) NOT NULL DEFAULT 0,
+    total_value DECIMAL(14,2) NOT NULL DEFAULT 0,
+    icms_value DECIMAL(14,2) NOT NULL DEFAULT 0,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (invoice_id) REFERENCES fiscal_invoices(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 -- ============================================
 -- CLIENTS
 -- ============================================
@@ -426,6 +480,10 @@ CREATE INDEX idx_purchase_orders_supplier ON purchase_orders(supplier_id);
 CREATE INDEX idx_purchase_orders_status ON purchase_orders(status);
 CREATE INDEX idx_purchase_orders_expected ON purchase_orders(expected_date);
 CREATE INDEX idx_purchase_order_items_order ON purchase_order_items(purchase_order_id);
+CREATE INDEX idx_fiscal_invoices_issue ON fiscal_invoices(issue_date);
+CREATE INDEX idx_fiscal_invoices_supplier ON fiscal_invoices(supplier_id);
+CREATE INDEX idx_fiscal_invoices_status ON fiscal_invoices(status);
+CREATE INDEX idx_fiscal_invoice_items_invoice ON fiscal_invoice_items(invoice_id);
 CREATE INDEX idx_projects_client ON projects(client_id);
 CREATE INDEX idx_project_employees_project ON project_employees(project_id);
 CREATE INDEX idx_project_equipment_project ON project_equipment(project_id);
