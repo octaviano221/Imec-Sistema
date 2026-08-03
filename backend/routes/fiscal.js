@@ -372,6 +372,38 @@ function saveSefazXml(rawXml, nsu, accessKey) {
   return '/uploads/' + name;
 }
 
+function resolveFiscalXmlPath(value) {
+  const raw = clean(value);
+  if (!raw) return null;
+
+  const uploadDir = path.resolve(upload.uploadDir || path.join(__dirname, '..', 'uploads'));
+  const asUploadFile = (fileName) => {
+    const safeName = path.basename(decodeURIComponent(String(fileName || '')));
+    if (!safeName || !/\.xml$/i.test(safeName)) return null;
+    return path.join(uploadDir, safeName);
+  };
+
+  try {
+    const parsed = new URL(raw);
+    if (parsed.pathname && parsed.pathname.startsWith('/uploads/')) {
+      return asUploadFile(parsed.pathname.split('/').pop());
+    }
+  } catch (err) {
+    // Not a full URL. It can still be a local upload path.
+  }
+
+  if (raw.startsWith('/uploads/')) {
+    return asUploadFile(raw.split('/').pop());
+  }
+
+  const absolute = path.resolve(raw);
+  if (absolute.startsWith(uploadDir + path.sep) && /\.xml$/i.test(absolute)) {
+    return absolute;
+  }
+
+  return null;
+}
+
 async function ensureSefazState(conn, config) {
   const [rows] = await conn.query('SELECT * FROM fiscal_sefaz_state WHERE cnpj=? LIMIT 1', [config.cnpj]);
   if (rows.length) return rows[0];
@@ -720,6 +752,32 @@ router.get('/invoices/:id/danfe.pdf', authenticate, async (req, res) => {
   } catch (error) {
     console.error(error);
     if (!res.headersSent) res.status(500).json({ error: 'Erro ao gerar PDF da nota fiscal' });
+  }
+});
+
+router.get('/invoices/:id/xml', authenticate, async (req, res) => {
+  try {
+    const result = await getInvoiceWithItems(req.params.id);
+    if (!result) return res.status(404).json({ error: 'Nota fiscal nao encontrada' });
+
+    const { invoice } = result;
+    const xmlPath = resolveFiscalXmlPath(invoice.xml_url);
+    if (!xmlPath || !fs.existsSync(xmlPath)) {
+      return res.status(404).json({ error: 'XML da nota fiscal nao encontrado no servidor' });
+    }
+
+    const safeNumber = String(invoice.number || invoice.id).replace(/[^\w.-]+/g, '-');
+    const safeKey = digits(invoice.access_key);
+    const filename = safeKey ? `nfe-${safeKey}.xml` : `nfe-${safeNumber}.xml`;
+
+    await audit(req.user.id, 'download', 'fiscal_invoice', invoice.id, `XML NF-e ${invoice.number || invoice.id} baixado`);
+
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    fs.createReadStream(xmlPath).pipe(res);
+  } catch (error) {
+    console.error(error);
+    if (!res.headersSent) res.status(500).json({ error: 'Erro ao baixar XML da nota fiscal' });
   }
 });
 

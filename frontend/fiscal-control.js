@@ -80,7 +80,7 @@
     return list.map(function (invoice) {
       var supplier = invoice.linked_supplier_name || invoice.supplier_name || '-';
       var danfe = '<button class="fiscal-icon-btn" onclick="downloadFiscalDanfe(' + invoice.id + ')" title="Baixar DANFE em PDF">' + icon('download') + '</button>';
-      var xml = invoice.xml_url ? '<a class="fiscal-icon-btn" href="' + esc(invoice.xml_url) + '" target="_blank" download title="Baixar XML">' + icon('download') + '</a>' : '';
+      var xml = invoice.xml_url ? '<button class="fiscal-icon-btn" onclick="downloadFiscalXml(' + invoice.id + ')" title="Baixar NF-e XML">' + icon('download') + '</button>' : '';
       return '<tr data-fiscal-row data-status="' + esc(invoice.status || 'conferencia') + '" data-search="' + esc([supplier, invoice.supplier_cnpj, invoice.number, invoice.access_key, invoice.cfop, invoice.purchase_order_number].join(' ').toLowerCase()) + '">'
         + '<td class="fiscal-main-cell"><strong>NF-e ' + esc(invoice.number || '-') + '</strong><small>S&eacute;rie ' + esc(invoice.series || '-') + ' &bull; Modelo ' + esc(invoice.model || '55') + '</small></td>'
         + '<td class="fiscal-main-cell"><strong>' + esc(supplier) + '</strong><small>' + esc(invoice.supplier_cnpj || '') + '</small></td>'
@@ -199,6 +199,33 @@
       showToast('Erro: ' + err.message, 'error');
     }
   };
+  window.downloadFiscalXml = async function (id) {
+    try {
+      var token = typeof getToken === 'function' ? getToken() : sessionStorage.getItem('imec_token');
+      var res = await fetch(API_BASE + '/api/fiscal/invoices/' + id + '/xml', {
+        headers: token ? { Authorization: 'Bearer ' + token } : {}
+      });
+      if (!res.ok) {
+        var err = await res.json().catch(function () { return {}; });
+        throw new Error(err.error || err.message || ('HTTP ' + res.status));
+      }
+      var blob = await res.blob();
+      var disposition = res.headers.get('Content-Disposition') || '';
+      var match = disposition.match(/filename="?([^"]+)"?/i);
+      var filename = match ? match[1] : ('nfe-' + id + '.xml');
+      var url = URL.createObjectURL(blob);
+      var link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      showToast('XML da NF-e baixado', 'success');
+    } catch (err) {
+      showToast('Erro: ' + err.message, 'error');
+    }
+  };
   window.openFiscalInvoiceDetails = async function (id) {
     openModal('<div class="p-6 fiscal-modal-wide"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Abrindo nota fiscal...</h2><div class="fiscal-upload-box">' + icon('fiscal') + '<p class="text-sm text-slate-500 mt-3">Carregando itens, impostos e v&iacute;nculos.</p></div></div>');
     try {
@@ -210,7 +237,7 @@
         return '<tr><td>' + esc(item.item_number || '-') + '</td><td class="fiscal-main-cell"><strong>' + esc(item.description || '-') + '</strong><small>' + esc(item.product_code || '') + '</small></td><td>' + esc(item.ncm || '-') + '</td><td>' + esc(item.cfop || '-') + '</td><td>' + esc(item.quantity || '-') + ' ' + esc(item.unit || '') + '</td><td>' + money(item.total_value) + '</td></tr>';
       }).join('') : '<tr><td colspan="6"><div class="fiscal-empty fiscal-empty-small">Esta nota veio como resumo da SEFAZ ou ainda n&atilde;o possui XML completo com itens.</div></td></tr>';
       openModal('<div class="p-6 fiscal-modal-wide fiscal-detail-modal"><div class="fiscal-panel-head px-0 pt-0"><div><h2 class="font-display text-xl font-bold text-imec-dark">NF-e ' + esc(invoice.number || invoice.id) + '</h2><p class="text-sm text-slate-500 mt-1">' + esc(supplier) + ' &bull; emiss&atilde;o ' + dt(invoice.issue_date) + '</p></div>' + statusChip(invoice.status) + '</div>'
-        + '<div class="fiscal-action-strip"><button class="btn btn-primary btn-sm" onclick="downloadFiscalDanfe(' + invoice.id + ')">' + icon('download') + ' DANFE PDF</button>' + (invoice.xml_url ? '<a class="btn btn-outline btn-sm" href="' + esc(invoice.xml_url) + '" target="_blank" download>' + icon('download') + ' XML</a>' : '') + '<button class="btn btn-outline btn-sm" onclick="editFiscalInvoice(' + invoice.id + ')">' + icon('edit') + ' Editar</button></div>'
+        + '<div class="fiscal-action-strip"><button class="btn btn-primary btn-sm" onclick="downloadFiscalDanfe(' + invoice.id + ')">' + icon('download') + ' DANFE PDF</button>' + (invoice.xml_url ? '<button class="btn btn-outline btn-sm" onclick="downloadFiscalXml(' + invoice.id + ')">' + icon('download') + ' NF-e XML</button>' : '') + '<button class="btn btn-outline btn-sm" onclick="editFiscalInvoice(' + invoice.id + ')">' + icon('edit') + ' Editar</button></div>'
         + '<section class="fiscal-detail-grid"><div class="fiscal-detail-box"><span>Fornecedor</span><strong>' + esc(supplier) + '</strong><small>' + esc(invoice.supplier_cnpj || '-') + '</small></div><div class="fiscal-detail-box"><span>Pedido de compra</span><strong>' + (invoice.purchase_order_number ? esc(invoice.purchase_order_number) : 'Sem v&iacute;nculo') + '</strong><small>almoxarifado</small></div><div class="fiscal-detail-box"><span>Total NF-e</span><strong>' + money(invoice.total_invoice) + '</strong><small>produtos ' + money(invoice.total_products) + '</small></div><div class="fiscal-detail-box"><span>ICMS</span><strong>' + money(invoice.icms_value) + '</strong><small>base ' + money(invoice.icms_base) + '</small></div></section>'
         + '<section class="fiscal-detail-box mt-4"><span>Chave de acesso</span><strong class="fiscal-key">' + esc(invoice.access_key || '-') + '</strong><small>CFOP: ' + esc(invoice.cfop || '-') + ' &bull; Natureza: ' + esc(invoice.operation_type || '-') + '</small></section>'
         + '<div class="fiscal-table-wrap mt-4"><table class="fiscal-table fiscal-items-table"><thead><tr><th>Item</th><th>Produto</th><th>NCM</th><th>CFOP</th><th>Qtd.</th><th>Total</th></tr></thead><tbody>' + itemRows + '</tbody></table></div>'
