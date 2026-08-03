@@ -417,11 +417,94 @@
   color: #9a3412;
 }
 
+.fiscal-chip.neutral {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.fiscal-flow-mini {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.fiscal-flow-mini .fiscal-chip {
+  font-size: 10px;
+  padding: 5px 8px;
+}
+
+.fiscal-flow-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 16px;
+}
+
+.fiscal-flow-card {
+  background: linear-gradient(135deg, #f8fbff, #fff);
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.fiscal-flow-card span {
+  color: #64748b;
+  display: block;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.fiscal-flow-card strong {
+  display: block;
+  min-height: 34px;
+}
+
+.fiscal-flow-card small {
+  color: #64748b;
+  display: block;
+  margin-top: 8px;
+}
+
+.fiscal-integration-head {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 12px;
+}
+
+.fiscal-small-input {
+  min-width: 120px;
+}
+
+.fiscal-stock-select {
+  min-width: 190px;
+}
+
+.fiscal-inline-check {
+  align-items: center;
+  color: #64748b;
+  display: flex;
+  font-size: 12px;
+  font-weight: 800;
+  gap: 7px;
+  margin-top: 8px;
+}
+
+.fiscal-integration-table td {
+  vertical-align: top;
+}
+
 @media (max-width: 1200px) {
   .fiscal-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .fiscal-grid { grid-template-columns: 1fr; }
   .fiscal-insights,
   .fiscal-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fiscal-flow-grid,
+  .fiscal-integration-head { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 720px) {
@@ -429,8 +512,11 @@
   .fiscal-kpis { grid-template-columns: 1fr; }
   .fiscal-insights,
   .fiscal-detail-grid { grid-template-columns: 1fr; }
+  .fiscal-flow-grid,
+  .fiscal-integration-head { grid-template-columns: 1fr; }
   .fiscal-form-grid { grid-template-columns: 1fr; }
   .fiscal-sefaz-grid { grid-template-columns: 1fr; }
   .fiscal-table-wrap { overflow-x: auto; }
   .fiscal-action-strip { justify-content: flex-start; }
+  .fiscal-modal-wide { max-width: calc(100vw - 24px); }
 }

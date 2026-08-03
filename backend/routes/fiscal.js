@@ -667,9 +667,316 @@ async function getInvoiceWithItems(id) {
   return { invoice: rows[0], items };
 }
 
+function normalizeSpedText(value) {
+  return String(clean(value) || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[|\r\n\t]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toUpperCase();
+}
+
+function spedMoney(value) {
+  return num(value).toFixed(2).replace('.', ',');
+}
+
+function spedQty(value) {
+  return Number(value || 0).toFixed(4).replace('.', ',');
+}
+
+function spedDate(value) {
+  const d = normalizeDate(value);
+  return d ? d.split('-').reverse().join('') : '';
+}
+
+function monthRange(month) {
+  const now = new Date();
+  const text = clean(month);
+  const valid = /^\d{4}-\d{2}$/.test(text || '');
+  const year = valid ? Number(text.slice(0, 4)) : now.getFullYear();
+  const monthIndex = valid ? Number(text.slice(5, 7)) - 1 : now.getMonth();
+  const startDate = new Date(Date.UTC(year, monthIndex, 1));
+  const endDate = new Date(Date.UTC(year, monthIndex + 1, 0));
+  const fmt = (d) => d.toISOString().slice(0, 10);
+  return {
+    start: fmt(startDate),
+    end: fmt(endDate),
+    label: `${year}-${String(monthIndex + 1).padStart(2, '0')}`
+  };
+}
+
+function selectItemConfig(items, id) {
+  return (items || []).find((item) => String(item.id) === String(id)) || {};
+}
+
+async function reverseInvoiceStockMovements(conn, invoiceId) {
+  const [movements] = await conn.query(
+    'SELECT stock_item_id, quantity FROM stock_movements WHERE invoice_id=? AND movement_type=?',
+    [invoiceId, 'entrada_nfe']
+  );
+  for (const movement of movements) {
+    await conn.query(
+      'UPDATE stock_items SET current_stock=GREATEST(current_stock - ?, 0), updated_at=NOW() WHERE id=?',
+      [num(movement.quantity), movement.stock_item_id]
+    );
+  }
+  await conn.query('DELETE FROM stock_movements WHERE invoice_id=? AND movement_type=?', [invoiceId, 'entrada_nfe']);
+  await conn.query('UPDATE fiscal_invoice_items SET stock_movement_id=NULL WHERE invoice_id=?', [invoiceId]);
+}
+
+async function ensureStockItemForInvoiceItem(conn, invoice, item, requestedId, createMissing) {
+  if (requestedId) return Number(requestedId);
+  const description = clean(item.description);
+  if (!description) return null;
+
+  const [existing] = await conn.query('SELECT id FROM stock_items WHERE name=? LIMIT 1', [description]);
+  if (existing.length) return existing[0].id;
+  if (!createMissing) return null;
+
+  const [created] = await conn.query(
+    `INSERT INTO stock_items
+     (name, category, unit, supplier_id, current_stock, minimum_stock, average_cost, location, status, notes)
+     VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?, ?)`,
+    [
+      description,
+      'NF-e',
+      clean(item.unit) || 'UN',
+      invoice.supplier_id || null,
+      num(item.unit_value),
+      'Almoxarifado',
+      'ativo',
+      `Criado automaticamente pela NF-e ${invoice.number || invoice.id}.`
+    ]
+  );
+  return created.insertId;
+}
+
+async function createStockMovement(conn, invoice, item, stockItemId) {
+  if (!stockItemId) return null;
+  const quantity = num(item.quantity);
+  if (quantity <= 0) return null;
+
+  const [stockRows] = await conn.query('SELECT current_stock, average_cost FROM stock_items WHERE id=? LIMIT 1', [stockItemId]);
+  if (!stockRows.length) return null;
+
+  const currentStock = num(stockRows[0].current_stock);
+  const currentAverage = num(stockRows[0].average_cost);
+  const unitCost = num(item.unit_value);
+  const newStock = currentStock + quantity;
+  const newAverage = newStock > 0
+    ? ((currentStock * currentAverage) + (quantity * unitCost)) / newStock
+    : unitCost;
+
+  const [movement] = await conn.query(
+    `INSERT INTO stock_movements
+     (stock_item_id, invoice_id, invoice_item_id, movement_type, quantity, unit_cost, total_cost, movement_date, source, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      stockItemId,
+      invoice.id,
+      item.id,
+      'entrada_nfe',
+      quantity,
+      unitCost,
+      num(item.total_value),
+      normalizeDate(invoice.entry_date) || normalizeDate(invoice.issue_date) || new Date().toISOString().slice(0, 10),
+      'NF-e',
+      `Entrada fiscal NF-e ${invoice.number || invoice.id}.`
+    ]
+  );
+
+  await conn.query(
+    'UPDATE stock_items SET current_stock=?, average_cost=?, updated_at=NOW() WHERE id=?',
+    [newStock, newAverage, stockItemId]
+  );
+
+  return movement.insertId;
+}
+
+async function upsertFinancePayable(conn, invoice, dueDate) {
+  const description = `NF-e ${invoice.number || invoice.id} - ${invoice.supplier_name || 'Fornecedor'}`;
+  if (invoice.finance_payable_id) {
+    await conn.query(
+      `UPDATE finance_payables
+       SET supplier_id=?, supplier_name=?, supplier_cnpj=?, description=?, issue_date=?, due_date=?,
+           total_amount=?, status=?, category=?, updated_at=NOW()
+       WHERE id=?`,
+      [
+        invoice.supplier_id || null,
+        clean(invoice.supplier_name),
+        clean(invoice.supplier_cnpj),
+        description,
+        normalizeDate(invoice.issue_date),
+        dueDate,
+        num(invoice.total_invoice),
+        'aberto',
+        'nota_fiscal',
+        invoice.finance_payable_id
+      ]
+    );
+    return invoice.finance_payable_id;
+  }
+
+  const [created] = await conn.query(
+    `INSERT INTO finance_payables
+     (invoice_id, supplier_id, supplier_name, supplier_cnpj, description, issue_date, due_date, total_amount, paid_amount, status, category)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
+    [
+      invoice.id,
+      invoice.supplier_id || null,
+      clean(invoice.supplier_name),
+      clean(invoice.supplier_cnpj),
+      description,
+      normalizeDate(invoice.issue_date),
+      dueDate,
+      num(invoice.total_invoice),
+      'aberto',
+      'nota_fiscal'
+    ]
+  );
+  return created.insertId;
+}
+
+async function integrateFiscalInvoice(conn, invoiceId, data) {
+  const [invoiceRows] = await conn.query('SELECT * FROM fiscal_invoices WHERE id=? LIMIT 1', [invoiceId]);
+  if (!invoiceRows.length) {
+    const error = new Error('Nota fiscal nao encontrada');
+    error.status = 404;
+    throw error;
+  }
+
+  const invoice = invoiceRows[0];
+  const [items] = await conn.query('SELECT * FROM fiscal_invoice_items WHERE invoice_id=? ORDER BY COALESCE(item_number, id), id', [invoiceId]);
+  const itemConfigs = data.items || [];
+  const entryCfop = clean(data.entry_cfop) || clean(invoice.entry_cfop) || clean(invoice.cfop) || clean(items[0] && items[0].cfop);
+  const dueDate = normalizeDate(data.payment_due_date) || normalizeDate(invoice.payment_due_date) || normalizeDate(invoice.entry_date) || normalizeDate(invoice.issue_date);
+  const financeId = await upsertFinancePayable(conn, invoice, dueDate);
+
+  await reverseInvoiceStockMovements(conn, invoiceId);
+
+  let movementCount = 0;
+  for (const item of items) {
+    const config = selectItemConfig(itemConfigs, item.id);
+    const itemEntryCfop = clean(config.entry_cfop) || entryCfop || clean(item.cfop);
+    const skipStock = config.skip_stock === true || config.skip_stock === 'true';
+    const stockItemId = skipStock ? null : await ensureStockItemForInvoiceItem(conn, invoice, item, config.stock_item_id, config.create_stock_item !== false);
+    const movementId = skipStock ? null : await createStockMovement(conn, invoice, item, stockItemId);
+    if (movementId) movementCount += 1;
+
+    await conn.query(
+      `UPDATE fiscal_invoice_items SET
+       entry_cfop=?, tax_status=?, credit_indicator=?, icms_credit_base=?, icms_credit_value=?,
+       stock_item_id=?, stock_movement_id=?, fiscal_notes=?
+       WHERE id=?`,
+      [
+        itemEntryCfop,
+        clean(config.tax_status) || 'conferencia',
+        clean(config.credit_indicator) || 'analisar',
+        num(config.icms_credit_base != null ? config.icms_credit_base : item.icms_base || 0),
+        num(config.icms_credit_value != null ? config.icms_credit_value : item.icms_value || 0),
+        stockItemId,
+        movementId,
+        clean(config.fiscal_notes),
+        item.id
+      ]
+    );
+  }
+
+  await conn.query(
+    `UPDATE fiscal_invoices SET
+     entry_cfop=?, financial_status=?, stock_status=?, fiscal_status=?, payment_due_date=?,
+     finance_payable_id=?, sped_status=?, status=?, updated_at=NOW()
+     WHERE id=?`,
+    [
+      entryCfop,
+      'lancado',
+      movementCount ? 'movimentado' : 'sem_movimento',
+      clean(data.fiscal_status) || 'escriturado',
+      dueDate,
+      financeId,
+      clean(data.sped_status) || 'pendente',
+      'conferida',
+      invoiceId
+    ]
+  );
+
+  return { finance_payable_id: financeId, stock_movements: movementCount, items: items.length };
+}
+
+function buildSpedFile(periodStart, periodEnd, invoices, items, stockItems) {
+  const lines = [];
+  const byInvoice = {};
+  (items || []).forEach((item) => {
+    if (!byInvoice[item.invoice_id]) byInvoice[item.invoice_id] = [];
+    byInvoice[item.invoice_id].push(item);
+  });
+
+  lines.push(`|0000|017|0|${spedDate(periodStart)}|${spedDate(periodEnd)}|IMEC INDUSTRIA DE BASE METALURGICA EIRELI|34756390000146|SP|`);
+  lines.push('|0001|0|');
+  lines.push('|C001|0|');
+
+  (invoices || []).forEach((invoice) => {
+    lines.push([
+      '', 'C100', '0', '1', digits(invoice.supplier_cnpj), invoice.model || '55', '00',
+      normalizeSpedText(invoice.series), normalizeSpedText(invoice.number), digits(invoice.access_key),
+      spedDate(invoice.issue_date), spedDate(invoice.entry_date || invoice.issue_date),
+      spedMoney(invoice.total_invoice), '0', '0', spedMoney(invoice.total_products),
+      spedMoney(invoice.freight_value), spedMoney(invoice.discount_value), spedMoney(invoice.icms_value), ''
+    ].join('|'));
+
+    (byInvoice[invoice.id] || []).forEach((item) => {
+      lines.push([
+        '', 'C170',
+        normalizeSpedText(item.item_number || item.id),
+        normalizeSpedText(item.description),
+        spedQty(item.quantity),
+        normalizeSpedText(item.unit || 'UN'),
+        spedMoney(item.total_value),
+        '0',
+        '0',
+        normalizeSpedText(item.entry_cfop || item.cfop),
+        normalizeSpedText(item.ncm),
+        spedMoney(item.icms_credit_base || item.icms_base || 0),
+        spedMoney(item.icms_credit_value || item.icms_value || 0),
+        normalizeSpedText(item.credit_indicator || 'ANALISAR'),
+        ''
+      ].join('|'));
+    });
+  });
+
+  lines.push(`|C990|${lines.filter((line) => line.startsWith('|C')).length + 1}|`);
+  lines.push('|H001|0|');
+  const stockTotal = (stockItems || []).reduce((sum, item) => sum + (num(item.current_stock) * num(item.average_cost)), 0);
+  lines.push(`|H005|${spedDate(periodEnd)}|${spedMoney(stockTotal)}|01|`);
+  (stockItems || []).forEach((item) => {
+    lines.push(`|H010|${item.id}|${normalizeSpedText(item.unit || 'UN')}|${spedQty(item.current_stock)}|${spedMoney(item.average_cost)}|${spedMoney(num(item.current_stock) * num(item.average_cost))}|0|`);
+  });
+  lines.push(`|H990|${lines.filter((line) => line.startsWith('|H')).length + 1}|`);
+  lines.push('|K001|0|');
+  (stockItems || []).forEach((item) => {
+    lines.push(`|K200|${spedDate(periodEnd)}|${item.id}|${spedQty(item.current_stock)}|0|`);
+  });
+  lines.push(`|K990|${lines.filter((line) => line.startsWith('|K')).length + 1}|`);
+  lines.push(`|9999|${lines.length + 1}|`);
+
+  return {
+    file_content: lines.join('\r\n') + '\r\n',
+    summary: {
+      invoices: invoices.length,
+      items: items.length,
+      stock_items: stockItems.length,
+      total_invoices: invoices.reduce((sum, invoice) => sum + num(invoice.total_invoice), 0),
+      stock_total: stockTotal
+    }
+  };
+}
+
 router.get('/summary', authenticate, async (req, res) => {
   try {
     const invoices = await listInvoices();
+    const [payables] = await db.query("SELECT COUNT(*) count, COALESCE(SUM(total_amount - paid_amount),0) total FROM finance_payables WHERE status <> 'pago'");
+    const [movements] = await db.query("SELECT COUNT(*) count FROM stock_movements WHERE movement_type='entrada_nfe'");
     const now = new Date();
     const month = now.getMonth();
     const year = now.getFullYear();
@@ -692,7 +999,12 @@ router.get('/summary', authenticate, async (req, res) => {
         suppliers: supplierNames.size,
         with_xml: invoices.filter((invoice) => invoice.xml_url).length,
         unlinked_orders: invoices.filter((invoice) => !invoice.purchase_order_id).length,
-        conference_total: pending.concat(divergent).reduce((sum, invoice) => sum + num(invoice.total_invoice), 0)
+        conference_total: pending.concat(divergent).reduce((sum, invoice) => sum + num(invoice.total_invoice), 0),
+        integrated: invoices.filter((invoice) => invoice.fiscal_status === 'escriturado').length,
+        finance_open: Number(payables[0] && payables[0].count) || 0,
+        finance_open_total: Number(payables[0] && payables[0].total) || 0,
+        stock_movements: Number(movements[0] && movements[0].count) || 0,
+        sped_pending: invoices.filter((invoice) => invoice.sped_status === 'pendente').length
       }
     });
   } catch (error) {
@@ -778,6 +1090,98 @@ router.get('/invoices/:id/xml', authenticate, async (req, res) => {
   } catch (error) {
     console.error(error);
     if (!res.headersSent) res.status(500).json({ error: 'Erro ao baixar XML da nota fiscal' });
+  }
+});
+
+router.post('/invoices/:id/integrate', authenticate, authorize(...writeRoles), async (req, res) => {
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    const result = await integrateFiscalInvoice(conn, req.params.id, req.body || {});
+    await conn.commit();
+    await audit(req.user.id, 'integrate', 'fiscal_invoice', req.params.id, 'Nota fiscal integrada ao financeiro, estoque e fiscal');
+    res.json({ success: true, ...result });
+  } catch (error) {
+    await conn.rollback();
+    console.error(error);
+    res.status(error.status || 500).json({ error: error.message || 'Erro ao escriturar nota fiscal' });
+  } finally {
+    conn.release();
+  }
+});
+
+router.get('/finance/payables', authenticate, async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT fp.*, fi.number AS invoice_number, fi.series AS invoice_series, fi.access_key
+       FROM finance_payables fp
+       LEFT JOIN fiscal_invoices fi ON fi.id = fp.invoice_id
+       ORDER BY COALESCE(fp.due_date, fp.issue_date, fp.created_at) DESC, fp.id DESC`
+    );
+    res.json(rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao buscar financeiro fiscal' });
+  }
+});
+
+router.get('/stock/movements', authenticate, async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT sm.*, si.name AS stock_item_name, si.unit, fi.number AS invoice_number, fii.description AS invoice_item_description
+       FROM stock_movements sm
+       LEFT JOIN stock_items si ON si.id = sm.stock_item_id
+       LEFT JOIN fiscal_invoices fi ON fi.id = sm.invoice_id
+       LEFT JOIN fiscal_invoice_items fii ON fii.id = sm.invoice_item_id
+       ORDER BY COALESCE(sm.movement_date, sm.created_at) DESC, sm.id DESC`
+    );
+    res.json(rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao buscar estoque fiscal' });
+  }
+});
+
+router.post('/sped/export', authenticate, authorize(...writeRoles), async (req, res) => {
+  try {
+    const range = monthRange(req.body && req.body.month);
+    const [invoiceRows] = await db.query(
+      `SELECT * FROM fiscal_invoices
+       WHERE fiscal_status='escriturado'
+         AND COALESCE(entry_date, issue_date, DATE(created_at)) BETWEEN ? AND ?
+       ORDER BY COALESCE(entry_date, issue_date, created_at), id`,
+      [range.start, range.end]
+    );
+    const invoiceIds = invoiceRows.map((row) => row.id);
+    let itemRows = [];
+    if (invoiceIds.length) {
+      const placeholders = invoiceIds.map(() => '?').join(',');
+      const [rows] = await db.query(
+        `SELECT * FROM fiscal_invoice_items
+         WHERE invoice_id IN (${placeholders})
+         ORDER BY invoice_id, COALESCE(item_number, id), id`,
+        invoiceIds
+      );
+      itemRows = rows;
+    }
+    const [stockItems] = await db.query("SELECT * FROM stock_items WHERE status <> 'inativo' ORDER BY name");
+    const sped = buildSpedFile(range.start, range.end, invoiceRows, itemRows, stockItems);
+    const filename = `sped-fiscal-imec-${range.label}.txt`;
+    const [created] = await db.query(
+      `INSERT INTO fiscal_sped_exports
+       (period_start, period_end, file_name, status, summary, file_content, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [range.start, range.end, filename, 'gerado', JSON.stringify(sped.summary), sped.file_content, req.user.id]
+    );
+    if (invoiceIds.length) {
+      const placeholders = invoiceIds.map(() => '?').join(',');
+      await db.query(`UPDATE fiscal_invoices SET sped_status='gerado' WHERE id IN (${placeholders})`, invoiceIds);
+    }
+    await audit(req.user.id, 'export', 'fiscal_sped', created.insertId, `SPED TXT base ${range.label} gerado`);
+    res.json({ success: true, id: created.insertId, period_start: range.start, period_end: range.end, filename, ...sped });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao gerar SPED TXT base' });
   }
 });
 

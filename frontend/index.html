@@ -526,6 +526,10 @@ const API = {
     update: (id, d) => apiFetch('/api/fiscal/invoices/' + id, { method: 'PUT', body: JSON.stringify(d) }),
     delete: (id) => apiFetch('/api/fiscal/invoices/' + id, { method: 'DELETE' }),
     importXml: (fd) => apiFetch('/api/fiscal/xml/import', { method: 'POST', body: fd }),
+    integrate: (id, d) => apiFetch('/api/fiscal/invoices/' + id + '/integrate', { method: 'POST', body: JSON.stringify(d || {}) }),
+    spedExport: (d) => apiFetch('/api/fiscal/sped/export', { method: 'POST', body: JSON.stringify(d || {}) }),
+    payables: () => apiFetch('/api/fiscal/finance/payables'),
+    stockMovements: () => apiFetch('/api/fiscal/stock/movements'),
     sefazStatus: () => apiFetch('/api/fiscal/sefaz/status'),
     sefazSync: (d) => apiFetch('/api/fiscal/sefaz/sync', { method: 'POST', body: JSON.stringify(d || {}) })
   },

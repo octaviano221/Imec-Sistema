@@ -287,7 +287,14 @@ CREATE TABLE fiscal_invoices (
     pis_value DECIMAL(14,2) NOT NULL DEFAULT 0,
     cofins_value DECIMAL(14,2) NOT NULL DEFAULT 0,
     cfop VARCHAR(120),
+    entry_cfop VARCHAR(30),
     status VARCHAR(40) NOT NULL DEFAULT 'conferencia',
+    financial_status VARCHAR(40) NOT NULL DEFAULT 'nao_lancado',
+    stock_status VARCHAR(40) NOT NULL DEFAULT 'nao_lancado',
+    fiscal_status VARCHAR(40) NOT NULL DEFAULT 'conferencia',
+    payment_due_date DATE,
+    finance_payable_id INT,
+    sped_status VARCHAR(40) NOT NULL DEFAULT 'pendente',
     xml_url MEDIUMTEXT,
     danfe_url MEDIUMTEXT,
     notes TEXT,
@@ -310,9 +317,67 @@ CREATE TABLE fiscal_invoice_items (
     unit_value DECIMAL(14,4) NOT NULL DEFAULT 0,
     total_value DECIMAL(14,2) NOT NULL DEFAULT 0,
     icms_value DECIMAL(14,2) NOT NULL DEFAULT 0,
+    entry_cfop VARCHAR(30),
+    tax_status VARCHAR(40) NOT NULL DEFAULT 'conferencia',
+    credit_indicator VARCHAR(30) NOT NULL DEFAULT 'analisar',
+    icms_credit_base DECIMAL(14,2) NOT NULL DEFAULT 0,
+    icms_credit_value DECIMAL(14,2) NOT NULL DEFAULT 0,
+    stock_item_id INT,
+    stock_movement_id INT,
+    fiscal_notes TEXT,
     notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (invoice_id) REFERENCES fiscal_invoices(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE finance_payables (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    invoice_id INT,
+    supplier_id INT,
+    document_number VARCHAR(80),
+    description VARCHAR(255),
+    issue_date DATE,
+    due_date DATE,
+    total_amount DECIMAL(14,2) NOT NULL DEFAULT 0,
+    paid_amount DECIMAL(14,2) NOT NULL DEFAULT 0,
+    status VARCHAR(40) NOT NULL DEFAULT 'aberto',
+    category VARCHAR(80) NOT NULL DEFAULT 'nota_fiscal',
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (invoice_id) REFERENCES fiscal_invoices(id) ON DELETE SET NULL,
+    FOREIGN KEY (supplier_id) REFERENCES stock_suppliers(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE stock_movements (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    stock_item_id INT NOT NULL,
+    invoice_id INT,
+    invoice_item_id INT,
+    movement_type VARCHAR(40) NOT NULL DEFAULT 'entrada_nfe',
+    quantity DECIMAL(14,4) NOT NULL DEFAULT 0,
+    unit_cost DECIMAL(14,4) NOT NULL DEFAULT 0,
+    total_cost DECIMAL(14,2) NOT NULL DEFAULT 0,
+    reference VARCHAR(120),
+    movement_date DATE,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (stock_item_id) REFERENCES stock_items(id) ON DELETE CASCADE,
+    FOREIGN KEY (invoice_id) REFERENCES fiscal_invoices(id) ON DELETE SET NULL,
+    FOREIGN KEY (invoice_item_id) REFERENCES fiscal_invoice_items(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE fiscal_sped_exports (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    period_start DATE NOT NULL,
+    period_end DATE NOT NULL,
+    file_name VARCHAR(180),
+    status VARCHAR(40) NOT NULL DEFAULT 'gerado',
+    summary LONGTEXT,
+    file_content LONGTEXT,
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 CREATE TABLE fiscal_sefaz_state (
@@ -497,6 +562,15 @@ CREATE INDEX idx_fiscal_invoices_issue ON fiscal_invoices(issue_date);
 CREATE INDEX idx_fiscal_invoices_supplier ON fiscal_invoices(supplier_id);
 CREATE INDEX idx_fiscal_invoices_status ON fiscal_invoices(status);
 CREATE INDEX idx_fiscal_invoice_items_invoice ON fiscal_invoice_items(invoice_id);
+CREATE INDEX idx_fiscal_invoices_flow ON fiscal_invoices(financial_status, stock_status, fiscal_status);
+CREATE INDEX idx_fiscal_invoices_sped ON fiscal_invoices(sped_status, entry_date);
+CREATE INDEX idx_fiscal_invoice_items_stock ON fiscal_invoice_items(stock_item_id);
+CREATE INDEX idx_finance_payables_invoice ON finance_payables(invoice_id);
+CREATE INDEX idx_finance_payables_due ON finance_payables(due_date, status);
+CREATE INDEX idx_stock_movements_item ON stock_movements(stock_item_id);
+CREATE INDEX idx_stock_movements_invoice ON stock_movements(invoice_id);
+CREATE INDEX idx_stock_movements_date ON stock_movements(movement_date);
+CREATE INDEX idx_fiscal_sped_exports_period ON fiscal_sped_exports(period_start, period_end);
 CREATE INDEX idx_projects_client ON projects(client_id);
 CREATE INDEX idx_project_employees_project ON project_employees(project_id);
 CREATE INDEX idx_project_equipment_project ON project_equipment(project_id);
