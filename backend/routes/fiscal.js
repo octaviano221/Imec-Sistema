@@ -1013,6 +1013,137 @@ router.get('/summary', authenticate, async (req, res) => {
   }
 });
 
+router.get('/reports/summary', authenticate, async (req, res) => {
+  try {
+    const range = monthRange(req.query && req.query.month);
+    const [invoiceRows] = await db.query(
+      `SELECT *
+       FROM fiscal_invoices
+       WHERE COALESCE(entry_date, issue_date, DATE(created_at)) BETWEEN ? AND ?
+       ORDER BY COALESCE(entry_date, issue_date, created_at), id`,
+      [range.start, range.end]
+    );
+    const invoiceIds = invoiceRows.map((row) => row.id);
+    let itemRows = [];
+    let payableRows = [];
+    let movementRows = [];
+
+    if (invoiceIds.length) {
+      const placeholders = invoiceIds.map(() => '?').join(',');
+      const [items] = await db.query(
+        `SELECT fii.*, fi.number AS invoice_number, fi.series AS invoice_series, fi.supplier_name
+         FROM fiscal_invoice_items fii
+         JOIN fiscal_invoices fi ON fi.id = fii.invoice_id
+         WHERE fii.invoice_id IN (${placeholders})
+         ORDER BY fii.invoice_id, COALESCE(fii.item_number, fii.id), fii.id`,
+        invoiceIds
+      );
+      itemRows = items;
+
+      const [payables] = await db.query(
+        `SELECT fp.*, fi.number AS invoice_number, fi.series AS invoice_series, fi.supplier_name
+         FROM finance_payables fp
+         LEFT JOIN fiscal_invoices fi ON fi.id = fp.invoice_id
+         WHERE fp.invoice_id IN (${placeholders})
+         ORDER BY COALESCE(fp.due_date, fp.issue_date, fp.created_at), fp.id`,
+        invoiceIds
+      );
+      payableRows = payables;
+
+      const [movements] = await db.query(
+        `SELECT sm.*, si.name AS stock_item_name, si.unit, fi.number AS invoice_number,
+                fii.description AS invoice_item_description
+         FROM stock_movements sm
+         LEFT JOIN stock_items si ON si.id = sm.stock_item_id
+         LEFT JOIN fiscal_invoices fi ON fi.id = sm.invoice_id
+         LEFT JOIN fiscal_invoice_items fii ON fii.id = sm.invoice_item_id
+         WHERE sm.invoice_id IN (${placeholders})
+         ORDER BY COALESCE(sm.movement_date, sm.created_at), sm.id`,
+        invoiceIds
+      );
+      movementRows = movements;
+    }
+
+    const [stockItems] = await db.query("SELECT * FROM stock_items WHERE status <> 'inativo' ORDER BY name");
+    const [spedExports] = await db.query(
+      `SELECT id, period_start, period_end, file_name, status, summary, created_at
+       FROM fiscal_sped_exports
+       WHERE period_start >= ? AND period_end <= ?
+       ORDER BY created_at DESC, id DESC`,
+      [range.start, range.end]
+    );
+
+    const invoiceById = new Map(invoiceRows.map((invoice) => [String(invoice.id), invoice]));
+    const payableInvoiceIds = new Set(payableRows.map((row) => String(row.invoice_id)).filter(Boolean));
+    const movementInvoiceIds = new Set(movementRows.map((row) => String(row.invoice_id)).filter(Boolean));
+    const cfopSummary = {};
+    const icmsSummary = {};
+
+    itemRows.forEach((item) => {
+      const cfop = String(item.entry_cfop || item.cfop || '-');
+      if (!cfopSummary[cfop]) cfopSummary[cfop] = { cfop, count: 0, total: 0, icms_credit: 0 };
+      cfopSummary[cfop].count += 1;
+      cfopSummary[cfop].total += num(item.total_value);
+      cfopSummary[cfop].icms_credit += num(item.icms_credit_value || item.icms_value);
+
+      const credit = String(item.credit_indicator || 'analisar');
+      if (!icmsSummary[credit]) icmsSummary[credit] = { credit_indicator: credit, count: 0, base: 0, value: 0 };
+      icmsSummary[credit].count += 1;
+      icmsSummary[credit].base += num(item.icms_credit_base || item.icms_base);
+      icmsSummary[credit].value += num(item.icms_credit_value || item.icms_value);
+    });
+
+    const withoutFinance = invoiceRows.filter((invoice) => !payableInvoiceIds.has(String(invoice.id)));
+    const withoutStock = invoiceRows.filter((invoice) => !movementInvoiceIds.has(String(invoice.id)) && (invoice.stock_status || 'nao_lancado') !== 'sem_movimento');
+    const withoutCfop = itemRows.filter((item) => !(item.entry_cfop || item.cfop));
+    const withoutIcmsDecision = itemRows.filter((item) => !item.credit_indicator || item.credit_indicator === 'analisar');
+    const spedPending = invoiceRows.filter((invoice) => (invoice.sped_status || 'pendente') === 'pendente');
+    const openPayables = payableRows.filter((row) => row.status !== 'pago' && row.status !== 'cancelado');
+    const paidPayables = payableRows.filter((row) => row.status === 'pago');
+
+    res.json({
+      period: range,
+      metrics: {
+        total_invoices: invoiceRows.length,
+        total_value: invoiceRows.reduce((sum, invoice) => sum + num(invoice.total_invoice), 0),
+        total_icms: invoiceRows.reduce((sum, invoice) => sum + num(invoice.icms_value), 0),
+        open_payables: openPayables.length,
+        open_payables_total: openPayables.reduce((sum, row) => sum + Math.max(num(row.total_amount) - num(row.paid_amount), 0), 0),
+        paid_payables: paidPayables.length,
+        stock_entries: movementRows.length,
+        stock_items: stockItems.length,
+        sped_exports: spedExports.length,
+        pending_entries: invoiceRows.filter((invoice) => (invoice.fiscal_status || 'conferencia') !== 'escriturado' || (invoice.financial_status || 'nao_lancado') !== 'lancado').length,
+        pending_sped: spedPending.length,
+        missing_cfop: withoutCfop.length,
+        missing_icms_decision: withoutIcmsDecision.length
+      },
+      cfop_summary: Object.keys(cfopSummary).map((key) => cfopSummary[key]).sort((a, b) => b.total - a.total),
+      icms_summary: Object.keys(icmsSummary).map((key) => icmsSummary[key]).sort((a, b) => b.value - a.value),
+      issues: {
+        without_finance: withoutFinance.slice(0, 20),
+        without_stock: withoutStock.slice(0, 20),
+        without_cfop: withoutCfop.slice(0, 30).map((item) => ({ ...item, invoice: invoiceById.get(String(item.invoice_id)) || null })),
+        without_icms_decision: withoutIcmsDecision.slice(0, 30).map((item) => ({ ...item, invoice: invoiceById.get(String(item.invoice_id)) || null })),
+        sped_pending: spedPending.slice(0, 30)
+      },
+      invoices: invoiceRows,
+      payables: payableRows,
+      stock_movements: movementRows,
+      sped_exports: spedExports.map((row) => {
+        let summary = row.summary;
+        if (typeof summary === 'string') {
+          try { summary = JSON.parse(summary); } catch (_) { summary = {}; }
+        }
+        return { ...row, summary: summary || {} };
+      })
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao gerar conferencia fiscal' });
+  }
+});
+
 router.get('/invoices', authenticate, async (req, res) => {
   try {
     res.json(await listInvoices());
@@ -1125,6 +1256,47 @@ router.get('/finance/payables', authenticate, async (req, res) => {
   }
 });
 
+router.put('/finance/payables/:id', authenticate, authorize(...writeRoles), async (req, res) => {
+  try {
+    const allowed = new Set(['aberto', 'parcial', 'pago', 'cancelado', 'vencido']);
+    const status = allowed.has(req.body && req.body.status) ? req.body.status : 'aberto';
+    const paidAmount = num(req.body && req.body.paid_amount);
+    const notes = (req.body && req.body.notes) || null;
+    const [currentRows] = await db.query('SELECT * FROM finance_payables WHERE id=?', [req.params.id]);
+    if (!currentRows.length) return res.status(404).json({ error: 'Titulo financeiro nao encontrado' });
+
+    await db.query(
+      `UPDATE finance_payables
+       SET status=?, paid_amount=?, notes=?, updated_at=NOW()
+       WHERE id=?`,
+      [status, paidAmount, notes, req.params.id]
+    );
+
+    if (currentRows[0].invoice_id) {
+      await db.query(
+        `UPDATE fiscal_invoices
+         SET financial_status='lancado',
+             status=CASE WHEN status='pendente' THEN 'conferencia' ELSE status END
+         WHERE id=?`,
+        [currentRows[0].invoice_id]
+      );
+    }
+
+    const [rows] = await db.query(
+      `SELECT fp.*, fi.number AS invoice_number, fi.series AS invoice_series, fi.access_key
+       FROM finance_payables fp
+       LEFT JOIN fiscal_invoices fi ON fi.id = fp.invoice_id
+       WHERE fp.id=?`,
+      [req.params.id]
+    );
+    await audit(req.user.id, 'update', 'finance_payable', req.params.id, `Titulo fiscal ${status}`);
+    res.json(rows[0]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao atualizar financeiro fiscal' });
+  }
+});
+
 router.get('/stock/movements', authenticate, async (req, res) => {
   try {
     const [rows] = await db.query(
@@ -1139,6 +1311,27 @@ router.get('/stock/movements', authenticate, async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Erro ao buscar estoque fiscal' });
+  }
+});
+
+router.get('/sped/exports', authenticate, async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT id, period_start, period_end, file_name, status, summary, created_at
+       FROM fiscal_sped_exports
+       ORDER BY created_at DESC, id DESC
+       LIMIT 24`
+    );
+    res.json(rows.map((row) => {
+      let summary = row.summary;
+      if (typeof summary === 'string') {
+        try { summary = JSON.parse(summary); } catch (_) { summary = {}; }
+      }
+      return { ...row, summary: summary || {} };
+    }));
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao buscar historico SPED' });
   }
 });
 

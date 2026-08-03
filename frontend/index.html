@@ -528,8 +528,11 @@ const API = {
     importXml: (fd) => apiFetch('/api/fiscal/xml/import', { method: 'POST', body: fd }),
     integrate: (id, d) => apiFetch('/api/fiscal/invoices/' + id + '/integrate', { method: 'POST', body: JSON.stringify(d || {}) }),
     spedExport: (d) => apiFetch('/api/fiscal/sped/export', { method: 'POST', body: JSON.stringify(d || {}) }),
+    reportSummary: (q) => apiFetch('/api/fiscal/reports/summary' + (q ? '?' + new URLSearchParams(q).toString() : '')),
     payables: () => apiFetch('/api/fiscal/finance/payables'),
+    updatePayable: (id, d) => apiFetch('/api/fiscal/finance/payables/' + id, { method: 'PUT', body: JSON.stringify(d || {}) }),
     stockMovements: () => apiFetch('/api/fiscal/stock/movements'),
+    spedExports: () => apiFetch('/api/fiscal/sped/exports'),
     sefazStatus: () => apiFetch('/api/fiscal/sefaz/status'),
     sefazSync: (d) => apiFetch('/api/fiscal/sefaz/sync', { method: 'POST', body: JSON.stringify(d || {}) })
   },
