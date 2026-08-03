@@ -315,6 +315,19 @@ CREATE TABLE fiscal_invoice_items (
     FOREIGN KEY (invoice_id) REFERENCES fiscal_invoices(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+CREATE TABLE fiscal_sefaz_state (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    cnpj VARCHAR(20) NOT NULL UNIQUE,
+    uf VARCHAR(2) NOT NULL DEFAULT 'SP',
+    ult_nsu VARCHAR(20) NOT NULL DEFAULT '000000000000000',
+    max_nsu VARCHAR(20),
+    last_status VARCHAR(20),
+    last_message VARCHAR(255),
+    last_sync_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
 -- ============================================
 -- CLIENTS
 -- ============================================

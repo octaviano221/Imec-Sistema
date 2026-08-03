@@ -195,6 +195,18 @@ async function applyCompatibilityMigrations() {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (invoice_id) REFERENCES fiscal_invoices(id) ON DELETE CASCADE
     ) ENGINE=InnoDB`,
+    `CREATE TABLE IF NOT EXISTS fiscal_sefaz_state (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      cnpj VARCHAR(20) NOT NULL UNIQUE,
+      uf VARCHAR(2) NOT NULL DEFAULT 'SP',
+      ult_nsu VARCHAR(20) NOT NULL DEFAULT '000000000000000',
+      max_nsu VARCHAR(20),
+      last_status VARCHAR(20),
+      last_message VARCHAR(255),
+      last_sync_at TIMESTAMP NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB`,
     'ALTER TABLE technical_proposals MODIFY file_url MEDIUMTEXT',
     'ALTER TABLE purchase_orders MODIFY file_url MEDIUMTEXT',
     'CREATE INDEX idx_technical_proposals_client ON technical_proposals(client_id)',
@@ -225,7 +237,8 @@ async function applyCompatibilityMigrations() {
     'CREATE INDEX idx_fiscal_invoices_issue ON fiscal_invoices(issue_date)',
     'CREATE INDEX idx_fiscal_invoices_supplier ON fiscal_invoices(supplier_id)',
     'CREATE INDEX idx_fiscal_invoices_status ON fiscal_invoices(status)',
-    'CREATE INDEX idx_fiscal_invoice_items_invoice ON fiscal_invoice_items(invoice_id)'
+    'CREATE INDEX idx_fiscal_invoice_items_invoice ON fiscal_invoice_items(invoice_id)',
+    'CREATE INDEX idx_fiscal_sefaz_state_cnpj ON fiscal_sefaz_state(cnpj)'
   ];
 
   for (const statement of statements) {
@@ -269,7 +282,7 @@ function sendFrontendApp(req, res, next) {
 
     const enhancedHtml = html
       .replace('</head>', '<link rel="stylesheet" href="/pro-dashboard.css">\n<link rel="stylesheet" href="/pro-polish.css">\n</head>')
-.replace('</body>', '<script src="/pro-dashboard.js"></script>\n<script src="/pro-polish.js"></script>\n<link rel="stylesheet" href="/nr-idcards.css">\n<script src="/nr-idcards.js"></script>\n<script src="/site-fixes.js"></script>\n<link rel="stylesheet" href="/system-enhancements.css?v=20260803a">\n<script src="/system-enhancements.js?v=20260803a"></script>\n<link rel="stylesheet" href="/production-readiness.css">\n<script src="/production-readiness.js"></script>\n<link rel="stylesheet" href="/executive-control.css">\n<script src="/executive-control.js"></script>\n<link rel="stylesheet" href="/professional-suite.css">\n<script src="/professional-suite.js"></script>\n<link rel="stylesheet" href="/premium-improvements.css">\n<script src="/premium-improvements.js"></script>\n<link rel="stylesheet" href="/epi-control.css?v=20260803a">\n<script src="/epi-control.js?v=20260803a"></script>\n<link rel="stylesheet" href="/home-dashboard.css">\n<script src="/home-dashboard.js"></script>\n<link rel="stylesheet" href="/vehicle-documents.css">\n<script src="/vehicle-documents.js"></script>\n<link rel="stylesheet" href="/proposals-control.css">\n<script src="/proposals-control.js"></script>\n<link rel="stylesheet" href="/warehouse-control.css?v=20260731c">\n<script src="/warehouse-control.js?v=20260731c"></script>\n<link rel="stylesheet" href="/fiscal-control.css?v=20260803b">\n<script src="/fiscal-control.js?v=20260803b"></script>\n</body>');
+.replace('</body>', '<script src="/pro-dashboard.js"></script>\n<script src="/pro-polish.js"></script>\n<link rel="stylesheet" href="/nr-idcards.css">\n<script src="/nr-idcards.js"></script>\n<script src="/site-fixes.js"></script>\n<link rel="stylesheet" href="/system-enhancements.css?v=20260803a">\n<script src="/system-enhancements.js?v=20260803a"></script>\n<link rel="stylesheet" href="/production-readiness.css">\n<script src="/production-readiness.js"></script>\n<link rel="stylesheet" href="/executive-control.css">\n<script src="/executive-control.js"></script>\n<link rel="stylesheet" href="/professional-suite.css">\n<script src="/professional-suite.js"></script>\n<link rel="stylesheet" href="/premium-improvements.css">\n<script src="/premium-improvements.js"></script>\n<link rel="stylesheet" href="/epi-control.css?v=20260803a">\n<script src="/epi-control.js?v=20260803a"></script>\n<link rel="stylesheet" href="/home-dashboard.css">\n<script src="/home-dashboard.js"></script>\n<link rel="stylesheet" href="/vehicle-documents.css">\n<script src="/vehicle-documents.js"></script>\n<link rel="stylesheet" href="/proposals-control.css">\n<script src="/proposals-control.js"></script>\n<link rel="stylesheet" href="/warehouse-control.css?v=20260731c">\n<script src="/warehouse-control.js?v=20260731c"></script>\n<link rel="stylesheet" href="/fiscal-control.css?v=20260803c">\n<script src="/fiscal-control.js?v=20260803c"></script>\n</body>');
 
     res.type('html').send(enhancedHtml);
   });

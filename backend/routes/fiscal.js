@@ -1,12 +1,22 @@
 const express = require('express');
 const fs = require('fs');
+const https = require('https');
 const path = require('path');
+const zlib = require('zlib');
 const router = express.Router();
 const db = require('../config/db');
 const upload = require('../middleware/upload');
 const { authenticate, authorize } = require('../middleware/auth');
 
 const writeRoles = ['admin', 'rh', 'engenharia'];
+
+const UF_CODES = {
+  RO: '11', AC: '12', AM: '13', RR: '14', PA: '15', AP: '16', TO: '17',
+  MA: '21', PI: '22', CE: '23', RN: '24', PB: '25', PE: '26', AL: '27', SE: '28', BA: '29',
+  MG: '31', ES: '32', RJ: '33', SP: '35',
+  PR: '41', SC: '42', RS: '43',
+  MS: '50', MT: '51', GO: '52', DF: '53'
+};
 
 function sefazConfig() {
   const certPath = clean(process.env.SEFAZ_CERT_PATH);
@@ -15,6 +25,7 @@ function sefazConfig() {
     cnpj: digits(process.env.SEFAZ_CNPJ),
     uf: clean(process.env.SEFAZ_UF || 'SP'),
     environment: clean(process.env.SEFAZ_ENV || 'production'),
+    endpoint: clean(process.env.SEFAZ_DFE_URL),
     cert_path: certPath,
     cert_password_set: Boolean(process.env.SEFAZ_CERT_PASSWORD),
     cert_exists: certPath ? fs.existsSync(certPath) : false
@@ -86,6 +97,21 @@ function fileUrl(file) {
   return '/uploads/' + path.basename(file.filename || file.path);
 }
 
+function firstAttr(text, attr) {
+  const match = String(text || '').match(new RegExp(attr + '=["\']([^"\']+)["\']', 'i'));
+  return match ? decodeXml(match[1]) : null;
+}
+
+function nfeKeyParts(accessKey) {
+  const key = digits(accessKey);
+  if (key.length !== 44) return {};
+  return {
+    model: key.slice(20, 22),
+    series: String(Number(key.slice(22, 25)) || key.slice(22, 25)),
+    number: String(Number(key.slice(25, 34)) || key.slice(25, 34))
+  };
+}
+
 function parseNfeXml(rawXml) {
   const xml = stripNs(rawXml);
   const idMatch = xml.match(/<infNFe[^>]+Id=["']NFe(\d{44})["']/i);
@@ -141,6 +167,223 @@ function parseNfeXml(rawXml) {
     cfop: cfops.join(', '),
     items
   };
+}
+
+function parseSefazSummaryXml(rawXml) {
+  const xml = stripNs(rawXml);
+  const accessKey = firstTag(xml, 'chNFe');
+  const keyParts = nfeKeyParts(accessKey);
+  const supplierCnpj = digits(firstTag(xml, 'CNPJ') || firstTag(xml, 'CPF'));
+  return {
+    access_key: accessKey,
+    model: keyParts.model || '55',
+    series: keyParts.series || null,
+    number: keyParts.number || null,
+    issue_date: normalizeDate(firstTag(xml, 'dhEmi') || firstTag(xml, 'dEmi')),
+    entry_date: null,
+    operation_type: firstTag(xml, 'tpNF') === '1' ? 'Saida' : 'Entrada',
+    supplier_name: firstTag(xml, 'xNome'),
+    supplier_cnpj: supplierCnpj,
+    supplier_ie: firstTag(xml, 'IE'),
+    client_name: null,
+    client_cnpj: null,
+    total_products: num(firstTag(xml, 'vNF')),
+    total_invoice: num(firstTag(xml, 'vNF')),
+    freight_value: 0,
+    discount_value: 0,
+    icms_base: 0,
+    icms_value: 0,
+    ipi_value: 0,
+    pis_value: 0,
+    cofins_value: 0,
+    cfop: null,
+    items: []
+  };
+}
+
+function sefazEndpoint(config) {
+  if (config.endpoint) return config.endpoint;
+  if (String(config.environment).toLowerCase().startsWith('hom')) {
+    return 'https://hom.nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx';
+  }
+  return 'https://www1.nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx';
+}
+
+function sefazAmbiente(config) {
+  return String(config.environment).toLowerCase().startsWith('hom') ? '2' : '1';
+}
+
+function padNsu(value) {
+  return String(digits(value) || '0').padStart(15, '0').slice(-15);
+}
+
+function buildSefazEnvelope(config, ultNsu) {
+  const ufCode = UF_CODES[String(config.uf || '').toUpperCase()];
+  if (!ufCode) throw new Error('UF SEFAZ invalida. Use a sigla, por exemplo SP.');
+  return `<?xml version="1.0" encoding="utf-8"?>
+<soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
+  <soap12:Body>
+    <nfeDistDFeInteresse xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeDistribuicaoDFe">
+      <nfeDadosMsg>
+        <distDFeInt xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.01">
+          <tpAmb>${sefazAmbiente(config)}</tpAmb>
+          <cUFAutor>${ufCode}</cUFAutor>
+          <CNPJ>${config.cnpj}</CNPJ>
+          <distNSU>
+            <ultNSU>${padNsu(ultNsu)}</ultNSU>
+          </distNSU>
+        </distDFeInt>
+      </nfeDadosMsg>
+    </nfeDistDFeInteresse>
+  </soap12:Body>
+</soap12:Envelope>`;
+}
+
+function postSefaz(config, body) {
+  const endpoint = new URL(sefazEndpoint(config));
+  const payload = Buffer.from(body, 'utf8');
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      protocol: endpoint.protocol,
+      hostname: endpoint.hostname,
+      port: endpoint.port || 443,
+      path: endpoint.pathname + endpoint.search,
+      method: 'POST',
+      pfx: fs.readFileSync(config.cert_path),
+      passphrase: process.env.SEFAZ_CERT_PASSWORD,
+      headers: {
+        'Content-Type': 'application/soap+xml; charset=utf-8; action="http://www.portalfiscal.inf.br/nfe/wsdl/NFeDistribuicaoDFe/nfeDistDFeInteresse"',
+        'Content-Length': payload.length
+      },
+      timeout: 45000
+    }, (response) => {
+      const chunks = [];
+      response.on('data', (chunk) => chunks.push(chunk));
+      response.on('end', () => {
+        const text = Buffer.concat(chunks).toString('utf8');
+        if (response.statusCode >= 400) {
+          return reject(new Error(`SEFAZ HTTP ${response.statusCode}: ${text.slice(0, 300)}`));
+        }
+        resolve(text);
+      });
+    });
+    req.on('timeout', () => req.destroy(new Error('Tempo esgotado na consulta SEFAZ')));
+    req.on('error', reject);
+    req.write(payload);
+    req.end();
+  });
+}
+
+function parseDocZipBlocks(responseXml) {
+  const docs = [];
+  const regex = /<(?:[A-Za-z0-9_.-]+:)?docZip\b([^>]*)>([\s\S]*?)<\/(?:[A-Za-z0-9_.-]+:)?docZip>/gi;
+  let match;
+  while ((match = regex.exec(responseXml))) {
+    const attrs = match[1] || '';
+    const encoded = String(match[2] || '').replace(/\s/g, '');
+    let xml = '';
+    const zipped = Buffer.from(encoded, 'base64');
+    try {
+      xml = zlib.gunzipSync(zipped).toString('utf8');
+    } catch (err) {
+      try {
+        xml = zlib.inflateSync(zipped).toString('utf8');
+      } catch (innerErr) {
+        xml = zipped.toString('utf8');
+      }
+    }
+    docs.push({
+      nsu: firstAttr(attrs, 'NSU'),
+      schema: firstAttr(attrs, 'schema'),
+      xml: xml.replace(/^\uFEFF/, '').trim()
+    });
+  }
+  return docs;
+}
+
+function parseSefazResponse(responseXml) {
+  const xml = stripNs(responseXml);
+  return {
+    cStat: firstTag(xml, 'cStat'),
+    xMotivo: firstTag(xml, 'xMotivo'),
+    ultNSU: padNsu(firstTag(xml, 'ultNSU')),
+    maxNSU: padNsu(firstTag(xml, 'maxNSU')),
+    docs: parseDocZipBlocks(responseXml)
+  };
+}
+
+function saveSefazXml(rawXml, nsu, accessKey) {
+  const dir = upload.uploadDir || path.join(__dirname, '..', 'uploads');
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  const name = `sefaz-${padNsu(nsu)}-${digits(accessKey) || Date.now()}.xml`;
+  fs.writeFileSync(path.join(dir, name), rawXml, 'utf8');
+  return '/uploads/' + name;
+}
+
+async function ensureSefazState(conn, config) {
+  const [rows] = await conn.query('SELECT * FROM fiscal_sefaz_state WHERE cnpj=? LIMIT 1', [config.cnpj]);
+  if (rows.length) return rows[0];
+  await conn.query('INSERT INTO fiscal_sefaz_state (cnpj, uf, ult_nsu) VALUES (?, ?, ?)', [config.cnpj, String(config.uf).toUpperCase(), '000000000000000']);
+  return { cnpj: config.cnpj, uf: String(config.uf).toUpperCase(), ult_nsu: '000000000000000', max_nsu: null };
+}
+
+async function saveParsedFiscalInvoice(conn, data, options = {}) {
+  if (!data.access_key && !data.number) throw new Error('Nota fiscal sem chave ou numero');
+  data.supplier_id = await findOrCreateSupplier(conn, data);
+
+  let invoiceId = null;
+  if (data.access_key) {
+    const [existing] = await conn.query('SELECT id FROM fiscal_invoices WHERE access_key=? LIMIT 1', [data.access_key]);
+    invoiceId = existing[0] && existing[0].id;
+  }
+
+  const status = options.status || 'conferencia';
+  const notes = clean(options.notes || data.notes);
+  if (invoiceId) {
+    await conn.query(
+      `UPDATE fiscal_invoices SET model=?, series=?, number=?, issue_date=?, entry_date=?, operation_type=?,
+       supplier_id=?, supplier_name=?, supplier_cnpj=?, supplier_ie=?, client_name=?, client_cnpj=?,
+       total_products=?, total_invoice=?, freight_value=?, discount_value=?, icms_base=?, icms_value=?,
+       ipi_value=?, pis_value=?, cofins_value=?, cfop=?, status=?, xml_url=?, notes=COALESCE(?, notes)
+       WHERE id=?`,
+      [
+        data.model, data.series, data.number, data.issue_date, data.entry_date, data.operation_type,
+        data.supplier_id, data.supplier_name, data.supplier_cnpj, data.supplier_ie, data.client_name, data.client_cnpj,
+        data.total_products, data.total_invoice, data.freight_value, data.discount_value, data.icms_base, data.icms_value,
+        data.ipi_value, data.pis_value, data.cofins_value, data.cfop, status, data.xml_url, notes, invoiceId
+      ]
+    );
+    await conn.query('DELETE FROM fiscal_invoice_items WHERE invoice_id=?', [invoiceId]);
+  } else {
+    const [result] = await conn.query(
+      `INSERT INTO fiscal_invoices
+      (access_key, model, series, number, issue_date, entry_date, operation_type, supplier_id, supplier_name, supplier_cnpj,
+       supplier_ie, client_name, client_cnpj, total_products, total_invoice, freight_value, discount_value, icms_base,
+       icms_value, ipi_value, pis_value, cofins_value, cfop, status, xml_url, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        data.access_key, data.model, data.series, data.number, data.issue_date, data.entry_date, data.operation_type,
+        data.supplier_id, data.supplier_name, data.supplier_cnpj, data.supplier_ie, data.client_name, data.client_cnpj,
+        data.total_products, data.total_invoice, data.freight_value, data.discount_value, data.icms_base, data.icms_value,
+        data.ipi_value, data.pis_value, data.cofins_value, data.cfop, status, data.xml_url, notes
+      ]
+    );
+    invoiceId = result.insertId;
+  }
+
+  for (const item of data.items || []) {
+    await conn.query(
+      `INSERT INTO fiscal_invoice_items
+      (invoice_id, item_number, product_code, description, ncm, cfop, unit, quantity, unit_value, total_value, icms_value)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        invoiceId, item.item_number, clean(item.product_code), clean(item.description), clean(item.ncm), clean(item.cfop),
+        clean(item.unit), num(item.quantity), num(item.unit_value), num(item.total_value), num(item.icms_value)
+      ]
+    );
+  }
+
+  return { invoiceId, action: options.existed ? 'updated' : (invoiceId ? 'saved' : 'ignored') };
 }
 
 async function audit(userId, action, entityType, entityId, description) {
@@ -226,12 +469,26 @@ router.get('/invoices', authenticate, async (req, res) => {
 router.get('/sefaz/status', authenticate, authorize(...writeRoles), async (req, res) => {
   const config = sefazConfig();
   const missing = sefazMissing(config);
+  let state = null;
+  try {
+    if (config.cnpj) {
+      const [rows] = await db.query('SELECT ult_nsu, max_nsu, last_status, last_message, last_sync_at FROM fiscal_sefaz_state WHERE cnpj=? LIMIT 1', [config.cnpj]);
+      state = rows[0] || null;
+    }
+  } catch (err) {
+    state = null;
+  }
   res.json({
     ready: missing.length === 0,
     enabled: config.enabled,
     cnpj: config.cnpj ? config.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : null,
     uf: config.uf,
     environment: config.environment,
+    ultNSU: state && state.ult_nsu,
+    maxNSU: state && state.max_nsu,
+    last_status: state && state.last_status,
+    last_message: state && state.last_message,
+    last_sync_at: state && state.last_sync_at,
     cert_exists: config.cert_exists,
     cert_password_set: config.cert_password_set,
     cert_path_set: Boolean(config.cert_path),
@@ -249,10 +506,106 @@ router.post('/sefaz/sync', authenticate, authorize(...writeRoles), async (req, r
     });
   }
 
-  res.status(501).json({
-    error: 'Consulta SEFAZ ainda nao ativada',
-    message: 'O certificado A1 foi detectado. Falta instalar o conector SEFAZ para distribuicao de NF-e por CNPJ.'
-  });
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    const state = await ensureSefazState(conn, config);
+    let ultNSU = padNsu((req.body && req.body.ultNSU) || state.ult_nsu);
+    let maxNSU = padNsu(state.max_nsu || ultNSU);
+    const cycles = Math.min(Math.max(Number((req.body && req.body.cycles) || 1), 1), 5);
+    const processed = [];
+    const ignored = [];
+    let lastStatus = null;
+    let lastMessage = null;
+
+    for (let i = 0; i < cycles; i += 1) {
+      const responseXml = await postSefaz(config, buildSefazEnvelope(config, ultNSU));
+      const parsed = parseSefazResponse(responseXml);
+      lastStatus = parsed.cStat;
+      lastMessage = parsed.xMotivo;
+      ultNSU = parsed.ultNSU || ultNSU;
+      maxNSU = parsed.maxNSU || maxNSU;
+
+      for (const doc of parsed.docs) {
+        try {
+          const cleanXml = stripNs(doc.xml);
+          let data = null;
+          let status = 'conferencia';
+          let source = 'xml-completo';
+
+          if (/<resNFe\b/i.test(cleanXml)) {
+            data = parseSefazSummaryXml(doc.xml);
+            status = 'pendente';
+            source = 'resumo-sefaz';
+          } else if (/<procNFe\b/i.test(cleanXml) || /<NFe\b/i.test(cleanXml)) {
+            data = parseNfeXml(doc.xml);
+          }
+
+          if (!data || (!data.access_key && !data.number)) {
+            ignored.push({ nsu: doc.nsu, schema: doc.schema || 'desconhecido' });
+            continue;
+          }
+
+          data.xml_url = saveSefazXml(doc.xml, doc.nsu, data.access_key);
+          const [existing] = data.access_key
+            ? await conn.query('SELECT id FROM fiscal_invoices WHERE access_key=? LIMIT 1', [data.access_key])
+            : [[]];
+          const saveResult = await saveParsedFiscalInvoice(conn, data, {
+            status,
+            existed: existing.length > 0,
+            notes: source === 'resumo-sefaz'
+              ? `Resumo importado da SEFAZ pelo NSU ${doc.nsu}. XML completo pode depender de manifestacao do destinatario.`
+              : `XML completo importado da SEFAZ pelo NSU ${doc.nsu}.`
+          });
+          processed.push({
+            id: saveResult.invoiceId,
+            action: existing.length ? 'updated' : 'created',
+            source,
+            nsu: doc.nsu,
+            access_key: data.access_key,
+            number: data.number,
+            supplier_name: data.supplier_name,
+            total_invoice: data.total_invoice
+          });
+        } catch (docError) {
+          ignored.push({ nsu: doc.nsu, schema: doc.schema || 'desconhecido', error: docError.message });
+        }
+      }
+
+      if (ultNSU >= maxNSU || parsed.cStat === '137' || !parsed.docs.length) break;
+    }
+
+    await conn.query(
+      `UPDATE fiscal_sefaz_state
+       SET uf=?, ult_nsu=?, max_nsu=?, last_status=?, last_message=?, last_sync_at=NOW()
+       WHERE cnpj=?`,
+      [String(config.uf).toUpperCase(), ultNSU, maxNSU, lastStatus, lastMessage, config.cnpj]
+    );
+    await conn.commit();
+
+    await audit(req.user.id, 'sync', 'fiscal_invoice', null, `Consulta SEFAZ: ${processed.length} documento(s) processado(s)`);
+    res.json({
+      success: true,
+      cStat: lastStatus,
+      xMotivo: lastMessage,
+      ultNSU,
+      maxNSU,
+      imported: processed.filter((item) => item.action === 'created').length,
+      updated: processed.filter((item) => item.action === 'updated').length,
+      ignored: ignored.length,
+      documents: processed,
+      ignored_documents: ignored
+    });
+  } catch (error) {
+    await conn.rollback();
+    console.error(error);
+    res.status(502).json({
+      error: 'Erro ao consultar SEFAZ',
+      message: error.message || 'Falha na comunicacao com o servico da SEFAZ'
+    });
+  } finally {
+    conn.release();
+  }
 });
 
 router.post('/invoices', authenticate, authorize(...writeRoles), async (req, res) => {

@@ -110,17 +110,23 @@
         return '<li class="' + (item[1] ? 'ok' : 'warn') + '"><span>' + (item[1] ? '&#10003;' : '!') + '</span>' + item[0] + '</li>';
       }).join('');
       var readyBox = status.ready
-        ? '<div class="fiscal-sefaz-ready">Certificado A1 localizado. Pronto para instalar a consulta autom&aacute;tica na SEFAZ.</div>'
+        ? '<div class="fiscal-sefaz-ready">Certificado A1 localizado. Pronto para consultar a distribui&ccedil;&atilde;o de NF-e na SEFAZ.</div>'
         : '<div class="fiscal-sefaz-warn">Ainda falta: ' + esc(missing.join(', ') || 'configura&ccedil;&atilde;o') + '.</div>';
-      openModal('<div class="p-6 fiscal-modal-wide"><div class="fiscal-panel-head px-0 pt-0"><div><h2 class="font-display text-xl font-bold text-imec-dark">Rob&ocirc; SEFAZ por CNPJ</h2><p class="text-sm text-slate-500 mt-1">Busca futura de NF-e emitida contra o CNPJ usando certificado A1.</p></div><span class="fiscal-chip ' + (status.ready ? 'ok' : 'warn') + '">' + (status.ready ? 'A1 pronto' : 'Configurar A1') + '</span></div><div class="fiscal-sefaz-grid"><section><h3>Vari&aacute;veis na Hostinger</h3><ul class="fiscal-sefaz-list">' + checklist + '</ul></section><section><h3>Dados detectados</h3><div class="fiscal-cfop-list"><div class="fiscal-cfop-row"><span>CNPJ</span><b>' + esc(status.cnpj || '-') + '</b></div><div class="fiscal-cfop-row"><span>UF</span><b>' + esc(status.uf || '-') + '</b></div><div class="fiscal-cfop-row"><span>Ambiente</span><b>' + esc(status.environment || '-') + '</b></div></div></section></div>' + readyBox + '<div class="bg-blue-50 border border-blue-100 rounded-lg p-4 mt-4 text-sm text-blue-900"><b>Onde colocar o A1:</b> envie o .pfx para uma pasta fora do public_html, por exemplo <code>/home/u974096246/certificados/imec-a1.pfx</code>. A senha fica somente na vari&aacute;vel <code>SEFAZ_CERT_PASSWORD</code>.</div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Fechar</button><button type="button" class="btn btn-primary" onclick="startSefazSync()">' + icon('robot') + ' Testar consulta</button></div></div>');
+      openModal('<div class="p-6 fiscal-modal-wide"><div class="fiscal-panel-head px-0 pt-0"><div><h2 class="font-display text-xl font-bold text-imec-dark">Rob&ocirc; SEFAZ por CNPJ</h2><p class="text-sm text-slate-500 mt-1">Busca NF-e emitida contra o CNPJ usando certificado A1.</p></div><span class="fiscal-chip ' + (status.ready ? 'ok' : 'warn') + '">' + (status.ready ? 'A1 pronto' : 'Configurar A1') + '</span></div><div class="fiscal-sefaz-grid"><section><h3>Vari&aacute;veis na Hostinger</h3><ul class="fiscal-sefaz-list">' + checklist + '</ul></section><section><h3>Dados detectados</h3><div class="fiscal-cfop-list"><div class="fiscal-cfop-row"><span>CNPJ</span><b>' + esc(status.cnpj || '-') + '</b></div><div class="fiscal-cfop-row"><span>UF</span><b>' + esc(status.uf || '-') + '</b></div><div class="fiscal-cfop-row"><span>Ambiente</span><b>' + esc(status.environment || '-') + '</b></div><div class="fiscal-cfop-row"><span>&Uacute;ltimo NSU</span><b>' + esc(status.ultNSU || '000000000000000') + '</b></div></div></section></div>' + readyBox + '<div class="bg-blue-50 border border-blue-100 rounded-lg p-4 mt-4 text-sm text-blue-900"><b>Onde colocar o A1:</b> envie o .pfx para uma pasta fora do public_html, por exemplo <code>/home/u974096246/certificados/imec-a1.pfx</code>. A senha fica somente na vari&aacute;vel <code>SEFAZ_CERT_PASSWORD</code>.</div><div id="sefazSyncResult" class="mt-4"></div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Fechar</button><button type="button" class="btn btn-primary" onclick="startSefazSync()">' + icon('robot') + ' Consultar SEFAZ</button></div></div>');
     } catch (err) {
       showToast('Erro: ' + err.message, 'error');
     }
   };
   window.startSefazSync = async function () {
     try {
-      await API.fiscal.sefazSync({});
-      showToast('Consulta SEFAZ iniciada', 'success');
+      var box = document.getElementById('sefazSyncResult');
+      if (box) box.innerHTML = '<div class="fiscal-sefaz-ready">Consultando SEFAZ, aguarde...</div>';
+      var result = await API.fiscal.sefazSync({ cycles: 1 });
+      await refreshData();
+      await renderPage();
+      var msg = (result.xMotivo || 'Consulta concluida') + ' | novas: ' + (result.imported || 0) + ' | atualizadas: ' + (result.updated || 0) + ' | ignoradas: ' + (result.ignored || 0);
+      if (box) box.innerHTML = '<div class="fiscal-sefaz-ready"><b>Consulta conclu&iacute;da.</b><br>' + esc(msg) + '<br><span class="text-xs">NSU atual: ' + esc(result.ultNSU || '-') + '</span></div>';
+      showToast('SEFAZ: ' + msg, 'success');
     } catch (err) {
       showToast('SEFAZ: ' + err.message, 'error');
     }
