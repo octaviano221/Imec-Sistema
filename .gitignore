@@ -3,3 +3,7 @@ node_modules/
 *.log
 npm-debug.log*
 tmp/
+*.pfx
+*.p12
+certificados/
+certificates/
