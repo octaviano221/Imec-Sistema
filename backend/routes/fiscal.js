@@ -56,15 +56,19 @@ function resolveSefazCertPath(configuredPath) {
 
   const uploadDir = clean(process.env.UPLOAD_DIR);
   const homeDir = uploadDir ? path.dirname(uploadDir) : null;
+  const appDir = process.cwd();
+  const domainDir = path.basename(appDir) === 'nodejs' ? path.dirname(appDir) : appDir;
   const configuredName = configuredPath ? path.basename(configuredPath) : null;
   const names = [configuredName, 'IMECBASE.pfx', 'imec-a1.pfx'].filter(Boolean);
   const dirs = [
     homeDir && path.join(homeDir, 'certificados'),
     homeDir && path.join(homeDir, 'certificates'),
-    path.join(process.cwd(), 'certificados'),
-    path.join(process.cwd(), 'certificates'),
-    path.join(process.cwd(), '..', 'certificados'),
-    path.join(process.cwd(), '..', 'certificates')
+    path.join(appDir, 'certificados'),
+    path.join(appDir, 'certificates'),
+    path.join(domainDir, 'certificados'),
+    path.join(domainDir, 'certificates'),
+    path.join(domainDir, 'uploads-imec', 'certificados'),
+    path.join(domainDir, 'uploads-imec', 'certificates')
   ].filter(Boolean);
 
   dirs.forEach((dir) => names.forEach((name) => add(path.join(dir, name))));
