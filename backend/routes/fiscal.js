@@ -20,6 +20,7 @@ const UF_CODES = {
 
 function sefazConfig() {
   const certPath = clean(process.env.SEFAZ_CERT_PATH);
+  const resolvedCertPath = resolveSefazCertPath(certPath);
   return {
     enabled: String(process.env.SEFAZ_ENABLED || '').toLowerCase() === 'true',
     cnpj: digits(process.env.SEFAZ_CNPJ),
@@ -27,8 +28,9 @@ function sefazConfig() {
     environment: clean(process.env.SEFAZ_ENV || 'production'),
     endpoint: clean(process.env.SEFAZ_DFE_URL),
     cert_path: certPath,
+    cert_resolved_path: resolvedCertPath,
     cert_password_set: Boolean(process.env.SEFAZ_CERT_PASSWORD),
-    cert_exists: certPath ? fs.existsSync(certPath) : false
+    cert_exists: Boolean(resolvedCertPath)
   };
 }
 
@@ -41,6 +43,51 @@ function sefazMissing(config) {
   if (!config.cert_password_set) missing.push('SEFAZ_CERT_PASSWORD');
   if (config.cert_path && !config.cert_exists) missing.push('arquivo .pfx nao encontrado no caminho informado');
   return missing;
+}
+
+function resolveSefazCertPath(configuredPath) {
+  const candidates = [];
+  const add = (value) => {
+    const item = clean(value);
+    if (item && !candidates.includes(item)) candidates.push(item);
+  };
+
+  add(configuredPath);
+
+  const uploadDir = clean(process.env.UPLOAD_DIR);
+  const homeDir = uploadDir ? path.dirname(uploadDir) : null;
+  const configuredName = configuredPath ? path.basename(configuredPath) : null;
+  const names = [configuredName, 'IMECBASE.pfx', 'imec-a1.pfx'].filter(Boolean);
+  const dirs = [
+    homeDir && path.join(homeDir, 'certificados'),
+    homeDir && path.join(homeDir, 'certificates'),
+    path.join(process.cwd(), 'certificados'),
+    path.join(process.cwd(), 'certificates'),
+    path.join(process.cwd(), '..', 'certificados'),
+    path.join(process.cwd(), '..', 'certificates')
+  ].filter(Boolean);
+
+  dirs.forEach((dir) => names.forEach((name) => add(path.join(dir, name))));
+
+  for (const candidate of candidates) {
+    try {
+      const stat = fs.statSync(candidate);
+      if (stat.isFile()) return candidate;
+    } catch (err) {
+      // Keep testing the remaining candidate paths.
+    }
+  }
+
+  for (const dir of dirs) {
+    try {
+      const found = fs.readdirSync(dir).find((file) => /\.pfx$/i.test(file) || /\.p12$/i.test(file));
+      if (found) return path.join(dir, found);
+    } catch (err) {
+      // Directory may not exist or may not be readable in this host.
+    }
+  }
+
+  return null;
 }
 
 function clean(value) {
@@ -249,7 +296,7 @@ function postSefaz(config, body) {
       port: endpoint.port || 443,
       path: endpoint.pathname + endpoint.search,
       method: 'POST',
-      pfx: fs.readFileSync(config.cert_path),
+      pfx: fs.readFileSync(config.cert_resolved_path || config.cert_path),
       passphrase: process.env.SEFAZ_CERT_PASSWORD,
       headers: {
         'Content-Type': 'application/soap+xml; charset=utf-8; action="http://www.portalfiscal.inf.br/nfe/wsdl/NFeDistribuicaoDFe/nfeDistDFeInteresse"',
@@ -492,6 +539,8 @@ router.get('/sefaz/status', authenticate, authorize(...writeRoles), async (req, 
     cert_exists: config.cert_exists,
     cert_password_set: config.cert_password_set,
     cert_path_set: Boolean(config.cert_path),
+    cert_path: config.cert_path,
+    cert_resolved_path: config.cert_resolved_path,
     missing
   });
 });
