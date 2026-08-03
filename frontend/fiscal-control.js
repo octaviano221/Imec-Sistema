@@ -57,6 +57,7 @@
     if (!list.length) return '<tr><td colspan="8"><div class="fiscal-empty">Importe o primeiro XML de NF-e ou cadastre uma nota manual.</div></td></tr>';
     return list.map(function (invoice) {
       var supplier = invoice.linked_supplier_name || invoice.supplier_name || '-';
+      var danfe = '<button class="fiscal-icon-btn" onclick="downloadFiscalDanfe(' + invoice.id + ')" title="Baixar DANFE em PDF">' + icon('download') + '</button>';
       var xml = invoice.xml_url ? '<a class="fiscal-icon-btn" href="' + esc(invoice.xml_url) + '" target="_blank" download title="Baixar XML">' + icon('download') + '</a>' : '';
       return '<tr data-fiscal-row data-search="' + esc([supplier, invoice.supplier_cnpj, invoice.number, invoice.access_key, invoice.cfop].join(' ').toLowerCase()) + '">'
         + '<td class="fiscal-main-cell"><strong>NF-e ' + esc(invoice.number || '-') + '</strong><small>S&eacute;rie ' + esc(invoice.series || '-') + ' &bull; Modelo ' + esc(invoice.model || '55') + '</small></td>'
@@ -66,7 +67,7 @@
         + '<td><strong>' + money(invoice.total_invoice) + '</strong></td>'
         + '<td>' + money(invoice.icms_value) + '</td>'
         + '<td>' + statusChip(invoice.status) + '</td>'
-        + '<td><div class="flex gap-2">' + xml + '<button class="fiscal-icon-btn" onclick="editFiscalInvoice(' + invoice.id + ')" title="Editar">' + icon('edit') + '</button><button class="fiscal-icon-btn" onclick="deleteFiscalInvoice(' + invoice.id + ')" title="Excluir">' + icon('trash') + '</button></div></td>'
+        + '<td><div class="flex gap-2">' + danfe + xml + '<button class="fiscal-icon-btn" onclick="editFiscalInvoice(' + invoice.id + ')" title="Editar">' + icon('edit') + '</button><button class="fiscal-icon-btn" onclick="deleteFiscalInvoice(' + invoice.id + ')" title="Excluir">' + icon('trash') + '</button></div></td>'
         + '</tr>';
     }).join('');
   }
@@ -143,6 +144,33 @@
       closeModal();
       await renderPage();
       showToast('XML importado e nota cadastrada para conferencia', 'success');
+    } catch (err) {
+      showToast('Erro: ' + err.message, 'error');
+    }
+  };
+  window.downloadFiscalDanfe = async function (id) {
+    try {
+      var token = typeof getToken === 'function' ? getToken() : sessionStorage.getItem('imec_token');
+      var res = await fetch(API_BASE + '/api/fiscal/invoices/' + id + '/danfe.pdf', {
+        headers: token ? { Authorization: 'Bearer ' + token } : {}
+      });
+      if (!res.ok) {
+        var err = await res.json().catch(function () { return {}; });
+        throw new Error(err.error || err.message || ('HTTP ' + res.status));
+      }
+      var blob = await res.blob();
+      var disposition = res.headers.get('Content-Disposition') || '';
+      var match = disposition.match(/filename="?([^"]+)"?/i);
+      var filename = match ? match[1] : ('danfe-nfe-' + id + '.pdf');
+      var url = URL.createObjectURL(blob);
+      var link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      showToast('PDF da nota baixado', 'success');
     } catch (err) {
       showToast('Erro: ' + err.message, 'error');
     }
