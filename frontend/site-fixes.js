@@ -32,12 +32,138 @@
     'updated_at'
   ];
 
+  var textObserverInstalled = false;
+  var normalizingText = false;
+  var TEXT_ATTRS = ['placeholder', 'title', 'aria-label', 'alt'];
+  var SKIP_TEXT_TAGS = {
+    SCRIPT: true,
+    STYLE: true,
+    CODE: true,
+    PRE: true,
+    TEXTAREA: true,
+    INPUT: true,
+    SELECT: true
+  };
+
   window.sameId = function sameId(a, b) {
     return String(a) === String(b);
   };
 
   function toDateInput(value) {
     return value ? String(value).split('T')[0].slice(0, 10) : value;
+  }
+
+  function decodeHtmlEntities(value) {
+    if (!value || String(value).indexOf('&') === -1) return value;
+    var box = document.createElement('textarea');
+    box.innerHTML = String(value);
+    return box.value;
+  }
+
+  function repairMojibake(value) {
+    value = value == null ? '' : String(value);
+    if (!/[ÃÂâ]/.test(value) || typeof TextDecoder === 'undefined') return value;
+
+    try {
+      var bytes = new Uint8Array(value.length);
+      for (var i = 0; i < value.length; i += 1) {
+        bytes[i] = value.charCodeAt(i) & 255;
+      }
+      var fixed = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+      if (fixed && fixed.indexOf('\uFFFD') === -1) return fixed;
+    } catch (error) {
+      // Fallback abaixo cobre os casos mais comuns sem depender do decoder.
+    }
+
+    return value
+      .replace(/Ã¡/g, 'á').replace(/Ã /g, 'à').replace(/Ã¢/g, 'â').replace(/Ã£/g, 'ã')
+      .replace(/Ã©/g, 'é').replace(/Ãª/g, 'ê').replace(/Ã­/g, 'í')
+      .replace(/Ã³/g, 'ó').replace(/Ã´/g, 'ô').replace(/Ãµ/g, 'õ')
+      .replace(/Ãº/g, 'ú').replace(/Ã§/g, 'ç')
+      .replace(/Ã/g, 'Á').replace(/Ã€/g, 'À').replace(/Ã‚/g, 'Â').replace(/Ãƒ/g, 'Ã')
+      .replace(/Ã‰/g, 'É').replace(/ÃŠ/g, 'Ê').replace(/Ã/g, 'Í')
+      .replace(/Ã“/g, 'Ó').replace(/Ã”/g, 'Ô').replace(/Ã•/g, 'Õ')
+      .replace(/Ãš/g, 'Ú').replace(/Ã‡/g, 'Ç')
+      .replace(/Âº/g, 'º').replace(/Âª/g, 'ª').replace(/Â·/g, '·').replace(/Â/g, '')
+      .replace(/â€“/g, '-').replace(/â€”/g, '-').replace(/â€™/g, "'").replace(/â€œ|â€/g, '"');
+  }
+
+  function normalizeTextValue(value) {
+    if (value == null) return value;
+    return repairMojibake(decodeHtmlEntities(value));
+  }
+
+  function shouldSkipTextNode(node) {
+    var parent = node && node.parentElement;
+    while (parent) {
+      if (SKIP_TEXT_TAGS[parent.tagName] || parent.hasAttribute('data-no-text-normalize')) return true;
+      parent = parent.parentElement;
+    }
+    return false;
+  }
+
+  function normalizeTextNode(node) {
+    if (!node || shouldSkipTextNode(node)) return;
+    var next = normalizeTextValue(node.nodeValue);
+    if (next !== node.nodeValue) node.nodeValue = next;
+  }
+
+  function normalizeElementAttrs(element) {
+    if (!element || element.nodeType !== 1 || element.hasAttribute('data-no-text-normalize')) return;
+    TEXT_ATTRS.forEach(function (attr) {
+      if (!element.hasAttribute(attr)) return;
+      var current = element.getAttribute(attr);
+      var next = normalizeTextValue(current);
+      if (next !== current) element.setAttribute(attr, next);
+    });
+  }
+
+  function normalizeAppText(root) {
+    if (normalizingText || !root) return;
+    normalizingText = true;
+    try {
+      if (root.nodeType === Node.TEXT_NODE) {
+        normalizeTextNode(root);
+        return;
+      }
+
+      if (root.nodeType !== Node.ELEMENT_NODE && root.nodeType !== Node.DOCUMENT_NODE) return;
+      if (root.nodeType === Node.ELEMENT_NODE) normalizeElementAttrs(root);
+
+      var textWalker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      var textNode = textWalker.nextNode();
+      while (textNode) {
+        normalizeTextNode(textNode);
+        textNode = textWalker.nextNode();
+      }
+
+      var elementWalker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
+      var element = elementWalker.nextNode();
+      while (element) {
+        normalizeElementAttrs(element);
+        element = elementWalker.nextNode();
+      }
+    } finally {
+      normalizingText = false;
+    }
+  }
+
+  function installTextObserver() {
+    if (textObserverInstalled || !document.body || typeof MutationObserver === 'undefined') return;
+    textObserverInstalled = true;
+    var observer = new MutationObserver(function (mutations) {
+      if (normalizingText) return;
+      mutations.forEach(function (mutation) {
+        if (mutation.type === 'characterData') {
+          normalizeAppText(mutation.target);
+          return;
+        }
+        Array.prototype.forEach.call(mutation.addedNodes || [], function (node) {
+          normalizeAppText(node);
+        });
+      });
+    });
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
   }
 
   function normalizeRecord(record) {
@@ -165,6 +291,8 @@
   }
 
   function boot(attempt) {
+    normalizeAppText(document.body);
+    installTextObserver();
     patchRefreshData();
     patchEditFunctions();
     normalizeLiveData();
@@ -179,4 +307,6 @@
   } else {
     boot(0);
   }
+
+  window.normalizeAppText = normalizeAppText;
 })();

@@ -725,26 +725,65 @@ async function reverseInvoiceStockMovements(conn, invoiceId) {
   await conn.query('UPDATE fiscal_invoice_items SET stock_movement_id=NULL WHERE invoice_id=?', [invoiceId]);
 }
 
-async function ensureStockItemForInvoiceItem(conn, invoice, item, requestedId, createMissing) {
-  if (requestedId) return Number(requestedId);
-  const description = clean(item.description);
+async function updateStockItemMetadata(conn, stockItemId, config) {
+  if (!stockItemId || !config || typeof config !== 'object') return;
+  const fields = [];
+  const values = [];
+
+  [
+    ['stock_name', 'name'],
+    ['stock_category', 'category'],
+    ['stock_unit', 'unit'],
+    ['stock_location', 'location']
+  ].forEach(([source, column]) => {
+    const value = clean(config[source]);
+    if (!value) return;
+    fields.push(`${column}=?`);
+    values.push(value);
+  });
+
+  if (config.minimum_stock !== undefined && config.minimum_stock !== null && config.minimum_stock !== '') {
+    fields.push('minimum_stock=?');
+    values.push(num(config.minimum_stock));
+  }
+
+  if (!fields.length) return;
+  values.push(stockItemId);
+  await conn.query(`UPDATE stock_items SET ${fields.join(', ')}, updated_at=NOW() WHERE id=?`, values);
+}
+
+async function ensureStockItemForInvoiceItem(conn, invoice, item, config) {
+  config = config || {};
+  const requestedId = config.stock_item_id ? Number(config.stock_item_id) : null;
+  if (requestedId) {
+    await updateStockItemMetadata(conn, requestedId, config);
+    return requestedId;
+  }
+
+  const description = clean(config.stock_name) || clean(item.description);
   if (!description) return null;
 
   const [existing] = await conn.query('SELECT id FROM stock_items WHERE name=? LIMIT 1', [description]);
-  if (existing.length) return existing[0].id;
+  if (existing.length) {
+    await updateStockItemMetadata(conn, existing[0].id, config);
+    return existing[0].id;
+  }
+
+  const createMissing = config.create_stock_item !== false;
   if (!createMissing) return null;
 
   const [created] = await conn.query(
     `INSERT INTO stock_items
      (name, category, unit, supplier_id, current_stock, minimum_stock, average_cost, location, status, notes)
-     VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?)`,
     [
       description,
-      'NF-e',
-      clean(item.unit) || 'UN',
+      clean(config.stock_category) || 'NF-e',
+      clean(config.stock_unit) || clean(item.unit) || 'UN',
       invoice.supplier_id || null,
+      num(config.minimum_stock),
       num(item.unit_value),
-      'Almoxarifado',
+      clean(config.stock_location) || 'Almoxarifado',
       'ativo',
       `Criado automaticamente pela NF-e ${invoice.number || invoice.id}.`
     ]
@@ -860,7 +899,7 @@ async function integrateFiscalInvoice(conn, invoiceId, data) {
     const config = selectItemConfig(itemConfigs, item.id);
     const itemEntryCfop = clean(config.entry_cfop) || entryCfop || clean(item.cfop);
     const skipStock = config.skip_stock === true || config.skip_stock === 'true';
-    const stockItemId = skipStock ? null : await ensureStockItemForInvoiceItem(conn, invoice, item, config.stock_item_id, config.create_stock_item !== false);
+    const stockItemId = skipStock ? null : await ensureStockItemForInvoiceItem(conn, invoice, item, config);
     const movementId = skipStock ? null : await createStockMovement(conn, invoice, item, stockItemId);
     if (movementId) movementCount += 1;
 

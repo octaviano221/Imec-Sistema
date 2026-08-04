@@ -351,13 +351,21 @@
       var defaultCfop = invoice.entry_cfop || invoice.cfop || (items[0] && items[0].cfop) || '';
       var rows = items.length ? items.map(function (item) {
         var quantityText = (item.quantity != null ? String(item.quantity) : '0') + ' ' + (item.unit || 'UN');
+        var stockName = item.stock_name || item.description || '';
+        var stockCategory = item.stock_category || 'NF-e';
+        var stockUnit = item.stock_unit || item.unit || 'UN';
+        var stockLocation = item.stock_location || 'Almoxarifado';
+        var minimumStock = item.minimum_stock || 0;
         return '<tr data-fiscal-item-row data-item-id="' + esc(item.id) + '">'
           + '<td class="fiscal-main-cell"><strong>' + esc(item.item_number || '-') + '</strong><small>' + esc(item.product_code || '') + '</small></td>'
           + '<td class="fiscal-main-cell"><strong>' + esc(item.description || '-') + '</strong><small>Qtd. ' + esc(quantityText) + ' | Unit. ' + money(item.unit_value) + ' | Total ' + money(item.total_value) + '</small><small>NCM ' + esc(item.ncm || '-') + ' | XML CFOP ' + esc(item.cfop || '-') + '</small></td>'
           + '<td><input class="input fiscal-small-input" data-field="entry_cfop" value="' + esc(item.entry_cfop || defaultCfop || item.cfop || '') + '"></td>'
           + '<td><select class="input fiscal-small-input" data-field="credit_indicator">' + creditOptions(item.credit_indicator) + '</select></td>'
           + '<td><input type="number" step="0.01" class="input fiscal-small-input" data-field="icms_credit_base" value="' + esc(item.icms_credit_base || item.total_value || 0) + '"><input type="number" step="0.01" class="input fiscal-small-input mt-2" data-field="icms_credit_value" value="' + esc(item.icms_credit_value || item.icms_value || 0) + '"></td>'
-          + '<td><select class="input fiscal-stock-select" data-field="stock_item_id">' + stockItemOptions(item.stock_item_id) + '</select><label class="fiscal-inline-check"><input type="checkbox" data-field="skip_stock"' + (item.tax_status === 'sem_movimento' ? ' checked' : '') + '> Nao entra no estoque</label></td>'
+          + '<td class="fiscal-stock-cell"><select class="input fiscal-stock-select" data-field="stock_item_id">' + stockItemOptions(item.stock_item_id) + '</select>'
+          + '<div class="fiscal-stock-editor"><span>Como entra no estoque</span><input class="input fiscal-stock-name" data-field="stock_name" value="' + esc(stockName) + '" placeholder="Nome interno do item">'
+          + '<div class="fiscal-stock-grid"><input class="input" data-field="stock_category" value="' + esc(stockCategory) + '" placeholder="Categoria"><input class="input" data-field="stock_unit" value="' + esc(stockUnit) + '" placeholder="UN"><input class="input" data-field="stock_location" value="' + esc(stockLocation) + '" placeholder="Local"><input type="number" step="0.01" class="input" data-field="minimum_stock" value="' + esc(minimumStock) + '" placeholder="Min."></div></div>'
+          + '<label class="fiscal-inline-check"><input type="checkbox" data-field="skip_stock"' + (item.tax_status === 'sem_movimento' ? ' checked' : '') + '> Nao entra no estoque</label></td>'
           + '<td><input class="input fiscal-small-input" data-field="fiscal_notes" value="' + esc(item.fiscal_notes || '') + '" placeholder="observacao"></td>'
           + '</tr>';
       }).join('') : '<tr><td colspan="7"><div class="fiscal-empty fiscal-empty-small">Esta nota ainda nao possui itens completos. Importe o XML completo para movimentar estoque por produto.</div></td></tr>';
@@ -391,6 +399,11 @@
           icms_credit_base: rowValue(row, 'icms_credit_base'),
           icms_credit_value: rowValue(row, 'icms_credit_value'),
           stock_item_id: rowValue(row, 'stock_item_id'),
+          stock_name: rowValue(row, 'stock_name'),
+          stock_category: rowValue(row, 'stock_category'),
+          stock_unit: rowValue(row, 'stock_unit'),
+          stock_location: rowValue(row, 'stock_location'),
+          minimum_stock: rowValue(row, 'minimum_stock'),
           skip_stock: rowValue(row, 'skip_stock'),
           fiscal_notes: rowValue(row, 'fiscal_notes')
         };
