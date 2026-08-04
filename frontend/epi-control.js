@@ -15,17 +15,39 @@
   }
 
   function token() {
-    return localStorage.getItem('imec_token') || '';
+    if (typeof getToken === 'function') return getToken() || '';
+    return sessionStorage.getItem('imec_token') || '';
   }
 
   async function api(path, options) {
-    var res = await fetch('/api' + path, Object.assign({
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + token()
-      }
-    }, options || {}));
-    if (!res.ok) throw new Error((await res.text()) || 'Erro na requisicao');
+    var headers = Object.assign({ 'Content-Type': 'application/json' }, (options && options.headers) || {});
+    var authToken = token();
+    if (authToken) headers.Authorization = 'Bearer ' + authToken;
+    var requestOptions = Object.assign({}, options || {}, { headers: headers });
+    var res = await fetch('/api' + path, requestOptions);
+    if (res.status === 401) {
+      if (typeof clearToken === 'function') clearToken();
+      sessionStorage.removeItem('imec_token');
+      sessionStorage.removeItem('imec_user');
+      localStorage.removeItem('imec_token');
+      if (typeof closeModal === 'function') closeModal();
+      var appShell = document.getElementById('appShell');
+      var publicPage = document.getElementById('publicPage');
+      var loginScreen = document.getElementById('loginScreen');
+      if (appShell) appShell.classList.add('hidden');
+      if (publicPage) publicPage.classList.add('hidden');
+      if (loginScreen) loginScreen.classList.remove('hidden');
+      if (typeof showToast === 'function') showToast('Sessão expirada. Faça login novamente para salvar.', 'error');
+      var authError = new Error('Sessão expirada. Faça login novamente.');
+      authError.isAuthError = true;
+      throw authError;
+    }
+    if (!res.ok) {
+      var payload = await res.json().catch(async function () {
+        return { error: await res.text().catch(function () { return ''; }) };
+      });
+      throw new Error(payload.message || payload.error || 'Erro na requisição');
+    }
     return res.json();
   }
 
@@ -59,6 +81,7 @@
     try {
       catalogCache = await api('/epi/catalog');
     } catch (err) {
+      if (err && err.isAuthError) throw err;
       catalogCache = [];
     }
     return catalogCache;
@@ -72,19 +95,19 @@
     var low = catalogCache.filter(function (item) { return Number(item.current_stock || 0) <= Number(item.minimum_stock || 0); }).length;
     var noFicha = employees.filter(function (emp) { return recordsFor(emp.id).length === 0; }).length;
     return '<div class="epi-kpis">'
-      + '<div class="epi-kpi"><span>Funcionarios com ficha</span><b>' + (employees.length - noFicha) + '</b></div>'
+      + '<div class="epi-kpi"><span>Funcionários com ficha</span><b>' + (employees.length - noFicha) + '</b></div>'
       + '<div class="epi-kpi"><span>Entregas registradas</span><b>' + records.length + '</b></div>'
-      + '<div class="epi-kpi"><span>EPIs sem devolucao</span><b>' + open + '</b></div>'
+      + '<div class="epi-kpi"><span>EPIs sem devolução</span><b>' + open + '</b></div>'
       + '<div class="epi-kpi"><span>Estoque baixo</span><b>' + low + '</b></div>'
       + '</div>';
   }
 
   function shell(content) {
     return '<div class="epi-suite">'
-      + '<section class="epi-hero"><div><p class="text-xs font-black uppercase tracking-widest text-blue-500">Controle Individual de Entrega de EPI</p><h3 class="font-display text-2xl font-black text-imec-dark">Ficha Individual de EPI</h3><p class="text-sm text-slate-500">Funcionario, ficha individual, entregas, devolucao, assinatura e impressao A4.</p></div>'
+      + '<section class="epi-hero"><div><p class="text-xs font-black uppercase tracking-widest text-blue-500">Controle Individual de Entrega de EPI</p><h3 class="font-display text-2xl font-black text-imec-dark">Ficha Individual de EPI</h3><p class="text-sm text-slate-500">Funcionário, ficha individual, entregas, devolução, assinatura e impressão A4.</p></div>'
       + '<div class="epi-actions">' + (canWrite() ? '<button class="btn btn-primary btn-sm" onclick="openEpiDelivery()">Nova entrega</button><button class="btn btn-outline btn-sm" onclick="openEpiCatalog()">Cadastrar EPI</button>' : '') + '</div></section>'
       + kpis()
-      + '<div class="epi-tabs"><button class="epi-tab ' + (epiTab === 'fichas' ? 'active' : '') + '" onclick="setEpiTab(\'fichas\')">Fichas por funcionario</button><button class="epi-tab ' + (epiTab === 'entregas' ? 'active' : '') + '" onclick="setEpiTab(\'entregas\')">Entregas e devolucoes</button><button class="epi-tab ' + (epiTab === 'catalogo' ? 'active' : '') + '" onclick="setEpiTab(\'catalogo\')">Cadastro de EPIs</button><button class="epi-tab ' + (epiTab === 'alertas' ? 'active' : '') + '" onclick="setEpiTab(\'alertas\')">Alertas</button></div>'
+      + '<div class="epi-tabs"><button class="epi-tab ' + (epiTab === 'fichas' ? 'active' : '') + '" onclick="setEpiTab(\'fichas\')">Fichas por funcionário</button><button class="epi-tab ' + (epiTab === 'entregas' ? 'active' : '') + '" onclick="setEpiTab(\'entregas\')">Entregas e devoluções</button><button class="epi-tab ' + (epiTab === 'catalogo' ? 'active' : '') + '" onclick="setEpiTab(\'catalogo\')">Cadastro de EPIs</button><button class="epi-tab ' + (epiTab === 'alertas' ? 'active' : '') + '" onclick="setEpiTab(\'alertas\')">Alertas</button></div>'
       + content
       + '</div>';
   }
@@ -100,14 +123,14 @@
         + '<td>' + records.length + '</td><td>' + open.length + '</td><td>' + fmtDate(last && last.delivery_date) + '</td>'
         + '<td><div class="flex flex-wrap gap-1"><button class="btn btn-outline btn-sm" onclick="openEpiFicha(\'' + esc(emp.id) + '\')">Ver ficha</button>' + (canWrite() ? '<button class="btn btn-primary btn-sm" onclick="openEpiDelivery(\'' + esc(emp.id) + '\')">Entregar EPI</button>' : '') + '</div></td></tr>';
     }).join('');
-    return '<div class="table-container"><table><thead><tr><th>Funcionario</th><th>Funcao</th><th>Setor/Obra</th><th>Status da ficha</th><th>Entregas</th><th>Pendentes</th><th>Ultima entrega</th><th>Acoes</th></tr></thead><tbody>' + (rows || '<tr><td colspan="8">Nenhum funcionario cadastrado.</td></tr>') + '</tbody></table></div>';
+    return '<div class="table-container"><table><thead><tr><th>Funcionário</th><th>Função</th><th>Setor/Obra</th><th>Status da ficha</th><th>Entregas</th><th>Pendentes</th><th>Última entrega</th><th>Ações</th></tr></thead><tbody>' + (rows || '<tr><td colspan="8">Nenhum funcionário cadastrado.</td></tr>') + '</tbody></table></div>';
   }
 
   function renderEntregas() {
     var rows = (db().epi_records || []).map(function (item) {
-      return '<tr><td>' + esc(item.employee_name || '-') + '</td><td>' + esc(item.epi_name || item.catalog_name || '-') + '</td><td>' + esc(item.ca_number || '-') + '</td><td>' + esc(item.quantity || 1) + '</td><td>' + fmtDate(item.delivery_date) + '</td><td>' + fmtDate(item.return_date) + '</td><td>' + esc(item.status || 'entregue') + '</td><td><div class="flex flex-wrap gap-1">' + (canWrite() ? '<button class="btn btn-outline btn-sm" onclick="openEpiReturn(\'' + esc(item.id) + '\')">Devolucao/Substituicao</button>' : '') + '</div></td></tr>';
+      return '<tr><td>' + esc(item.employee_name || '-') + '</td><td>' + esc(item.epi_name || item.catalog_name || '-') + '</td><td>' + esc(item.ca_number || '-') + '</td><td>' + esc(item.quantity || 1) + '</td><td>' + fmtDate(item.delivery_date) + '</td><td>' + fmtDate(item.return_date) + '</td><td>' + esc(item.status || 'entregue') + '</td><td><div class="flex flex-wrap gap-1">' + (canWrite() ? '<button class="btn btn-outline btn-sm" onclick="openEpiReturn(\'' + esc(item.id) + '\')">Devolução/Substituição</button>' : '') + '</div></td></tr>';
     }).join('');
-    return '<div class="table-container"><table><thead><tr><th>Funcionario</th><th>EPI</th><th>C.A.</th><th>Qtd</th><th>Entrega</th><th>Devolucao</th><th>Status</th><th>Acoes</th></tr></thead><tbody>' + (rows || '<tr><td colspan="8">Nenhuma entrega registrada.</td></tr>') + '</tbody></table></div>';
+    return '<div class="table-container"><table><thead><tr><th>Funcionário</th><th>EPI</th><th>C.A.</th><th>Qtd</th><th>Entrega</th><th>Devolução</th><th>Status</th><th>Ações</th></tr></thead><tbody>' + (rows || '<tr><td colspan="8">Nenhuma entrega registrada.</td></tr>') + '</tbody></table></div>';
   }
 
   function renderCatalogo() {
@@ -115,7 +138,7 @@
       var low = Number(item.current_stock || 0) <= Number(item.minimum_stock || 0);
       return '<tr><td><b>' + esc(item.name) + '</b><div class="text-xs text-slate-500">' + esc(item.type || '-') + '</div></td><td>' + esc(item.ca_number || '-') + '</td><td>' + esc(item.manufacturer || '-') + '</td><td>' + fmtDate(item.ca_validity) + '</td><td>' + fmtDate(item.equipment_validity) + '</td><td>' + (low ? '<span class="badge badge-orange">' + esc(item.current_stock || 0) + '</span>' : esc(item.current_stock || 0)) + '</td><td>' + esc(item.minimum_stock || 0) + '</td><td>' + esc(item.status || 'ativo') + '</td><td>' + (canWrite() ? '<button class="btn btn-outline btn-sm" onclick="openEpiCatalog(\'' + esc(item.id) + '\')">Editar</button>' : '') + '</td></tr>';
     }).join('');
-    return '<div class="table-container"><table><thead><tr><th>EPI</th><th>C.A.</th><th>Fabricante</th><th>Val. C.A.</th><th>Val. Equip.</th><th>Estoque</th><th>Minimo</th><th>Status</th><th>Acoes</th></tr></thead><tbody>' + (rows || '<tr><td colspan="9">Nenhum EPI cadastrado.</td></tr>') + '</tbody></table></div>';
+    return '<div class="table-container"><table><thead><tr><th>EPI</th><th>C.A.</th><th>Fabricante</th><th>Val. C.A.</th><th>Val. Equip.</th><th>Estoque</th><th>Mínimo</th><th>Status</th><th>Ações</th></tr></thead><tbody>' + (rows || '<tr><td colspan="9">Nenhum EPI cadastrado.</td></tr>') + '</tbody></table></div>';
   }
 
   function renderAlertas() {
@@ -128,10 +151,10 @@
       if (item.equipment_validity && new Date(item.equipment_validity) <= soon) alerts.push(['Equipamento vencido ou vencendo', item.name, fmtDate(item.equipment_validity)]);
     });
     (db().employees || []).forEach(function (emp) {
-      if (!recordsFor(emp.id).length) alerts.push(['Funcionario sem ficha de EPI', emp.full_name, emp.department || '-']);
+      if (!recordsFor(emp.id).length) alerts.push(['Funcionário sem ficha de EPI', emp.full_name, emp.department || '-']);
     });
     openRecords(db().epi_records || []).forEach(function (item) {
-      alerts.push(['EPI entregue sem devolucao', item.employee_name || '-', item.epi_name || '-']);
+      alerts.push(['EPI entregue sem devolução', item.employee_name || '-', item.epi_name || '-']);
     });
     var rows = alerts.map(function (row) { return '<tr><td><span class="badge badge-orange">' + esc(row[0]) + '</span></td><td>' + esc(row[1]) + '</td><td>' + esc(row[2]) + '</td></tr>'; }).join('');
     return '<div class="table-container"><table><thead><tr><th>Alerta</th><th>Registro</th><th>Detalhe</th></tr></thead><tbody>' + (rows || '<tr><td colspan="3">Nenhum alerta pendente.</td></tr>') + '</tbody></table></div>';
@@ -160,8 +183,8 @@
       + field('Validade do C.A.', 'catCAValidity', inputDate(item.ca_validity), 'date')
       + field('Validade do equipamento', 'catEquipValidity', inputDate(item.equipment_validity), 'date')
       + field('Estoque atual', 'catStock', item.current_stock || 0, 'number')
-      + field('Estoque minimo', 'catMinStock', item.minimum_stock || 0, 'number')
-      + '<div class="md:col-span-2"><label class="label">Observacoes</label><textarea class="input" id="catNotes" rows="3">' + esc(item.notes || '') + '</textarea></div>'
+      + field('Estoque mínimo', 'catMinStock', item.minimum_stock || 0, 'number')
+      + '<div class="md:col-span-2"><label class="label">Observações</label><textarea class="input" id="catNotes" rows="3">' + esc(item.notes || '') + '</textarea></div>'
       + '</div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary">Salvar</button></div></form></div>');
   };
 
@@ -175,7 +198,7 @@
     try {
       if (id) await api('/epi/catalog/' + id, { method: 'PUT', body: JSON.stringify(data) });
       else await api('/epi/catalog', { method: 'POST', body: JSON.stringify(data) });
-      closeModal(); await loadCatalog(); if (typeof renderPage === 'function') await renderPage(); showToast('EPI salvo no catalogo', 'success');
+      closeModal(); await loadCatalog(); if (typeof renderPage === 'function') await renderPage(); showToast('EPI salvo no catálogo', 'success');
     } catch (err) { showToast('Erro: ' + err.message, 'error'); }
   };
 
@@ -185,14 +208,14 @@
     var eOptions = employees.map(function (e) { return '<option value="' + esc(e.id) + '"' + (String(e.id) === String(employeeId || '') ? ' selected' : '') + '>' + esc(e.full_name) + '</option>'; }).join('');
     var cOptions = catalogCache.map(function (item) { return '<option value="' + esc(item.id) + '" data-ca="' + esc(item.ca_number || '') + '">' + esc(item.name) + (item.ca_number ? ' - CA ' + esc(item.ca_number) : '') + '</option>'; }).join('');
     openModal('<div class="p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-5">Registrar entrega de EPI</h2><form onsubmit="saveEpiDelivery(event)"><div class="grid md:grid-cols-2 gap-4">'
-      + '<div><label class="label">Funcionario *</label><select class="input" id="epiEmp" required>' + eOptions + '</select></div>'
+      + '<div><label class="label">Funcionário *</label><select class="input" id="epiEmp" required>' + eOptions + '</select></div>'
       + '<div><label class="label">EPI *</label><select class="input" id="epiCatalog" required onchange="fillEpiCA()">' + cOptions + '</select></div>'
       + field('Quantidade', 'epiQty', '1', 'number', true)
       + field('C.A.', 'epiCA', '', 'text')
       + field('Data de entrega', 'epiDelivery', today(), 'date', true)
-      + field('Responsavel pela entrega', 'epiResponsible', '', 'text')
-      + '<div class="md:col-span-2"><label class="label">Assinatura digital do funcionario</label><canvas id="epiDeliverySign" class="epi-signature-pad"></canvas><div class="mt-2 flex gap-2"><button type="button" class="btn btn-outline btn-sm" onclick="clearSignature(\'epiDeliverySign\')">Limpar assinatura</button></div></div>'
-      + '<div class="md:col-span-2"><label class="label">Observacoes</label><textarea class="input" id="epiNotes" rows="2"></textarea></div>'
+      + field('Responsável pela entrega', 'epiResponsible', '', 'text')
+      + '<div class="md:col-span-2"><label class="label">Assinatura digital do funcionário</label><canvas id="epiDeliverySign" class="epi-signature-pad"></canvas><div class="mt-2 flex gap-2"><button type="button" class="btn btn-outline btn-sm" onclick="clearSignature(\'epiDeliverySign\')">Limpar assinatura</button></div></div>'
+      + '<div class="md:col-span-2"><label class="label">Observações</label><textarea class="input" id="epiNotes" rows="2"></textarea></div>'
       + '</div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary">Salvar entrega</button></div></form></div>');
     fillEpiCA();
     setTimeout(function () { setupSignature('epiDeliverySign'); }, 80);
@@ -222,11 +245,11 @@
   window.openEpiReturn = function (id) {
     var item = (db().epi_records || []).find(function (x) { return String(x.id) === String(id); });
     if (!item) return;
-    openModal('<div class="p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Registrar devolucao/substituicao</h2><p class="text-sm text-slate-500 mb-5">' + esc(item.epi_name) + ' - ' + esc(item.employee_name || '') + '</p><form onsubmit="saveEpiReturn(event,\'' + esc(id) + '\')"><div class="grid md:grid-cols-2 gap-4">'
+    openModal('<div class="p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Registrar devolução/substituição</h2><p class="text-sm text-slate-500 mb-5">' + esc(item.epi_name) + ' - ' + esc(item.employee_name || '') + '</p><form onsubmit="saveEpiReturn(event,\'' + esc(id) + '\')"><div class="grid md:grid-cols-2 gap-4">'
       + field('Data', 'epiReturnDate', today(), 'date', true)
-      + '<div><label class="label">Condicao</label><select class="input" id="epiReturnCondition"><option>Bom</option><option>Danificado</option><option>Extraviado</option><option>Substituido</option></select></div>'
+      + '<div><label class="label">Condição</label><select class="input" id="epiReturnCondition"><option>Bom</option><option>Danificado</option><option>Extraviado</option><option>Substituído</option></select></div>'
       + '<div class="md:col-span-2"><label class="label">Assinatura/rubrica</label><canvas id="epiReturnSign" class="epi-signature-pad"></canvas><div class="mt-2"><button type="button" class="btn btn-outline btn-sm" onclick="clearSignature(\'epiReturnSign\')">Limpar assinatura</button></div></div>'
-      + '<div class="md:col-span-2"><label class="label">Observacoes</label><textarea class="input" id="epiReturnNotes" rows="2"></textarea></div>'
+      + '<div class="md:col-span-2"><label class="label">Observações</label><textarea class="input" id="epiReturnNotes" rows="2"></textarea></div>'
       + '</div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary">Salvar</button></div></form></div>');
     setTimeout(function () { setupSignature('epiReturnSign'); }, 80);
   };
@@ -242,7 +265,7 @@
     };
     try {
       await api('/epi/' + id + '/return', { method: 'PUT', body: JSON.stringify(data) });
-      await refreshData(); closeModal(); if (typeof renderPage === 'function') await renderPage(); showToast('Devolucao registrada', 'success');
+      await refreshData(); closeModal(); if (typeof renderPage === 'function') await renderPage(); showToast('Devolução registrada', 'success');
     } catch (err) { showToast('Erro: ' + err.message, 'error'); }
   };
 
@@ -252,7 +275,7 @@
     var records = recordsFor(employeeId).sort(function (a, b) { return new Date(a.delivery_date) - new Date(b.delivery_date); });
     var sheet = buildFicha(emp, records);
     openModal('<div class="epi-ficha-modal">'
-      + '<div class="epi-ficha-toolbar epi-no-print"><div><p>Ficha Individual de EPI</p><h2>' + esc(emp.full_name || 'Funcionario') + '</h2></div>'
+      + '<div class="epi-ficha-toolbar epi-no-print"><div><p>Ficha Individual de EPI</p><h2>' + esc(emp.full_name || 'Funcionário') + '</h2></div>'
       + '<div class="epi-ficha-actions"><button class="btn btn-outline btn-sm" onclick="openEpiDelivery(\'' + esc(employeeId) + '\')">Nova entrega</button><button class="btn btn-primary btn-sm" onclick="printEpiFicha()">Baixar PDF</button><button class="btn btn-outline btn-sm" onclick="closeModal()">Fechar</button></div></div>'
       + '<div class="epi-ficha-preview">' + sheet + '</div>'
       + '</div>');
@@ -264,7 +287,7 @@
 
   function buildFicha(emp, records) {
     var settings = db().settings || {};
-    var company = settings.company_name || 'IMEC Servicos de Manutencao Industrial Ltda.';
+    var company = settings.company_name || 'IMEC Serviços de Manutenção Industrial Ltda.';
     var cnpj = settings.cnpj || '34.928.868/0001-78';
     var logoSrc = window.IMEC_LOGO_SRC || '/assets/imec-metalurgica-logo-transparent.png';
     var logo = '<img src="' + esc(logoSrc) + '" alt="IMEC">';
@@ -273,11 +296,11 @@
     }).join('');
     while ((rows.match(/<tr>/g) || []).length < 12) rows += '<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>';
     return '<article class="epi-print-sheet">'
-      + '<div class="epi-print-header"><div class="epi-print-logo">' + logo + '</div><div class="epi-print-company"><h2>' + esc(company) + '</h2><p><b>CNPJ:</b> ' + esc(cnpj) + '</p></div><div class="epi-print-term"><b>NR 6 - EPI</b><br>Controle individual de entrega, uso, guarda e devolucao de equipamentos de protecao individual.</div></div>'
+      + '<div class="epi-print-header"><div class="epi-print-logo">' + logo + '</div><div class="epi-print-company"><h2>' + esc(company) + '</h2><p><b>CNPJ:</b> ' + esc(cnpj) + '</p></div><div class="epi-print-term"><b>NR 6 - EPI</b><br>Controle individual de entrega, uso, guarda e devolução de equipamentos de proteção individual.</div></div>'
       + '<div class="epi-print-title">Ficha Individual de Controle de Entrega de EPI</div>'
-      + '<div class="epi-print-worker"><div><b>Nome:</b> ' + esc(emp.full_name) + '</div><div><b>CPF:</b> ' + esc(emp.cpf || '-') + '</div><div><b>RG:</b> ' + esc(emp.rg || '-') + '</div><div><b>Funcao:</b> ' + esc(emp.role_position || '-') + '</div><div><b>Obra/Setor:</b> ' + esc(emp.department || '-') + '</div><div><b>Data de inicio da ficha:</b> ' + fmtDate(records[0] && records[0].delivery_date || emp.admission_date || today()) + '</div></div>'
-      + '<table class="epi-print-table"><thead><tr><th>Quant.</th><th>Descricao do EPI</th><th>C.A.</th><th>Data de Entrega</th><th>Assinatura/Rubrica do Funcionario</th><th>Data de Devolucao</th><th>Assinatura/Rubrica</th></tr></thead><tbody>' + rows + '</tbody></table>'
-      + '<section class="epi-term"><h3>Termo de Responsabilidade</h3><p>Declaro que recebi orientacao sobre o uso correto, guarda, conservacao e higienizacao dos Equipamentos de Protecao Individual fornecidos pela empresa, comprometendo-me a utiliza-los somente para a finalidade a que se destinam, zelar por sua conservacao e comunicar imediatamente qualquer dano, extravio ou condicao que torne o equipamento improprio para uso.</p><p>Declaro ainda estar ciente de que o uso dos EPIs e obrigatorio durante a execucao das atividades, conforme orientacoes de seguranca da empresa e legislacao aplicavel.</p><p>Local e data: _______________________________________________</p><div class="epi-term-lines"><div>Assinatura do funcionario</div><div>Assinatura do responsavel pela entrega</div></div><p class="text-xs text-slate-500 mt-6">Documento emitido em ' + new Date().toLocaleString('pt-BR') + '.</p></section>'
+      + '<div class="epi-print-worker"><div><b>Nome:</b> ' + esc(emp.full_name) + '</div><div><b>CPF:</b> ' + esc(emp.cpf || '-') + '</div><div><b>RG:</b> ' + esc(emp.rg || '-') + '</div><div><b>Função:</b> ' + esc(emp.role_position || '-') + '</div><div><b>Obra/Setor:</b> ' + esc(emp.department || '-') + '</div><div><b>Data de início da ficha:</b> ' + fmtDate(records[0] && records[0].delivery_date || emp.admission_date || today()) + '</div></div>'
+      + '<table class="epi-print-table"><thead><tr><th>Quant.</th><th>Descrição do EPI</th><th>C.A.</th><th>Data de Entrega</th><th>Assinatura/Rubrica do Funcionário</th><th>Data de Devolução</th><th>Assinatura/Rubrica</th></tr></thead><tbody>' + rows + '</tbody></table>'
+      + '<section class="epi-term"><h3>Termo de Responsabilidade</h3><p>Declaro que recebi orientação sobre o uso correto, guarda, conservação e higienização dos Equipamentos de Proteção Individual fornecidos pela empresa, comprometendo-me a utilizá-los somente para a finalidade a que se destinam, zelar por sua conservação e comunicar imediatamente qualquer dano, extravio ou condição que torne o equipamento impróprio para uso.</p><p>Declaro ainda estar ciente de que o uso dos EPIs é obrigatório durante a execução das atividades, conforme orientações de segurança da empresa e legislação aplicável.</p><p>Local e data: _______________________________________________</p><div class="epi-term-lines"><div>Assinatura do funcionário</div><div>Assinatura do responsável pela entrega</div></div><p class="text-xs text-slate-500 mt-6">Documento emitido em ' + new Date().toLocaleString('pt-BR') + '.</p></section>'
       + '</article>';
   }
 
