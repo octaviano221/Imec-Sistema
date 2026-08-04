@@ -146,7 +146,7 @@
 
 .fiscal-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(340px, 0.45fr);
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 320px);
   gap: 18px;
 }
 
@@ -201,7 +201,7 @@
 }
 
 .fiscal-invoice-table {
-  min-width: 1180px;
+  min-width: 1120px;
   table-layout: fixed;
 }
 
@@ -213,15 +213,15 @@
   background: #f8fbff;
 }
 
-.fiscal-invoice-table th:nth-child(1) { width: 118px; }
-.fiscal-invoice-table th:nth-child(2) { width: 250px; }
-.fiscal-invoice-table th:nth-child(3) { width: 122px; }
-.fiscal-invoice-table th:nth-child(4) { width: 112px; }
-.fiscal-invoice-table th:nth-child(5) { width: 112px; }
-.fiscal-invoice-table th:nth-child(6) { width: 118px; }
-.fiscal-invoice-table th:nth-child(7) { width: 104px; }
-.fiscal-invoice-table th:nth-child(8) { width: 220px; }
-.fiscal-invoice-table th:nth-child(9) { width: 242px; }
+.fiscal-invoice-table th:nth-child(1) { width: 104px; }
+.fiscal-invoice-table th:nth-child(2) { width: 228px; }
+.fiscal-invoice-table th:nth-child(3) { width: 104px; }
+.fiscal-invoice-table th:nth-child(4) { width: 102px; }
+.fiscal-invoice-table th:nth-child(5) { width: 104px; }
+.fiscal-invoice-table th:nth-child(6) { width: 104px; }
+.fiscal-invoice-table th:nth-child(7) { width: 92px; }
+.fiscal-invoice-table th:nth-child(8) { width: 178px; }
+.fiscal-invoice-table th:nth-child(9) { width: 164px; }
 
 .fiscal-cell-note strong,
 .fiscal-cell-supplier strong,
@@ -266,7 +266,7 @@
 }
 
 .fiscal-cell-tools {
-  min-width: 226px;
+  min-width: 154px;
 }
 
 .fiscal-cell-date span {
@@ -337,14 +337,14 @@
 .fiscal-row-actions {
   align-items: center;
   display: flex;
-  flex-wrap: nowrap;
-  gap: 7px;
+  flex-wrap: wrap;
+  gap: 6px;
   justify-content: flex-start;
-  min-width: max-content;
+  min-width: 0;
 }
 
 .fiscal-cell-tools {
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .fiscal-chip {
@@ -367,8 +367,8 @@
   background: #f8fbff;
   border: 1px solid rgba(37, 99, 235, 0.16);
   border-radius: 8px;
-  min-width: 176px;
-  padding: 9px 11px;
+  min-width: 154px;
+  padding: 9px 10px;
 }
 
 .fiscal-next-action b {
