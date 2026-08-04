@@ -3,15 +3,37 @@
   gap: 18px;
 }
 
+.fiscal-page,
+.fiscal-page * {
+  min-width: 0;
+}
+
+.fiscal-page th,
+.fiscal-page td,
+.fiscal-page span,
+.fiscal-page label,
+.fiscal-page button {
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
 .fiscal-hero,
 .fiscal-panel,
 .fiscal-kpi,
-.fiscal-workflow-board,
-.fiscal-table-wrap {
+.fiscal-workflow-board {
   background: rgba(255, 255, 255, 0.94);
   border: 1px solid rgba(148, 163, 184, 0.28);
   box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+.fiscal-table-wrap {
+  background: #fff;
+  border-top: 1px solid rgba(148, 163, 184, 0.22);
+  max-width: 100%;
   overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-gutter: stable;
 }
 
 .fiscal-hero {
@@ -46,6 +68,15 @@
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.fiscal-filters {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(190px, 260px);
+}
+
+.fiscal-filters .input {
+  width: 100%;
 }
 
 .fiscal-hero-main {
@@ -170,7 +201,8 @@
 }
 
 .fiscal-invoice-table {
-  min-width: 1220px;
+  min-width: 1180px;
+  table-layout: fixed;
 }
 
 .fiscal-invoice-table tbody tr {
@@ -181,15 +213,15 @@
   background: #f8fbff;
 }
 
-.fiscal-invoice-table th:nth-child(1) { width: 104px; }
-.fiscal-invoice-table th:nth-child(2) { width: 230px; }
-.fiscal-invoice-table th:nth-child(3) { width: 116px; }
-.fiscal-invoice-table th:nth-child(4) { width: 104px; }
-.fiscal-invoice-table th:nth-child(5) { width: 116px; }
+.fiscal-invoice-table th:nth-child(1) { width: 118px; }
+.fiscal-invoice-table th:nth-child(2) { width: 250px; }
+.fiscal-invoice-table th:nth-child(3) { width: 122px; }
+.fiscal-invoice-table th:nth-child(4) { width: 112px; }
+.fiscal-invoice-table th:nth-child(5) { width: 112px; }
 .fiscal-invoice-table th:nth-child(6) { width: 118px; }
 .fiscal-invoice-table th:nth-child(7) { width: 104px; }
-.fiscal-invoice-table th:nth-child(8) { width: 210px; }
-.fiscal-invoice-table th:nth-child(9) { width: 190px; }
+.fiscal-invoice-table th:nth-child(8) { width: 220px; }
+.fiscal-invoice-table th:nth-child(9) { width: 242px; }
 
 .fiscal-cell-note strong,
 .fiscal-cell-supplier strong,
@@ -212,9 +244,18 @@
 }
 
 .fiscal-cell-supplier strong {
-  max-width: 215px;
+  display: -webkit-box;
+  max-width: none;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.fiscal-cell-supplier small {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .fiscal-cell-note,
@@ -222,6 +263,10 @@
 .fiscal-cell-cfop,
 .fiscal-cell-money {
   white-space: nowrap;
+}
+
+.fiscal-cell-tools {
+  min-width: 226px;
 }
 
 .fiscal-cell-date span {
@@ -294,6 +339,8 @@
   display: flex;
   flex-wrap: nowrap;
   gap: 7px;
+  justify-content: flex-start;
+  min-width: max-content;
 }
 
 .fiscal-cell-tools {
@@ -1136,6 +1183,19 @@
 
 @media (max-width: 1500px) {
   .fiscal-grid { grid-template-columns: 1fr; }
+  .fiscal-summary-panel .fiscal-panel-body {
+    align-items: start;
+    display: grid;
+    gap: 16px;
+    grid-template-columns: minmax(260px, 0.7fr) minmax(280px, 1fr);
+  }
+  .fiscal-summary-panel .fiscal-upload-box {
+    margin-bottom: 0;
+    min-height: 100%;
+  }
+  .fiscal-summary-panel .fiscal-cfop-list {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
 }
 
 @media (max-width: 1200px) {
@@ -1189,4 +1249,90 @@
   .fiscal-modal-wide { max-width: calc(100vw - 24px); }
   .fiscal-stock-cell { min-width: 260px; }
   .fiscal-stock-grid { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 760px) {
+  .fiscal-page { gap: 14px; }
+  .fiscal-panel-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .fiscal-panel-head .btn {
+    justify-content: center;
+    width: 100%;
+  }
+  .fiscal-filters {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+  .fiscal-table-wrap {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    overflow: visible;
+    padding: 0 12px 14px;
+  }
+  .fiscal-invoice-table {
+    border-collapse: separate;
+    border-spacing: 0 12px;
+    min-width: 0 !important;
+    table-layout: auto;
+  }
+  .fiscal-invoice-table thead {
+    display: none;
+  }
+  .fiscal-invoice-table,
+  .fiscal-invoice-table tbody,
+  .fiscal-invoice-table tr,
+  .fiscal-invoice-table td {
+    display: block;
+    width: 100%;
+  }
+  .fiscal-invoice-table tbody tr {
+    background: #fff;
+    border: 1px solid rgba(148, 163, 184, 0.24);
+    border-radius: 8px;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.07);
+    padding: 12px 14px;
+  }
+  .fiscal-invoice-table td {
+    border-bottom: 0;
+    padding: 8px 0;
+    text-align: left;
+    white-space: normal;
+  }
+  .fiscal-invoice-table td[data-label]::before {
+    color: #64748b;
+    content: attr(data-label);
+    display: block;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+  }
+  .fiscal-cell-date span,
+  .fiscal-cfop-badge,
+  .fiscal-order-pill,
+  .fiscal-next-action {
+    max-width: 100%;
+    width: 100%;
+  }
+  .fiscal-cell-money {
+    text-align: left;
+  }
+  .fiscal-cell-tools {
+    min-width: 0;
+  }
+  .fiscal-row-actions {
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+  .fiscal-icon-btn {
+    flex: 1 1 42px;
+    min-width: 42px;
+  }
+  .fiscal-summary-panel .fiscal-panel-body {
+    grid-template-columns: 1fr;
+  }
 }
