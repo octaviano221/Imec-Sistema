@@ -60,22 +60,22 @@
     return box.value;
   }
 
-  function repairMojibake(value) {
-    value = value == null ? '' : String(value);
-    if (!/[ÃÂâ]/.test(value) || typeof TextDecoder === 'undefined') return value;
+  function mojibakeScore(value) {
+    return ((String(value).match(/Ã|Â|â€|â€™|â€œ|â€|�/g) || []).length * 8)
+      + ((String(value).match(/&[a-zA-Z]+;/g) || []).length * 2);
+  }
 
-    try {
-      var bytes = new Uint8Array(value.length);
-      for (var i = 0; i < value.length; i += 1) {
-        bytes[i] = value.charCodeAt(i) & 255;
-      }
-      var fixed = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
-      if (fixed && fixed.indexOf('\uFFFD') === -1) return fixed;
-    } catch (error) {
-      // Fallback abaixo cobre os casos mais comuns sem depender do decoder.
+  function decodeLatin1AsUtf8(value) {
+    if (typeof TextDecoder === 'undefined') return value;
+    var bytes = new Uint8Array(value.length);
+    for (var i = 0; i < value.length; i += 1) {
+      bytes[i] = value.charCodeAt(i) & 255;
     }
+    return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+  }
 
-    return value
+  function applyTextRepairMap(value) {
+    return String(value)
       .replace(/Ã¡/g, 'á').replace(/Ã /g, 'à').replace(/Ã¢/g, 'â').replace(/Ã£/g, 'ã')
       .replace(/Ã©/g, 'é').replace(/Ãª/g, 'ê').replace(/Ã­/g, 'í')
       .replace(/Ã³/g, 'ó').replace(/Ã´/g, 'ô').replace(/Ãµ/g, 'õ')
@@ -84,8 +84,36 @@
       .replace(/Ã‰/g, 'É').replace(/ÃŠ/g, 'Ê').replace(/Ã/g, 'Í')
       .replace(/Ã“/g, 'Ó').replace(/Ã”/g, 'Ô').replace(/Ã•/g, 'Õ')
       .replace(/Ãš/g, 'Ú').replace(/Ã‡/g, 'Ç')
-      .replace(/Âº/g, 'º').replace(/Âª/g, 'ª').replace(/Â·/g, '·').replace(/Â/g, '')
-      .replace(/â€“/g, '-').replace(/â€”/g, '-').replace(/â€™/g, "'").replace(/â€œ|â€/g, '"');
+      .replace(/Âº/g, 'º').replace(/Âª/g, 'ª').replace(/Â·/g, ' · ').replace(/Â/g, '')
+      .replace(/â€“|â€”/g, '-').replace(/â€™/g, "'").replace(/â€œ|â€|â€/g, '"');
+  }
+
+  function repairMojibake(value) {
+    value = value == null ? '' : String(value);
+    if (!/[ÃÂâ�&]/.test(value)) return value;
+
+    var best = applyTextRepairMap(value);
+    var bestScore = mojibakeScore(best);
+    var current = value;
+
+    for (var i = 0; i < 3; i += 1) {
+      if (!/[ÃÂâ�]/.test(current)) break;
+      try {
+        var candidate = applyTextRepairMap(decodeLatin1AsUtf8(current));
+        var candidateScore = mojibakeScore(candidate);
+        if (candidate && candidate.indexOf('\uFFFD') === -1 && candidateScore <= bestScore) {
+          best = candidate;
+          bestScore = candidateScore;
+          current = candidate;
+        } else {
+          break;
+        }
+      } catch (error) {
+        break;
+      }
+    }
+
+    return best;
   }
 
   function normalizeTextValue(value) {

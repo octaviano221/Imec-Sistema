@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   function db() { return typeof getDB === 'function' ? getDB() : {}; }
   function fiscal() { return db().fiscal || { invoices: [], metrics: {} }; }
   function esc(value) {
@@ -40,7 +40,7 @@
     return icons[name] || icons.fiscal;
   }
   function statusChip(status) {
-    var label = { conferida: 'Conferida', conferencia: 'Confer&ecirc;ncia', pendente: 'Pendente', divergente: 'Divergente', cancelada: 'Cancelada' }[status] || (status || 'Confer&ecirc;ncia');
+    var label = { conferida: 'Conferida', conferencia: 'Conferência', pendente: 'Pendente', divergente: 'Divergente', cancelada: 'Cancelada' }[status] || (status || 'Conferência');
     var cls = status === 'conferida' ? 'ok' : ((status === 'cancelada' || status === 'divergente') ? 'danger' : (status === 'pendente' ? 'warn' : 'info'));
     return '<span class="fiscal-chip ' + cls + '">' + label + '</span>';
   }
@@ -86,18 +86,18 @@
   function flowChip(status) {
     var key = status || 'pendente';
     var labels = {
-      lancado: 'Financeiro lancado',
-      movimentado: 'Estoque lancado',
+      lancado: 'Financeiro lançado',
+      movimentado: 'Estoque lançado',
       escriturado: 'Fiscal escriturado',
       gerado: 'SPED gerado',
       pendente: 'Pendente',
-      nao_lancado: 'Nao lancado',
+      nao_lancado: 'Não lançado',
       sem_movimento: 'Sem estoque',
-      conferencia: 'Conferencia',
+      conferencia: 'Conferência',
       analisar: 'Analisar',
       creditado: 'Creditado',
       isento: 'Isento',
-      nao_creditado: 'Nao creditado',
+      nao_creditado: 'Não creditado',
       dispensado: 'Dispensado'
     };
     var cls = ['lancado', 'movimentado', 'escriturado', 'gerado', 'creditado'].indexOf(key) >= 0 ? 'ok'
@@ -111,7 +111,7 @@
       ['analisar', 'Analisar'],
       ['creditado', 'Creditar ICMS'],
       ['isento', 'Isento'],
-      ['nao_creditado', 'Nao creditar']
+      ['nao_creditado', 'Não creditar']
     ].map(function (row) {
       return '<option value="' + row[0] + '"' + (value === row[0] ? ' selected' : '') + '>' + row[1] + '</option>';
     }).join('');
@@ -136,25 +136,73 @@
       + '<button type="button" class="fiscal-mini-card fiscal-mini-action" onclick="openFiscalFinanceModal()"><span>Financeiro aberto</span><strong>' + financeCount + '</strong><small>' + money(financeTotal) + ' a pagar</small></button>'
       + '<button type="button" class="fiscal-mini-card fiscal-mini-action" onclick="openFiscalStockLedgerModal()"><span>Estoque NF-e</span><strong>' + stock + '</strong><small>movimentos de entrada</small></button>'
       + '<button type="button" class="fiscal-mini-card fiscal-mini-action" onclick="openFiscalSpedHistoryModal()"><span>SPED pendente</span><strong>' + sped + '</strong><small>notas para o TXT mensal</small></button>'
-      + '<button type="button" class="fiscal-mini-card fiscal-mini-action accent" onclick="openFiscalEntryQueueModal()"><span>Fila de entrada</span><strong>' + entryPending + '</strong><small>selecionar NF-e e lancar itens</small></button>'
+      + '<button type="button" class="fiscal-mini-card fiscal-mini-action accent" onclick="openFiscalEntryQueueModal()"><span>Fila de entrada</span><strong>' + entryPending + '</strong><small>selecionar NF-e e lançar itens</small></button>'
+      + '</section>';
+  }
+  function fiscalNextAction(invoice) {
+    var status = invoice.status || 'conferencia';
+    var financial = invoice.financial_status || 'nao_lancado';
+    var stock = invoice.stock_status || 'nao_lancado';
+    var fiscalStatus = invoice.fiscal_status || 'conferencia';
+    var sped = invoice.sped_status || 'pendente';
+    if (status === 'divergente' || status === 'pendente' || fiscalStatus === 'conferencia' || fiscalStatus === 'analisar') {
+      return { label: 'Conferir NF-e', detail: 'Revisar CFOP, ICMS e itens', className: 'warn' };
+    }
+    if (financial !== 'lancado') {
+      return { label: 'Lançar financeiro', detail: 'Gerar contas a pagar', className: 'info' };
+    }
+    if (stock !== 'movimentado' && stock !== 'sem_movimento') {
+      return { label: 'Enviar ao estoque', detail: 'Selecionar itens e quantidades', className: 'info' };
+    }
+    if (sped !== 'gerado') {
+      return { label: 'Gerar SPED', detail: 'Blocos C, K e H pendentes', className: 'neutral' };
+    }
+    return { label: 'Integrada', detail: 'Fiscal, estoque e financeiro ok', className: 'ok' };
+  }
+  function fiscalWorkflowBoard(list, metrics) {
+    var entryPending = list.filter(needsFiscalEntry).length;
+    var financeOpen = metrics.finance_open || list.filter(function (invoice) { return (invoice.financial_status || 'nao_lancado') !== 'lancado'; }).length;
+    var stockPending = list.filter(function (invoice) {
+      var status = invoice.stock_status || 'nao_lancado';
+      return status !== 'movimentado' && status !== 'sem_movimento';
+    }).length;
+    var spedPending = metrics.sped_pending || list.filter(function (invoice) { return (invoice.sped_status || 'pendente') === 'pendente'; }).length;
+    function card(cls, iconName, title, value, note, action, cta) {
+      return '<button type="button" class="fiscal-workflow-card ' + cls + '" onclick="' + action + '">'
+        + '<div class="fiscal-workflow-icon">' + icon(iconName) + '</div>'
+        + '<span>' + title + '</span>'
+        + '<strong>' + value + '</strong>'
+        + '<small>' + note + '</small>'
+        + '<b>' + cta + '</b>'
+        + '</button>';
+    }
+    return '<section class="fiscal-workflow-board">'
+      + '<div class="fiscal-workflow-head"><div><p class="fiscal-eyebrow">Fluxo operacional</p><h3>Da NF-e ao fechamento</h3><span>Escolha uma etapa para revisar as notas, alimentar financeiro, movimentar estoque e preparar o SPED.</span></div><button class="btn btn-primary btn-sm" onclick="openFiscalXmlModal()">' + icon('upload') + ' Importar XML</button></div>'
+      + '<div class="fiscal-workflow-grid">'
+      + card(entryPending ? 'warn' : 'ok', 'checklist', 'Conferência', entryPending, entryPending ? 'notas aguardando revisão' : 'sem pendência fiscal', 'openFiscalEntryQueueModal()', 'Abrir fila')
+      + card(financeOpen ? 'info' : 'ok', 'wallet', 'Financeiro', financeOpen, money(metrics.finance_open_total || 0) + ' em aberto', 'openFiscalFinanceModal()', 'Ver títulos')
+      + card(stockPending ? 'info' : 'ok', 'box', 'Estoque', stockPending, 'itens para entrada ou dispensa', 'openFiscalStockLedgerModal()', 'Ver movimentos')
+      + card(spedPending ? 'neutral' : 'ok', 'download', 'SPED', spedPending, 'notas para o TXT mensal', 'openFiscalSpedModal()', 'Gerar arquivo')
+      + '</div>'
       + '</section>';
   }
   function renderInvoiceRows(list) {
     if (!list.length) return '<tr><td colspan="9"><div class="fiscal-empty">Importe o primeiro XML de NF-e ou cadastre uma nota manual.</div></td></tr>';
     return list.map(function (invoice) {
       var supplier = invoice.linked_supplier_name || invoice.supplier_name || '-';
+      var next = fiscalNextAction(invoice);
       var danfe = '<button class="fiscal-icon-btn" onclick="downloadFiscalDanfe(' + invoice.id + ')" title="Baixar DANFE em PDF">' + icon('download') + '</button>';
       var xml = invoice.xml_url ? '<button class="fiscal-icon-btn" onclick="downloadFiscalXml(' + invoice.id + ')" title="Baixar NF-e XML">' + icon('download') + '</button>' : '';
       var integrate = '<button class="fiscal-icon-btn" onclick="openFiscalIntegrationModal(' + invoice.id + ')" title="Escriturar entrada">' + icon('chart') + '</button>';
       return '<tr data-fiscal-row data-status="' + esc(invoice.status || 'conferencia') + '" data-search="' + esc([supplier, invoice.supplier_cnpj, invoice.number, invoice.access_key, invoice.cfop, invoice.entry_cfop, invoice.purchase_order_number, invoice.financial_status, invoice.stock_status, invoice.fiscal_status, invoice.sped_status].join(' ').toLowerCase()) + '">'
-        + '<td class="fiscal-main-cell"><strong>NF-e ' + esc(invoice.number || '-') + '</strong><small>S&eacute;rie ' + esc(invoice.series || '-') + ' &bull; Modelo ' + esc(invoice.model || '55') + '</small></td>'
+        + '<td class="fiscal-main-cell"><strong>NF-e ' + esc(invoice.number || '-') + '</strong><small>Série ' + esc(invoice.series || '-') + ' - Modelo ' + esc(invoice.model || '55') + '</small></td>'
         + '<td class="fiscal-main-cell"><strong>' + esc(supplier) + '</strong><small>' + esc(invoice.supplier_cnpj || '') + '</small></td>'
-        + '<td>' + (invoice.purchase_order_number ? '<span class="fiscal-order-pill">' + esc(invoice.purchase_order_number) + '</span>' : '<span class="fiscal-muted">Sem v&iacute;nculo</span>') + '</td>'
+        + '<td>' + (invoice.purchase_order_number ? '<span class="fiscal-order-pill">' + esc(invoice.purchase_order_number) + '</span>' : '<span class="fiscal-muted">Sem vínculo</span>') + '</td>'
         + '<td>' + dt(invoice.issue_date) + '</td>'
         + '<td class="fiscal-main-cell"><strong>' + esc(invoice.entry_cfop || invoice.cfop || '-') + '</strong><small>entrada / XML</small></td>'
         + '<td><strong>' + money(invoice.total_invoice) + '</strong></td>'
         + '<td>' + money(invoice.icms_value) + '</td>'
-        + '<td>' + statusChip(invoice.status) + '<div class="fiscal-flow-mini">' + flowChip(invoice.fiscal_status || 'conferencia') + flowChip(invoice.stock_status || 'nao_lancado') + '</div></td>'
+        + '<td><div class="fiscal-next-action ' + next.className + '"><b>' + esc(next.label) + '</b><small>' + esc(next.detail) + '</small></div><div class="fiscal-flow-mini">' + statusChip(invoice.status) + flowChip(invoice.stock_status || 'nao_lancado') + '</div></td>'
         + '<td><div class="flex gap-2"><button class="fiscal-icon-btn" onclick="openFiscalInvoiceDetails(' + invoice.id + ')" title="Ver detalhes">' + icon('eye') + '</button>' + integrate + danfe + xml + '<button class="fiscal-icon-btn" onclick="editFiscalInvoice(' + invoice.id + ')" title="Editar">' + icon('edit') + '</button><button class="fiscal-icon-btn" onclick="deleteFiscalInvoice(' + invoice.id + ')" title="Excluir">' + icon('trash') + '</button></div></td>'
         + '</tr>';
     }).join('');
@@ -165,17 +213,17 @@
     var list = invoices();
     var cfops = topCfops(list);
     return '<div class="fiscal-page fade-in">'
-      + '<section class="fiscal-hero"><div><div class="fiscal-eyebrow">Controle fiscal integrado</div><h2 class="text-2xl">NF-e, financeiro, estoque e SPED</h2><p class="text-slate-600 mt-1">Importe XML/SEFAZ, escolha a NF-e de entrada, revise os itens que vao para estoque, ajuste CFOP/ICMS e lance financeiro em uma unica fila fiscal.</p></div><div class="fiscal-actions"><button class="btn btn-primary" onclick="openFiscalEntryQueueModal()">' + icon('chart') + ' Fluxo de entrada</button><button class="btn btn-outline" onclick="openFiscalConferenceModal()">' + icon('checklist') + ' Conferencia</button><button class="btn btn-outline" onclick="openFiscalFinanceModal()">' + icon('wallet') + ' Financeiro</button><button class="btn btn-outline" onclick="openFiscalStockLedgerModal()">' + icon('box') + ' Estoque</button><button class="btn btn-outline" onclick="openFiscalSpedModal()">' + icon('download') + ' SPED TXT</button><button class="btn btn-outline" onclick="openFiscalInvoiceModal()">' + icon('plus') + ' Nota manual</button><button class="btn btn-primary" onclick="openFiscalXmlModal()">' + icon('upload') + ' Importar XML</button></div></section>'
+      + '<section class="fiscal-hero"><div class="fiscal-hero-main"><div class="fiscal-eyebrow">Controle fiscal integrado</div><h2 class="text-2xl">Central fiscal NF-e</h2><p class="text-slate-600 mt-1">Importe XML ou consulte a SEFAZ, revise CFOP/ICMS por item, lance financeiro, movimente estoque e gere base SPED em uma fila única.</p></div><div class="fiscal-hero-actions"><div class="fiscal-hero-primary"><button class="btn btn-primary" onclick="openFiscalXmlModal()">' + icon('upload') + ' Importar XML</button><button class="btn btn-outline" onclick="openSefazModal()">' + icon('robot') + ' SEFAZ / A1</button></div><div class="fiscal-toolbox"><button class="btn btn-outline btn-sm" onclick="openFiscalEntryQueueModal()">Fluxo guiado</button><button class="btn btn-outline btn-sm" onclick="openFiscalConferenceModal()">Conferência</button><button class="btn btn-outline btn-sm" onclick="openFiscalInvoiceModal()">Nota manual</button></div></div></section>'
       + '<section class="fiscal-kpis">'
       + fiscalKpi('fiscal', 'Notas', metrics.invoices || 0, 'XML e manuais')
-      + fiscalKpi('chart', 'Total do mes', money(metrics.month_total || 0), 'valor das entradas')
-      + fiscalKpi('fiscal', 'Financeiro aberto', money(metrics.finance_open_total || 0), (metrics.finance_open || 0) + ' titulo(s)')
+      + fiscalKpi('chart', 'Total do mês', money(metrics.month_total || 0), 'valor das entradas')
+      + fiscalKpi('fiscal', 'Financeiro aberto', money(metrics.finance_open_total || 0), (metrics.finance_open || 0) + ' título(s)')
       + fiscalKpi('upload', 'Estoque NF-e', metrics.stock_movements || 0, 'movimentos de entrada')
       + fiscalKpi('robot', 'SPED pendente', metrics.sped_pending || 0, 'notas a gerar')
       + '</section>'
-      + fiscalInsights(list, metrics)
-      + '<section class="fiscal-grid"><div class="fiscal-panel"><div class="fiscal-panel-head"><div><h3 class="text-xl">Controle de notas fiscais</h3><p class="text-sm text-slate-500">Consulte por fornecedor, CNPJ, CFOP, pedido, chave, estoque ou status fiscal.</p></div><button class="btn btn-outline btn-sm" onclick="exportFiscalCsv()">CSV contador</button></div><div class="fiscal-panel-body fiscal-filters"><input class="input" id="fiscalSearch" oninput="filterFiscalInvoices()" placeholder="Buscar nota, fornecedor, CNPJ, pedido, CFOP ou status..."><select class="input" id="fiscalStatus" onchange="filterFiscalInvoices()"><option value="">Todos os status</option><option value="conferencia">Conferencia</option><option value="conferida">Conferida</option><option value="pendente">Pendente</option><option value="divergente">Divergente</option><option value="cancelada">Cancelada</option></select></div><div class="fiscal-table-wrap"><table class="fiscal-table"><thead><tr><th>Nota</th><th>Fornecedor</th><th>Pedido</th><th>Emissao</th><th>CFOP entrada</th><th>Total</th><th>ICMS</th><th>Status</th><th>Acoes</th></tr></thead><tbody>' + renderInvoiceRows(list) + '</tbody></table></div></div>'
-      + '<aside class="fiscal-panel"><div class="fiscal-panel-head"><div><h3>Escrituracao e SPED</h3><p class="text-sm text-slate-500">Fechamento mensal com blocos C, K e H.</p></div><button class="btn btn-primary btn-sm" onclick="openSefazModal()">' + icon('robot') + ' SEFAZ / A1</button></div><div class="fiscal-panel-body"><div class="fiscal-upload-box mb-4">' + icon('chart') + '<h4 class="font-bold mt-3 text-imec-dark">Fluxo completo da nota</h4><p class="text-sm text-slate-500 mt-1">Conferencia da NF-e, lancamento financeiro, entrada de estoque, CFOP por item e arquivo SPED base para validacao.</p><button class="btn btn-outline btn-sm mt-4" onclick="openFiscalSpedModal()">Gerar TXT do periodo</button></div><div class="fiscal-cfop-list">' + (cfops.length ? cfops.map(function (row) { return '<div class="fiscal-cfop-row"><div><b>CFOP ' + esc(row.cfop) + '</b><p class="text-xs text-slate-500">' + row.count + ' nota(s)</p></div><strong>' + money(row.total) + '</strong></div>'; }).join('') : '<div class="fiscal-empty">Nenhum CFOP importado ainda.</div>') + '</div></div></aside></section>'
+      + fiscalWorkflowBoard(list, metrics)
+      + '<section class="fiscal-grid"><div class="fiscal-panel"><div class="fiscal-panel-head"><div><h3 class="text-xl">Livro de entradas</h3><p class="text-sm text-slate-500">Consulte por fornecedor, CNPJ, CFOP, pedido, chave, estoque ou próxima ação.</p></div><button class="btn btn-outline btn-sm" onclick="exportFiscalCsv()">CSV contador</button></div><div class="fiscal-panel-body fiscal-filters"><input class="input" id="fiscalSearch" oninput="filterFiscalInvoices()" placeholder="Buscar nota, fornecedor, CNPJ, pedido, CFOP ou status..."><select class="input" id="fiscalStatus" onchange="filterFiscalInvoices()"><option value="">Todos os status</option><option value="conferencia">Conferência</option><option value="conferida">Conferida</option><option value="pendente">Pendente</option><option value="divergente">Divergente</option><option value="cancelada">Cancelada</option></select></div><div class="fiscal-table-wrap"><table class="fiscal-table"><thead><tr><th>Nota</th><th>Fornecedor</th><th>Pedido</th><th>Emissão</th><th>CFOP entrada</th><th>Total</th><th>ICMS</th><th>Próxima ação</th><th>Ações</th></tr></thead><tbody>' + renderInvoiceRows(list) + '</tbody></table></div></div>'
+      + '<aside class="fiscal-panel"><div class="fiscal-panel-head"><div><h3>Fechamento fiscal</h3><p class="text-sm text-slate-500">Escrituração mensal com blocos C, K e H.</p></div><button class="btn btn-primary btn-sm" onclick="openFiscalSpedModal()">' + icon('download') + ' SPED TXT</button></div><div class="fiscal-panel-body"><div class="fiscal-upload-box mb-4">' + icon('chart') + '<h4 class="font-bold mt-3 text-imec-dark">Fluxo completo da nota</h4><p class="text-sm text-slate-500 mt-1">Conferência da NF-e, lançamento financeiro, entrada de estoque, CFOP por item e arquivo SPED base para validação.</p><button class="btn btn-outline btn-sm mt-4" onclick="openFiscalEntryQueueModal()">Abrir fluxo guiado</button></div><div class="fiscal-cfop-list">' + (cfops.length ? cfops.map(function (row) { return '<div class="fiscal-cfop-row"><div><b>CFOP ' + esc(row.cfop) + '</b><p class="text-xs text-slate-500">' + row.count + ' nota(s)</p></div><strong>' + money(row.total) + '</strong></div>'; }).join('') : '<div class="fiscal-empty">Nenhum CFOP importado ainda.</div>') + '</div></div></aside></section>'
       + '</div>';
   }
   function fiscalKpi(iconName, label, value, note) {
@@ -190,14 +238,14 @@
       var supplier = invoice.linked_supplier_name || invoice.supplier_name || '-';
       var pending = needsFiscalEntry(invoice);
       return '<article class="fiscal-entry-row" data-entry-row data-search="' + esc([invoice.number, supplier, invoice.supplier_cnpj, invoice.access_key, invoice.cfop, invoice.entry_cfop, invoice.financial_status, invoice.stock_status, invoice.fiscal_status].join(' ').toLowerCase()) + '" data-pending="' + (pending ? '1' : '0') + '">'
-        + '<div class="fiscal-entry-main"><div class="fiscal-entry-icon">' + icon('fiscal') + '</div><div><strong>NF-e ' + esc(invoice.number || invoice.id) + '</strong><small>' + esc(supplier) + ' &bull; emiss&atilde;o ' + dt(invoice.issue_date) + ' &bull; ' + money(invoice.total_invoice) + '</small></div></div>'
+        + '<div class="fiscal-entry-main"><div class="fiscal-entry-icon">' + icon('fiscal') + '</div><div><strong>NF-e ' + esc(invoice.number || invoice.id) + '</strong><small>' + esc(supplier) + ' - emissão ' + dt(invoice.issue_date) + ' - ' + money(invoice.total_invoice) + '</small></div></div>'
         + '<div class="fiscal-entry-status">' + flowChip(invoice.financial_status || 'nao_lancado') + flowChip(invoice.stock_status || 'nao_lancado') + flowChip(invoice.fiscal_status || 'conferencia') + '</div>'
-        + '<div class="fiscal-entry-actions"><button type="button" class="btn btn-outline btn-sm" onclick="openFiscalInvoiceDetails(' + invoice.id + ')">' + icon('eye') + ' Ver</button><button type="button" class="btn btn-primary btn-sm" onclick="openFiscalIntegrationModal(' + invoice.id + ')">' + icon('chart') + ' Lancar entrada</button></div>'
+        + '<div class="fiscal-entry-actions"><button type="button" class="btn btn-outline btn-sm" onclick="openFiscalInvoiceDetails(' + invoice.id + ')">' + icon('eye') + ' Ver</button><button type="button" class="btn btn-primary btn-sm" onclick="openFiscalIntegrationModal(' + invoice.id + ')">' + icon('chart') + ' Lançar entrada</button></div>'
         + '</article>';
     }).join('') : '<div class="fiscal-empty fiscal-empty-small">Nenhuma NF-e cadastrada ainda. Importe XML ou consulte a SEFAZ.</div>';
-    openModal('<div class="p-6 fiscal-modal-wide fiscal-entry-modal"><div class="fiscal-panel-head px-0 pt-0"><div><h2 class="font-display text-xl font-bold text-imec-dark">Fila de entrada de NF-e</h2><p class="text-sm text-slate-500 mt-1">Selecione a nota fiscal, revise os itens e confirme o que entra no estoque antes de lancar financeiro e fiscal.</p></div><button type="button" class="btn btn-outline btn-sm" onclick="openFiscalXmlModal()">' + icon('upload') + ' Importar XML</button></div>'
+    openModal('<div class="p-6 fiscal-modal-wide fiscal-entry-modal"><div class="fiscal-panel-head px-0 pt-0"><div><h2 class="font-display text-xl font-bold text-imec-dark">Fila de entrada de NF-e</h2><p class="text-sm text-slate-500 mt-1">Selecione a nota fiscal, revise os itens e confirme o que entra no estoque antes de lançar financeiro e fiscal.</p></div><button type="button" class="btn btn-outline btn-sm" onclick="openFiscalXmlModal()">' + icon('upload') + ' Importar XML</button></div>'
       + '<section class="fiscal-flow-steps"><div><b>1</b><span>Selecionar NF-e</span></div><div><b>2</b><span>Editar itens do estoque</span></div><div><b>3</b><span>CFOP, ICMS e financeiro</span></div><div><b>4</b><span>SPED Blocos C, K e H</span></div></section>'
-      + '<div class="fiscal-entry-toolbar"><input class="input" id="fiscalEntrySearch" oninput="filterFiscalEntryQueue()" placeholder="Buscar NF-e, fornecedor, CNPJ, CFOP ou status..."><select class="input" id="fiscalEntryStatus" onchange="filterFiscalEntryQueue()"><option value="">Todas as notas</option><option value="1">Pendentes de entrada</option><option value="0">Ja lancadas</option></select></div>'
+      + '<div class="fiscal-entry-toolbar"><input class="input" id="fiscalEntrySearch" oninput="filterFiscalEntryQueue()" placeholder="Buscar NF-e, fornecedor, CNPJ, CFOP ou status..."><select class="input" id="fiscalEntryStatus" onchange="filterFiscalEntryQueue()"><option value="">Todas as notas</option><option value="1">Pendentes de entrada</option><option value="0">Já lançadas</option></select></div>'
       + '<div class="fiscal-entry-list">' + rows + '</div>'
       + '<div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Fechar</button></div></div>');
   };
@@ -211,10 +259,10 @@
     });
   };
   window.openFiscalXmlModal = function () {
-    openModal('<div class="p-6 fiscal-modal-wide"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Importar XML da NF-e</h2><p class="text-sm text-slate-500 mb-5">Envie o XML oficial. O sistema cadastra a nota e o fornecedor automaticamente.</p><form onsubmit="importFiscalXml(event)"><div class="fiscal-upload-box"><div class="fiscal-kpi-icon mx-auto mb-3">' + icon('upload') + '</div><h3 class="font-bold text-imec-dark mb-2">Selecionar XML da nota fiscal</h3><p class="text-sm text-slate-500 mb-4">Arquivo .xml at&eacute; 10 MB.</p><input class="input max-w-md mx-auto" type="file" id="fiscalXmlFile" accept=".xml,application/xml,text/xml" required></div><div class="bg-blue-50 border border-blue-100 rounded-lg p-4 mt-4 text-sm text-blue-900"><b>Como funciona:</b> o leitor pega chave, n&uacute;mero, fornecedor, CNPJ, emiss&atilde;o, CFOP, produtos, valor total e ICMS. Depois voc&ecirc; confere e ajusta se precisar.</div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary">' + icon('robot') + ' Ler XML</button></div></form></div>');
+    openModal('<div class="p-6 fiscal-modal-wide"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Importar XML da NF-e</h2><p class="text-sm text-slate-500 mb-5">Envie o XML oficial. O sistema cadastra a nota e o fornecedor automaticamente.</p><form onsubmit="importFiscalXml(event)"><div class="fiscal-upload-box"><div class="fiscal-kpi-icon mx-auto mb-3">' + icon('upload') + '</div><h3 class="font-bold text-imec-dark mb-2">Selecionar XML da nota fiscal</h3><p class="text-sm text-slate-500 mb-4">Arquivo .xml até 10 MB.</p><input class="input max-w-md mx-auto" type="file" id="fiscalXmlFile" accept=".xml,application/xml,text/xml" required></div><div class="bg-blue-50 border border-blue-100 rounded-lg p-4 mt-4 text-sm text-blue-900"><b>Como funciona:</b> o leitor pega chave, número, fornecedor, CNPJ, emissão, CFOP, produtos, valor total e ICMS. Depois você confere e ajusta se precisar.</div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary">' + icon('robot') + ' Ler XML</button></div></form></div>');
   };
   window.openSefazModal = async function () {
-    openModal('<div class="p-6 fiscal-modal-wide"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Rob&ocirc; SEFAZ por CNPJ</h2><p class="text-sm text-slate-500 mb-5">Consultando configura&ccedil;&atilde;o segura do certificado A1...</p><div class="fiscal-upload-box">' + icon('robot') + '<h3 class="font-bold text-imec-dark mt-3">Verificando ambiente</h3></div></div>');
+    openModal('<div class="p-6 fiscal-modal-wide"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Robô SEFAZ por CNPJ</h2><p class="text-sm text-slate-500 mb-5">Consultando configuração segura do certificado A1...</p><div class="fiscal-upload-box">' + icon('robot') + '<h3 class="font-bold text-imec-dark mt-3">Verificando ambiente</h3></div></div>');
     try {
       var status = await API.fiscal.sefazStatus();
       var missing = status.missing || [];
@@ -229,9 +277,9 @@
         return '<li class="' + (item[1] ? 'ok' : 'warn') + '"><span>' + (item[1] ? '&#10003;' : '!') + '</span>' + item[0] + '</li>';
       }).join('');
       var readyBox = status.ready
-        ? '<div class="fiscal-sefaz-ready">Certificado A1 localizado. Pronto para consultar a distribui&ccedil;&atilde;o de NF-e na SEFAZ.</div>'
-        : '<div class="fiscal-sefaz-warn">Ainda falta: ' + esc(missing.join(', ') || 'configura&ccedil;&atilde;o') + '.</div>';
-      openModal('<div class="p-6 fiscal-modal-wide"><div class="fiscal-panel-head px-0 pt-0"><div><h2 class="font-display text-xl font-bold text-imec-dark">Rob&ocirc; SEFAZ por CNPJ</h2><p class="text-sm text-slate-500 mt-1">Busca NF-e emitida contra o CNPJ usando certificado A1.</p></div><span class="fiscal-chip ' + (status.ready ? 'ok' : 'warn') + '">' + (status.ready ? 'A1 pronto' : 'Configurar A1') + '</span></div><div class="fiscal-sefaz-grid"><section><h3>Vari&aacute;veis na Hostinger</h3><ul class="fiscal-sefaz-list">' + checklist + '</ul></section><section><h3>Dados detectados</h3><div class="fiscal-cfop-list"><div class="fiscal-cfop-row"><span>CNPJ</span><b>' + esc(status.cnpj || '-') + '</b></div><div class="fiscal-cfop-row"><span>UF</span><b>' + esc(status.uf || '-') + '</b></div><div class="fiscal-cfop-row"><span>Ambiente</span><b>' + esc(status.environment || '-') + '</b></div><div class="fiscal-cfop-row"><span>&Uacute;ltimo NSU</span><b>' + esc(status.ultNSU || '000000000000000') + '</b></div></div></section></div>' + readyBox + '<div class="bg-blue-50 border border-blue-100 rounded-lg p-4 mt-4 text-sm text-blue-900"><b>Caminho configurado:</b> <code>' + esc(status.cert_path || '-') + '</code><br><b>Caminho encontrado:</b> <code>' + esc(status.cert_resolved_path || 'nao encontrado') + '</code><br><span class="text-xs">Se a pasta foi criada no Gerenciador de Arquivos do site, o caminho pode ser <code>/home/u974096246/domains/darkslateblue-seahorse-560479.hostingersite.com/certificados/IMECBASE.pfx</code>. O sistema agora procura esse local tamb&eacute;m.</span></div><div id="sefazSyncResult" class="mt-4"></div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Fechar</button><button type="button" class="btn btn-primary" onclick="startSefazSync()">' + icon('robot') + ' Consultar SEFAZ</button></div></div>');
+        ? '<div class="fiscal-sefaz-ready">Certificado A1 localizado. Pronto para consultar a distribuição de NF-e na SEFAZ.</div>'
+        : '<div class="fiscal-sefaz-warn">Ainda falta: ' + esc(missing.join(', ') || 'configuração') + '.</div>';
+      openModal('<div class="p-6 fiscal-modal-wide"><div class="fiscal-panel-head px-0 pt-0"><div><h2 class="font-display text-xl font-bold text-imec-dark">Robô SEFAZ por CNPJ</h2><p class="text-sm text-slate-500 mt-1">Busca NF-e emitida contra o CNPJ usando certificado A1.</p></div><span class="fiscal-chip ' + (status.ready ? 'ok' : 'warn') + '">' + (status.ready ? 'A1 pronto' : 'Configurar A1') + '</span></div><div class="fiscal-sefaz-grid"><section><h3>Variáveis na Hostinger</h3><ul class="fiscal-sefaz-list">' + checklist + '</ul></section><section><h3>Dados detectados</h3><div class="fiscal-cfop-list"><div class="fiscal-cfop-row"><span>CNPJ</span><b>' + esc(status.cnpj || '-') + '</b></div><div class="fiscal-cfop-row"><span>UF</span><b>' + esc(status.uf || '-') + '</b></div><div class="fiscal-cfop-row"><span>Ambiente</span><b>' + esc(status.environment || '-') + '</b></div><div class="fiscal-cfop-row"><span>Último NSU</span><b>' + esc(status.ultNSU || '000000000000000') + '</b></div></div></section></div>' + readyBox + '<div class="bg-blue-50 border border-blue-100 rounded-lg p-4 mt-4 text-sm text-blue-900"><b>Caminho configurado:</b> <code>' + esc(status.cert_path || '-') + '</code><br><b>Caminho encontrado:</b> <code>' + esc(status.cert_resolved_path || 'não encontrado') + '</code><br><span class="text-xs">Se a pasta foi criada no Gerenciador de Arquivos do site, o caminho pode ser <code>/home/u974096246/domains/darkslateblue-seahorse-560479.hostingersite.com/certificados/IMECBASE.pfx</code>. O sistema agora procura esse local também.</span></div><div id="sefazSyncResult" class="mt-4"></div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Fechar</button><button type="button" class="btn btn-primary" onclick="startSefazSync()">' + icon('robot') + ' Consultar SEFAZ</button></div></div>');
     } catch (err) {
       showToast('Erro: ' + err.message, 'error');
     }
@@ -243,8 +291,8 @@
       var result = await API.fiscal.sefazSync({ cycles: 1 });
       await refreshData();
       await renderPage();
-      var msg = (result.xMotivo || 'Consulta concluida') + ' | novas: ' + (result.imported || 0) + ' | atualizadas: ' + (result.updated || 0) + ' | ignoradas: ' + (result.ignored || 0);
-      if (box) box.innerHTML = '<div class="fiscal-sefaz-ready"><b>Consulta conclu&iacute;da.</b><br>' + esc(msg) + '<br><span class="text-xs">NSU atual: ' + esc(result.ultNSU || '-') + '</span></div>';
+      var msg = (result.xMotivo || 'Consulta concluída') + ' | novas: ' + (result.imported || 0) + ' | atualizadas: ' + (result.updated || 0) + ' | ignoradas: ' + (result.ignored || 0);
+      if (box) box.innerHTML = '<div class="fiscal-sefaz-ready"><b>Consulta concluída.</b><br>' + esc(msg) + '<br><span class="text-xs">NSU atual: ' + esc(result.ultNSU || '-') + '</span></div>';
       showToast('SEFAZ: ' + msg, 'success');
     } catch (err) {
       showToast('SEFAZ: ' + err.message, 'error');
@@ -261,7 +309,7 @@
       await refreshData();
       closeModal();
       await renderPage();
-      showToast('XML importado e nota cadastrada para conferencia', 'success');
+      showToast('XML importado e nota cadastrada para conferência', 'success');
     } catch (err) {
       showToast('Erro: ' + err.message, 'error');
     }
@@ -321,7 +369,7 @@
     }
   };
   window.openFiscalInvoiceDetails = async function (id) {
-    openModal('<div class="p-6 fiscal-modal-wide"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Abrindo nota fiscal...</h2><div class="fiscal-upload-box">' + icon('fiscal') + '<p class="text-sm text-slate-500 mt-3">Carregando itens, impostos e v&iacute;nculos.</p></div></div>');
+    openModal('<div class="p-6 fiscal-modal-wide"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Abrindo nota fiscal...</h2><div class="fiscal-upload-box">' + icon('fiscal') + '<p class="text-sm text-slate-500 mt-3">Carregando itens, impostos e vínculos.</p></div></div>');
     try {
       var result = await API.fiscal.detail(id);
       var invoice = result.invoice || {};
@@ -329,21 +377,21 @@
       var supplier = invoice.linked_supplier_name || invoice.supplier_name || '-';
       var itemRows = items.length ? items.map(function (item) {
         return '<tr><td>' + esc(item.item_number || '-') + '</td><td class="fiscal-main-cell"><strong>' + esc(item.description || '-') + '</strong><small>' + esc(item.product_code || '') + '</small></td><td>' + esc(item.ncm || '-') + '</td><td class="fiscal-main-cell"><strong>' + esc(item.entry_cfop || item.cfop || '-') + '</strong><small>XML ' + esc(item.cfop || '-') + '</small></td><td>' + flowChip(item.credit_indicator || 'analisar') + '</td><td>' + (item.stock_item_id ? 'Item #' + esc(item.stock_item_id) : '<span class="fiscal-muted">Sem estoque</span>') + '</td><td>' + money(item.total_value) + '</td></tr>';
-      }).join('') : '<tr><td colspan="7"><div class="fiscal-empty fiscal-empty-small">Esta nota veio como resumo da SEFAZ ou ainda nao possui XML completo com itens.</div></td></tr>';
-      openModal('<div class="p-6 fiscal-modal-wide fiscal-detail-modal"><div class="fiscal-panel-head px-0 pt-0"><div><h2 class="font-display text-xl font-bold text-imec-dark">NF-e ' + esc(invoice.number || invoice.id) + '</h2><p class="text-sm text-slate-500 mt-1">' + esc(supplier) + ' &bull; emiss&atilde;o ' + dt(invoice.issue_date) + '</p></div>' + statusChip(invoice.status) + '</div>'
+      }).join('') : '<tr><td colspan="7"><div class="fiscal-empty fiscal-empty-small">Esta nota veio como resumo da SEFAZ ou ainda não possui XML completo com itens.</div></td></tr>';
+      openModal('<div class="p-6 fiscal-modal-wide fiscal-detail-modal"><div class="fiscal-panel-head px-0 pt-0"><div><h2 class="font-display text-xl font-bold text-imec-dark">NF-e ' + esc(invoice.number || invoice.id) + '</h2><p class="text-sm text-slate-500 mt-1">' + esc(supplier) + ' - emissão ' + dt(invoice.issue_date) + '</p></div>' + statusChip(invoice.status) + '</div>'
         + '<div class="fiscal-action-strip"><button class="btn btn-primary btn-sm" onclick="openFiscalIntegrationModal(' + invoice.id + ')">' + icon('chart') + ' Escriturar entrada</button><button class="btn btn-outline btn-sm" onclick="downloadFiscalDanfe(' + invoice.id + ')">' + icon('download') + ' DANFE PDF</button>' + (invoice.xml_url ? '<button class="btn btn-outline btn-sm" onclick="downloadFiscalXml(' + invoice.id + ')">' + icon('download') + ' NF-e XML</button>' : '') + '<button class="btn btn-outline btn-sm" onclick="editFiscalInvoice(' + invoice.id + ')">' + icon('edit') + ' Editar</button></div>'
         + '<section class="fiscal-flow-grid"><div class="fiscal-flow-card"><span>Financeiro</span><strong>' + flowChip(invoice.financial_status || 'nao_lancado') + '</strong><small>vencimento ' + dt(invoice.payment_due_date) + '</small></div><div class="fiscal-flow-card"><span>Estoque</span><strong>' + flowChip(invoice.stock_status || 'nao_lancado') + '</strong><small>entrada por item</small></div><div class="fiscal-flow-card"><span>Fiscal</span><strong>' + flowChip(invoice.fiscal_status || 'conferencia') + '</strong><small>CFOP entrada ' + esc(invoice.entry_cfop || '-') + '</small></div><div class="fiscal-flow-card"><span>SPED</span><strong>' + flowChip(invoice.sped_status || 'pendente') + '</strong><small>blocos C, K e H</small></div></section>'
-        + '<section class="fiscal-detail-grid"><div class="fiscal-detail-box"><span>Fornecedor</span><strong>' + esc(supplier) + '</strong><small>' + esc(invoice.supplier_cnpj || '-') + '</small></div><div class="fiscal-detail-box"><span>Pedido de compra</span><strong>' + (invoice.purchase_order_number ? esc(invoice.purchase_order_number) : 'Sem v&iacute;nculo') + '</strong><small>almoxarifado</small></div><div class="fiscal-detail-box"><span>Total NF-e</span><strong>' + money(invoice.total_invoice) + '</strong><small>produtos ' + money(invoice.total_products) + '</small></div><div class="fiscal-detail-box"><span>ICMS</span><strong>' + money(invoice.icms_value) + '</strong><small>base ' + money(invoice.icms_base) + '</small></div></section>'
-        + '<section class="fiscal-detail-box mt-4"><span>Chave de acesso</span><strong class="fiscal-key">' + esc(invoice.access_key || '-') + '</strong><small>CFOP: ' + esc(invoice.cfop || '-') + ' &bull; Natureza: ' + esc(invoice.operation_type || '-') + '</small></section>'
-        + '<div class="fiscal-table-wrap mt-4"><table class="fiscal-table fiscal-items-table"><thead><tr><th>Item</th><th>Produto</th><th>NCM</th><th>CFOP entrada</th><th>Credito</th><th>Estoque</th><th>Total</th></tr></thead><tbody>' + itemRows + '</tbody></table></div>'
-        + '<section class="fiscal-detail-box mt-4"><span>Observa&ccedil;&otilde;es</span><p>' + (invoice.notes ? esc(invoice.notes) : 'Sem observa&ccedil;&otilde;es.') + '</p></section>'
+        + '<section class="fiscal-detail-grid"><div class="fiscal-detail-box"><span>Fornecedor</span><strong>' + esc(supplier) + '</strong><small>' + esc(invoice.supplier_cnpj || '-') + '</small></div><div class="fiscal-detail-box"><span>Pedido de compra</span><strong>' + (invoice.purchase_order_number ? esc(invoice.purchase_order_number) : 'Sem vínculo') + '</strong><small>almoxarifado</small></div><div class="fiscal-detail-box"><span>Total NF-e</span><strong>' + money(invoice.total_invoice) + '</strong><small>produtos ' + money(invoice.total_products) + '</small></div><div class="fiscal-detail-box"><span>ICMS</span><strong>' + money(invoice.icms_value) + '</strong><small>base ' + money(invoice.icms_base) + '</small></div></section>'
+        + '<section class="fiscal-detail-box mt-4"><span>Chave de acesso</span><strong class="fiscal-key">' + esc(invoice.access_key || '-') + '</strong><small>CFOP: ' + esc(invoice.cfop || '-') + ' - Natureza: ' + esc(invoice.operation_type || '-') + '</small></section>'
+        + '<div class="fiscal-table-wrap mt-4"><table class="fiscal-table fiscal-items-table"><thead><tr><th>Item</th><th>Produto</th><th>NCM</th><th>CFOP entrada</th><th>Crédito</th><th>Estoque</th><th>Total</th></tr></thead><tbody>' + itemRows + '</tbody></table></div>'
+        + '<section class="fiscal-detail-box mt-4"><span>Observações</span><p>' + (invoice.notes ? esc(invoice.notes) : 'Sem observações.') + '</p></section>'
         + '<div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Fechar</button></div></div>');
     } catch (err) {
       showToast('Erro: ' + err.message, 'error');
     }
   };
   window.openFiscalIntegrationModal = async function (id) {
-    openModal('<div class="p-6 fiscal-modal-wide"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Preparando escrituracao...</h2><div class="fiscal-upload-box">' + icon('chart') + '<p class="text-sm text-slate-500 mt-3">Carregando itens para integrar financeiro, estoque e fiscal.</p></div></div>');
+    openModal('<div class="p-6 fiscal-modal-wide"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Preparando escrituração...</h2><div class="fiscal-upload-box">' + icon('chart') + '<p class="text-sm text-slate-500 mt-3">Carregando itens para integrar financeiro, estoque e fiscal.</p></div></div>');
     try {
       var result = await API.fiscal.detail(id);
       var invoice = result.invoice || {};
@@ -365,16 +413,16 @@
           + '<td class="fiscal-stock-cell"><select class="input fiscal-stock-select" data-field="stock_item_id">' + stockItemOptions(item.stock_item_id) + '</select>'
           + '<div class="fiscal-stock-editor"><span>Como entra no estoque</span><input class="input fiscal-stock-name" data-field="stock_name" value="' + esc(stockName) + '" placeholder="Nome interno do item">'
           + '<div class="fiscal-stock-grid"><input class="input" data-field="stock_category" value="' + esc(stockCategory) + '" placeholder="Categoria"><input class="input" data-field="stock_unit" value="' + esc(stockUnit) + '" placeholder="UN"><input class="input" data-field="stock_location" value="' + esc(stockLocation) + '" placeholder="Local"><input type="number" step="0.01" class="input" data-field="minimum_stock" value="' + esc(minimumStock) + '" placeholder="Min."></div></div>'
-          + '<label class="fiscal-inline-check"><input type="checkbox" data-field="skip_stock"' + (item.tax_status === 'sem_movimento' ? ' checked' : '') + '> Nao entra no estoque</label></td>'
-          + '<td><input class="input fiscal-small-input" data-field="fiscal_notes" value="' + esc(item.fiscal_notes || '') + '" placeholder="observacao"></td>'
+          + '<label class="fiscal-inline-check"><input type="checkbox" data-field="skip_stock"' + (item.tax_status === 'sem_movimento' ? ' checked' : '') + '> Não entra no estoque</label></td>'
+          + '<td><input class="input fiscal-small-input" data-field="fiscal_notes" value="' + esc(item.fiscal_notes || '') + '" placeholder="observação"></td>'
           + '</tr>';
-      }).join('') : '<tr><td colspan="7"><div class="fiscal-empty fiscal-empty-small">Esta nota ainda nao possui itens completos. Importe o XML completo para movimentar estoque por produto.</div></td></tr>';
-      openModal('<div class="p-6 fiscal-modal-wide fiscal-detail-modal"><form onsubmit="saveFiscalIntegration(event,' + invoice.id + ')"><div class="fiscal-panel-head px-0 pt-0"><div><h2 class="font-display text-xl font-bold text-imec-dark">Lancamento de entrada NF-e ' + esc(invoice.number || invoice.id) + '</h2><p class="text-sm text-slate-500 mt-1">Confira a nota, selecione o item de estoque de cada produto e ajuste CFOP/ICMS antes de salvar.</p></div>' + flowChip(invoice.fiscal_status || 'conferencia') + '</div>'
+      }).join('') : '<tr><td colspan="7"><div class="fiscal-empty fiscal-empty-small">Esta nota ainda não possui itens completos. Importe o XML completo para movimentar estoque por produto.</div></td></tr>';
+      openModal('<div class="p-6 fiscal-modal-wide fiscal-detail-modal"><form onsubmit="saveFiscalIntegration(event,' + invoice.id + ')"><div class="fiscal-panel-head px-0 pt-0"><div><h2 class="font-display text-xl font-bold text-imec-dark">Lançamento de entrada NF-e ' + esc(invoice.number || invoice.id) + '</h2><p class="text-sm text-slate-500 mt-1">Confira a nota, selecione o item de estoque de cada produto e ajuste CFOP/ICMS antes de salvar.</p></div>' + flowChip(invoice.fiscal_status || 'conferencia') + '</div>'
         + '<section class="fiscal-flow-steps mt-2"><div><b>1</b><span>Financeiro a pagar</span></div><div><b>2</b><span>Entrada no estoque</span></div><div><b>3</b><span>CFOP e ICMS por item</span></div><div><b>4</b><span>SPED mensal</span></div></section>'
-        + '<section class="fiscal-integration-head"><div><label class="label">CFOP entrada padrao</label><input class="input" id="fiEntryCfop" value="' + esc(defaultCfop) + '" placeholder="ex. 1556, 1407, 1102"></div><div><label class="label">Vencimento financeiro</label><input type="date" class="input" id="fiPaymentDue" value="' + esc(inputDate(invoice.payment_due_date || invoice.due_date || invoice.entry_date || invoice.issue_date)) + '"></div><div><label class="label">Status fiscal</label><select class="input" id="fiFiscalStatus"><option value="conferencia"' + ((invoice.fiscal_status || 'conferencia') === 'conferencia' ? ' selected' : '') + '>Conferencia</option><option value="escriturado"' + (invoice.fiscal_status === 'escriturado' ? ' selected' : '') + '>Escriturado</option><option value="pendente"' + (invoice.fiscal_status === 'pendente' ? ' selected' : '') + '>Pendente</option></select></div><div><label class="label">SPED</label><select class="input" id="fiSpedStatus"><option value="pendente"' + ((invoice.sped_status || 'pendente') === 'pendente' ? ' selected' : '') + '>Pendente</option><option value="dispensado"' + (invoice.sped_status === 'dispensado' ? ' selected' : '') + '>Dispensado</option><option value="gerado"' + (invoice.sped_status === 'gerado' ? ' selected' : '') + '>Gerado</option></select></div></section>'
-        + '<div class="bg-blue-50 border border-blue-100 rounded-lg p-4 mt-4 text-sm text-blue-900"><b>Como salva:</b> o botao final cria/atualiza contas a pagar, gera a entrada do estoque dos itens marcados, grava CFOP/ICMS fiscal por item e deixa a nota pronta para o TXT SPED. Valide o SPED com o contador/PVA antes do envio oficial.</div>'
-        + '<div class="fiscal-table-wrap mt-4"><table class="fiscal-table fiscal-items-table fiscal-integration-table"><thead><tr><th>Item</th><th>Produto</th><th>CFOP entrada</th><th>Credito ICMS</th><th>Base / valor</th><th>Estoque</th><th>Obs.</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
-        + '<div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="openFiscalEntryQueueModal()">Voltar para fila</button><button class="btn btn-primary">' + icon('chart') + ' Salvar e lancar entrada</button></div></form></div>');
+        + '<section class="fiscal-integration-head"><div><label class="label">CFOP entrada padrão</label><input class="input" id="fiEntryCfop" value="' + esc(defaultCfop) + '" placeholder="ex. 1556, 1407, 1102"></div><div><label class="label">Vencimento financeiro</label><input type="date" class="input" id="fiPaymentDue" value="' + esc(inputDate(invoice.payment_due_date || invoice.due_date || invoice.entry_date || invoice.issue_date)) + '"></div><div><label class="label">Status fiscal</label><select class="input" id="fiFiscalStatus"><option value="conferencia"' + ((invoice.fiscal_status || 'conferencia') === 'conferencia' ? ' selected' : '') + '>Conferência</option><option value="escriturado"' + (invoice.fiscal_status === 'escriturado' ? ' selected' : '') + '>Escriturado</option><option value="pendente"' + (invoice.fiscal_status === 'pendente' ? ' selected' : '') + '>Pendente</option></select></div><div><label class="label">SPED</label><select class="input" id="fiSpedStatus"><option value="pendente"' + ((invoice.sped_status || 'pendente') === 'pendente' ? ' selected' : '') + '>Pendente</option><option value="dispensado"' + (invoice.sped_status === 'dispensado' ? ' selected' : '') + '>Dispensado</option><option value="gerado"' + (invoice.sped_status === 'gerado' ? ' selected' : '') + '>Gerado</option></select></div></section>'
+        + '<div class="bg-blue-50 border border-blue-100 rounded-lg p-4 mt-4 text-sm text-blue-900"><b>Como salva:</b> o botão final cria/atualiza contas a pagar, gera a entrada do estoque dos itens marcados, grava CFOP/ICMS fiscal por item e deixa a nota pronta para o TXT SPED. Valide o SPED com o contador/PVA antes do envio oficial.</div>'
+        + '<div class="fiscal-table-wrap mt-4"><table class="fiscal-table fiscal-items-table fiscal-integration-table"><thead><tr><th>Item</th><th>Produto</th><th>CFOP entrada</th><th>Crédito ICMS</th><th>Base / valor</th><th>Estoque</th><th>Obs.</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+        + '<div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="openFiscalEntryQueueModal()">Voltar para fila</button><button class="btn btn-primary">' + icon('chart') + ' Salvar e lançar entrada</button></div></form></div>');
     } catch (err) {
       showToast('Erro: ' + err.message, 'error');
     }
@@ -428,7 +476,7 @@
       + '</div></div>';
   }
   window.openFiscalConferenceModal = async function () {
-    openModal('<div class="p-6 fiscal-modal-wide"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Conferencia fiscal</h2><div class="fiscal-upload-box">' + icon('checklist') + '<p class="text-sm text-slate-500 mt-3">Montando conferencia de notas, CFOP, ICMS, financeiro, estoque e SPED.</p></div></div>');
+    openModal('<div class="p-6 fiscal-modal-wide"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Conferência fiscal</h2><div class="fiscal-upload-box">' + icon('checklist') + '<p class="text-sm text-slate-500 mt-3">Montando conferência de notas, CFOP, ICMS, financeiro, estoque e SPED.</p></div></div>');
     try {
       var result = await API.fiscal.reportSummary({});
       var m = result.metrics || {};
@@ -437,13 +485,13 @@
       var icms = result.icms_summary || [];
       var cfopRows = cfops.length ? cfops.map(function (row) {
         return '<tr><td>CFOP ' + esc(row.entry_cfop || '-') + '</td><td>' + esc(row.items_count || 0) + '</td><td>' + money(row.total_value) + '</td><td>' + money(row.icms_credit) + '</td></tr>';
-      }).join('') : '<tr><td colspan="4"><div class="fiscal-empty fiscal-empty-small">Sem CFOP no periodo.</div></td></tr>';
+      }).join('') : '<tr><td colspan="4"><div class="fiscal-empty fiscal-empty-small">Sem CFOP no período.</div></td></tr>';
       var icmsRows = icms.length ? icms.map(function (row) {
         return '<tr><td>' + flowChip(row.credit_indicator || 'analisar') + '</td><td>' + esc(row.items_count || 0) + '</td><td>' + money(row.credit_base) + '</td><td>' + money(row.credit_value) + '</td></tr>';
-      }).join('') : '<tr><td colspan="4"><div class="fiscal-empty fiscal-empty-small">Sem decisoes de ICMS no periodo.</div></td></tr>';
-      openModal('<div class="p-6 fiscal-modal-wide fiscal-report-modal"><div class="fiscal-panel-head px-0 pt-0"><div><h2 class="font-display text-xl font-bold text-imec-dark">Conferencia fiscal integrada</h2><p class="text-sm text-slate-500 mt-1">Visao para fechar nota, financeiro, estoque e SPED sem perder pendencia.</p></div><button type="button" class="btn btn-primary btn-sm" onclick="openFiscalEntryQueueModal()">' + icon('chart') + ' Fila de entrada</button></div>'
+      }).join('') : '<tr><td colspan="4"><div class="fiscal-empty fiscal-empty-small">Sem decisoes de ICMS no período.</div></td></tr>';
+      openModal('<div class="p-6 fiscal-modal-wide fiscal-report-modal"><div class="fiscal-panel-head px-0 pt-0"><div><h2 class="font-display text-xl font-bold text-imec-dark">Conferência fiscal integrada</h2><p class="text-sm text-slate-500 mt-1">Visao para fechar nota, financeiro, estoque e SPED sem perder pendencia.</p></div><button type="button" class="btn btn-primary btn-sm" onclick="openFiscalEntryQueueModal()">' + icon('chart') + ' Fila de entrada</button></div>'
         + '<section class="fiscal-report-grid">'
-        + fiscalReportMetric('Notas do periodo', m.total_invoices || 0, money(m.total_value || 0), 'info')
+        + fiscalReportMetric('Notas do período', m.total_invoices || 0, money(m.total_value || 0), 'info')
         + fiscalReportMetric('Financeiro aberto', m.open_payables || 0, money(m.open_payables_total || 0), 'warn')
         + fiscalReportMetric('Entradas estoque', m.stock_entries || 0, (m.stock_items || 0) + ' item(ns) movimentado(s)', 'ok')
         + fiscalReportMetric('SPED gerado', m.sped_exports || 0, (m.pending_sped || 0) + ' nota(s) pendente(s)', 'neutral')
@@ -454,7 +502,7 @@
         + fiscalIssueList('Itens sem CFOP de entrada', issues.without_cfop || [], function (row) { return '<div class="fiscal-issue-row"><b>NF-e ' + esc((row.invoice || {}).number || row.invoice_id) + '</b><span>' + esc(row.description || '-').slice(0, 90) + '</span><strong>CFOP</strong></div>'; })
         + fiscalIssueList('Itens sem decisao ICMS', issues.without_icms_decision || [], function (row) { return '<div class="fiscal-issue-row"><b>NF-e ' + esc((row.invoice || {}).number || row.invoice_id) + '</b><span>' + esc(row.description || '-').slice(0, 90) + '</span><strong>ICMS</strong></div>'; })
         + '</section>'
-        + '<section class="fiscal-two-col mt-4"><div class="fiscal-report-card fiscal-report-card-wide"><span>Resumo por CFOP</span><div class="fiscal-table-wrap mt-3"><table class="fiscal-status-table"><thead><tr><th>CFOP</th><th>Itens</th><th>Total</th><th>Credito ICMS</th></tr></thead><tbody>' + cfopRows + '</tbody></table></div></div>'
+        + '<section class="fiscal-two-col mt-4"><div class="fiscal-report-card fiscal-report-card-wide"><span>Resumo por CFOP</span><div class="fiscal-table-wrap mt-3"><table class="fiscal-status-table"><thead><tr><th>CFOP</th><th>Itens</th><th>Total</th><th>Crédito ICMS</th></tr></thead><tbody>' + cfopRows + '</tbody></table></div></div>'
         + '<div class="fiscal-report-card fiscal-report-card-wide"><span>Resumo de ICMS</span><div class="fiscal-table-wrap mt-3"><table class="fiscal-status-table"><thead><tr><th>Decisao</th><th>Itens</th><th>Base</th><th>Valor</th></tr></thead><tbody>' + icmsRows + '</tbody></table></div></div></section>'
         + '<div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Fechar</button><button type="button" class="btn btn-primary" onclick="openFiscalSpedModal()">' + icon('download') + ' SPED TXT</button></div></div>');
     } catch (err) {
@@ -462,7 +510,7 @@
     }
   };
   window.openFiscalFinanceModal = async function () {
-    openModal('<div class="p-6 fiscal-modal-wide"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Financeiro fiscal</h2><div class="fiscal-upload-box">' + icon('wallet') + '<p class="text-sm text-slate-500 mt-3">Carregando titulos gerados pelas notas fiscais de entrada.</p></div></div>');
+    openModal('<div class="p-6 fiscal-modal-wide"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Financeiro fiscal</h2><div class="fiscal-upload-box">' + icon('wallet') + '<p class="text-sm text-slate-500 mt-3">Carregando títulos gerados pelas notas fiscais de entrada.</p></div></div>');
     try {
       var rows = await API.fiscal.payables();
       rows = rows || [];
@@ -473,10 +521,10 @@
       var body = rows.length ? rows.map(function (row) {
         var saldo = Math.max(0, Number(row.total_amount || 0) - Number(row.paid_amount || 0));
         return '<tr><td class="fiscal-main-cell"><strong>NF-e ' + esc(row.invoice_number || row.invoice_id || '-') + '</strong><small>' + esc(row.supplier_name || '-') + '</small></td><td>' + dt(row.due_date) + '</td><td>' + money(row.total_amount) + '</td><td>' + money(row.paid_amount) + '</td><td>' + money(saldo) + '</td><td>' + flowChip(row.status || 'aberto') + '</td><td><div class="flex gap-2"><button class="btn btn-outline btn-sm" onclick="markFiscalPayable(' + row.id + ', &quot;aberto&quot;, 0)">Reabrir</button><button class="btn btn-primary btn-sm" onclick="markFiscalPayable(' + row.id + ', &quot;pago&quot;, ' + Number(row.total_amount || 0) + ')">Baixar</button></div></td></tr>';
-      }).join('') : '<tr><td colspan="7"><div class="fiscal-empty fiscal-empty-small">Nenhum titulo financeiro fiscal gerado ainda.</div></td></tr>';
-      openModal('<div class="p-6 fiscal-modal-wide fiscal-report-modal"><div class="fiscal-panel-head px-0 pt-0"><div><h2 class="font-display text-xl font-bold text-imec-dark">Financeiro das notas de entrada</h2><p class="text-sm text-slate-500 mt-1">Contas a pagar criadas pela escrituracao das NF-e.</p></div><button type="button" class="btn btn-outline btn-sm" onclick="openFiscalEntryQueueModal()">' + icon('chart') + ' Fila de entrada</button></div>'
-        + '<section class="fiscal-report-grid">' + fiscalReportMetric('Titulos abertos', openRows.length, money(openTotal), 'warn') + fiscalReportMetric('Titulos pagos', paidRows.length, money(paidTotal), 'ok') + fiscalReportMetric('Total titulos', rows.length, 'historico fiscal', 'info') + fiscalReportMetric('Integracao', 'NF-e', 'financeiro alimentado pela entrada', 'neutral') + '</section>'
-        + '<div class="fiscal-table-wrap mt-4"><table class="fiscal-status-table"><thead><tr><th>Nota / fornecedor</th><th>Vencimento</th><th>Total</th><th>Pago</th><th>Saldo</th><th>Status</th><th>Acoes</th></tr></thead><tbody>' + body + '</tbody></table></div>'
+      }).join('') : '<tr><td colspan="7"><div class="fiscal-empty fiscal-empty-small">Nenhum título financeiro fiscal gerado ainda.</div></td></tr>';
+      openModal('<div class="p-6 fiscal-modal-wide fiscal-report-modal"><div class="fiscal-panel-head px-0 pt-0"><div><h2 class="font-display text-xl font-bold text-imec-dark">Financeiro das notas de entrada</h2><p class="text-sm text-slate-500 mt-1">Contas a pagar criadas pela escrituração das NF-e.</p></div><button type="button" class="btn btn-outline btn-sm" onclick="openFiscalEntryQueueModal()">' + icon('chart') + ' Fila de entrada</button></div>'
+        + '<section class="fiscal-report-grid">' + fiscalReportMetric('Títulos abertos', openRows.length, money(openTotal), 'warn') + fiscalReportMetric('Títulos pagos', paidRows.length, money(paidTotal), 'ok') + fiscalReportMetric('Total títulos', rows.length, 'histórico fiscal', 'info') + fiscalReportMetric('Integração', 'NF-e', 'financeiro alimentado pela entrada', 'neutral') + '</section>'
+        + '<div class="fiscal-table-wrap mt-4"><table class="fiscal-status-table"><thead><tr><th>Nota / fornecedor</th><th>Vencimento</th><th>Total</th><th>Pago</th><th>Saldo</th><th>Status</th><th>Ações</th></tr></thead><tbody>' + body + '</tbody></table></div>'
         + '<div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Fechar</button></div></div>');
     } catch (err) {
       showToast('Erro: ' + err.message, 'error');
@@ -491,7 +539,7 @@
       });
       await refreshData();
       await openFiscalFinanceModal();
-      showToast(status === 'pago' ? 'Titulo baixado no financeiro.' : 'Titulo reaberto.', 'success');
+      showToast(status === 'pago' ? 'Título baixado no financeiro.' : 'Título reaberto.', 'success');
     } catch (err) {
       showToast('Erro: ' + err.message, 'error');
     }
@@ -506,24 +554,24 @@
       var body = rows.length ? rows.map(function (row) {
         return '<tr><td class="fiscal-main-cell"><strong>' + esc(row.stock_item_name || row.invoice_item_description || '-') + '</strong><small>NF-e ' + esc(row.invoice_number || row.invoice_id || '-') + '</small></td><td>' + dt(row.movement_date) + '</td><td>' + flowChip(row.type || 'entrada') + '</td><td>' + esc(row.quantity || 0) + ' ' + esc(row.unit || '') + '</td><td>' + money(row.unit_cost) + '</td><td>' + money(row.total_cost) + '</td><td>' + esc(row.notes || '-').slice(0, 80) + '</td></tr>';
       }).join('') : '<tr><td colspan="7"><div class="fiscal-empty fiscal-empty-small">Nenhuma entrada de estoque fiscal ainda.</div></td></tr>';
-      openModal('<div class="p-6 fiscal-modal-wide fiscal-report-modal"><div class="fiscal-panel-head px-0 pt-0"><div><h2 class="font-display text-xl font-bold text-imec-dark">Movimentos de estoque por NF-e</h2><p class="text-sm text-slate-500 mt-1">Historico das entradas que alimentam almoxarifado e bloco K.</p></div><button type="button" class="btn btn-outline btn-sm" onclick="openFiscalEntryQueueModal()">' + icon('chart') + ' Lancar NF-e</button></div>'
-        + '<section class="fiscal-report-grid">' + fiscalReportMetric('Movimentos', rows.length, 'entradas vinculadas a nota', 'info') + fiscalReportMetric('Quantidade total', totalQty.toLocaleString('pt-BR'), 'soma operacional', 'ok') + fiscalReportMetric('Custo total', money(totalCost), 'base de estoque', 'neutral') + fiscalReportMetric('Bloco K', 'Base', 'movimentos prontos para conferencia', 'warn') + '</section>'
-        + '<div class="fiscal-table-wrap mt-4"><table class="fiscal-status-table"><thead><tr><th>Item / nota</th><th>Data</th><th>Tipo</th><th>Qtd.</th><th>Unitario</th><th>Total</th><th>Obs.</th></tr></thead><tbody>' + body + '</tbody></table></div>'
+      openModal('<div class="p-6 fiscal-modal-wide fiscal-report-modal"><div class="fiscal-panel-head px-0 pt-0"><div><h2 class="font-display text-xl font-bold text-imec-dark">Movimentos de estoque por NF-e</h2><p class="text-sm text-slate-500 mt-1">Histórico das entradas que alimentam almoxarifado e bloco K.</p></div><button type="button" class="btn btn-outline btn-sm" onclick="openFiscalEntryQueueModal()">' + icon('chart') + ' Lançar NF-e</button></div>'
+        + '<section class="fiscal-report-grid">' + fiscalReportMetric('Movimentos', rows.length, 'entradas vinculadas a nota', 'info') + fiscalReportMetric('Quantidade total', totalQty.toLocaleString('pt-BR'), 'soma operacional', 'ok') + fiscalReportMetric('Custo total', money(totalCost), 'base de estoque', 'neutral') + fiscalReportMetric('Bloco K', 'Base', 'movimentos prontos para conferência', 'warn') + '</section>'
+        + '<div class="fiscal-table-wrap mt-4"><table class="fiscal-status-table"><thead><tr><th>Item / nota</th><th>Data</th><th>Tipo</th><th>Qtd.</th><th>Unitário</th><th>Total</th><th>Obs.</th></tr></thead><tbody>' + body + '</tbody></table></div>'
         + '<div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Fechar</button></div></div>');
     } catch (err) {
       showToast('Erro: ' + err.message, 'error');
     }
   };
   window.openFiscalSpedHistoryModal = async function () {
-    openModal('<div class="p-6 fiscal-modal-wide"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Historico SPED</h2><div class="fiscal-upload-box">' + icon('history') + '<p class="text-sm text-slate-500 mt-3">Carregando arquivos TXT gerados pelo sistema.</p></div></div>');
+    openModal('<div class="p-6 fiscal-modal-wide"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Histórico SPED</h2><div class="fiscal-upload-box">' + icon('history') + '<p class="text-sm text-slate-500 mt-3">Carregando arquivos TXT gerados pelo sistema.</p></div></div>');
     try {
       var rows = await API.fiscal.spedExports();
       rows = rows || [];
       var body = rows.length ? rows.map(function (row) {
         var summary = row.summary || {};
-        return '<tr><td class="fiscal-main-cell"><strong>' + esc(row.file_name || 'sped-fiscal.txt') + '</strong><small>' + dt(row.period_start) + ' ate ' + dt(row.period_end) + '</small></td><td>' + flowChip(row.status || 'gerado') + '</td><td>' + esc(summary.invoices || 0) + ' nota(s)</td><td>' + esc(summary.items || 0) + ' item(ns)</td><td>' + esc(summary.stock_movements || 0) + ' movimento(s)</td><td>' + dt(row.created_at) + '</td></tr>';
+        return '<tr><td class="fiscal-main-cell"><strong>' + esc(row.file_name || 'sped-fiscal.txt') + '</strong><small>' + dt(row.period_start) + ' até ' + dt(row.period_end) + '</small></td><td>' + flowChip(row.status || 'gerado') + '</td><td>' + esc(summary.invoices || 0) + ' nota(s)</td><td>' + esc(summary.items || 0) + ' item(ns)</td><td>' + esc(summary.stock_movements || 0) + ' movimento(s)</td><td>' + dt(row.created_at) + '</td></tr>';
       }).join('') : '<tr><td colspan="6"><div class="fiscal-empty fiscal-empty-small">Nenhum TXT SPED gerado ainda.</div></td></tr>';
-      openModal('<div class="p-6 fiscal-modal-wide fiscal-report-modal"><div class="fiscal-panel-head px-0 pt-0"><div><h2 class="font-display text-xl font-bold text-imec-dark">Historico de geracao SPED</h2><p class="text-sm text-slate-500 mt-1">Controle mensal dos arquivos gerados para conferencia com contador/PVA.</p></div><button type="button" class="btn btn-primary btn-sm" onclick="openFiscalSpedModal()">' + icon('download') + ' Gerar novo TXT</button></div><div class="fiscal-table-wrap"><table class="fiscal-status-table"><thead><tr><th>Arquivo</th><th>Status</th><th>Notas</th><th>Itens</th><th>Estoque</th><th>Gerado em</th></tr></thead><tbody>' + body + '</tbody></table></div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Fechar</button></div></div>');
+      openModal('<div class="p-6 fiscal-modal-wide fiscal-report-modal"><div class="fiscal-panel-head px-0 pt-0"><div><h2 class="font-display text-xl font-bold text-imec-dark">Histórico de geração SPED</h2><p class="text-sm text-slate-500 mt-1">Controle mensal dos arquivos gerados para conferência com contador/PVA.</p></div><button type="button" class="btn btn-primary btn-sm" onclick="openFiscalSpedModal()">' + icon('download') + ' Gerar novo TXT</button></div><div class="fiscal-table-wrap"><table class="fiscal-status-table"><thead><tr><th>Arquivo</th><th>Status</th><th>Notas</th><th>Itens</th><th>Estoque</th><th>Gerado em</th></tr></thead><tbody>' + body + '</tbody></table></div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Fechar</button></div></div>');
     } catch (err) {
       showToast('Erro: ' + err.message, 'error');
     }
@@ -531,7 +579,7 @@
   window.openFiscalSpedModal = function () {
     var now = new Date();
     var month = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
-    openModal('<div class="p-6 fiscal-modal-wide"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Gerar SPED Fiscal TXT</h2><p class="text-sm text-slate-500 mb-5">Exporta uma base operacional dos blocos C, K e H para conferencia mensal.</p><form onsubmit="generateFiscalSped(event)"><div class="fiscal-form-grid"><div><label class="label">Periodo</label><input type="month" class="input" id="fiscalSpedMonth" value="' + esc(month) + '" required></div><div><label class="label">Blocos</label><input class="input" value="C, K e H" disabled></div></div><div class="bg-blue-50 border border-blue-100 rounded-lg p-4 mt-4 text-sm text-blue-900"><b>Validacao oficial:</b> o TXT gerado e uma base para conferencia. Antes de transmitir, valide com o contador e no PVA/SPED.</div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="openFiscalSpedHistoryModal()">Historico SPED</button><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary">' + icon('download') + ' Baixar TXT</button></div></form></div>');
+    openModal('<div class="p-6 fiscal-modal-wide"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Gerar SPED Fiscal TXT</h2><p class="text-sm text-slate-500 mb-5">Exporta uma base operacional dos blocos C, K e H para conferência mensal.</p><form onsubmit="generateFiscalSped(event)"><div class="fiscal-form-grid"><div><label class="label">Período</label><input type="month" class="input" id="fiscalSpedMonth" value="' + esc(month) + '" required></div><div><label class="label">Blocos</label><input class="input" value="C, K e H" disabled></div></div><div class="bg-blue-50 border border-blue-100 rounded-lg p-4 mt-4 text-sm text-blue-900"><b>Validação oficial:</b> o TXT gerado é uma base para conferência. Antes de transmitir, valide com o contador e no PVA/SPED.</div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="openFiscalSpedHistoryModal()">Histórico SPED</button><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary">' + icon('download') + ' Baixar TXT</button></div></form></div>');
   };
   window.generateFiscalSped = async function (event) {
     event.preventDefault();
@@ -550,20 +598,20 @@
   window.openFiscalInvoiceModal = function (id) {
     var invoice = id ? invoices().find(function (x) { return String(x.id) === String(id); }) : {};
     invoice = invoice || {};
-    openModal('<div class="p-6 fiscal-modal-wide"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">' + (id ? 'Editar nota fiscal' : 'Nova nota fiscal manual') + '</h2><p class="text-sm text-slate-500 mb-5">Use quando a nota n&atilde;o tiver XML dispon&iacute;vel.</p><form onsubmit="saveFiscalInvoice(event,' + (id || 'null') + ')"><div class="fiscal-form-grid">'
+    openModal('<div class="p-6 fiscal-modal-wide"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">' + (id ? 'Editar nota fiscal' : 'Nova nota fiscal manual') + '</h2><p class="text-sm text-slate-500 mb-5">Use quando a nota não tiver XML disponível.</p><form onsubmit="saveFiscalInvoice(event,' + (id || 'null') + ')"><div class="fiscal-form-grid">'
       + '<div><label class="label">Fornecedor</label><input class="input" id="fiSupplier" value="' + esc(invoice.supplier_name) + '"></div><div><label class="label">CNPJ</label><input class="input" id="fiCnpj" value="' + esc(invoice.supplier_cnpj) + '"></div>'
-      + '<div><label class="label">N&uacute;mero</label><input class="input" id="fiNumber" value="' + esc(invoice.number) + '"></div><div><label class="label">S&eacute;rie</label><input class="input" id="fiSeries" value="' + esc(invoice.series) + '"></div>'
-      + '<div><label class="label">Emiss&atilde;o</label><input type="date" class="input" id="fiIssue" value="' + esc(inputDate(invoice.issue_date)) + '"></div><div><label class="label">Entrada</label><input type="date" class="input" id="fiEntry" value="' + esc(inputDate(invoice.entry_date)) + '"></div>'
-      + '<div><label class="label">Natureza da opera&ccedil;&atilde;o</label><input class="input" id="fiOperation" value="' + esc(invoice.operation_type) + '"></div><div><label class="label">CFOP</label><input class="input" id="fiCfop" value="' + esc(invoice.cfop) + '"></div>'
-      + '<div><label class="label">Pedido de compra</label><select class="input" id="fiPurchaseOrder">' + purchaseOrderOptions(invoice.purchase_order_id) + '</select></div><div><label class="label">Status</label><select class="input" id="fiStatus"><option value="conferencia"' + ((invoice.status || 'conferencia') === 'conferencia' ? ' selected' : '') + '>Conferencia</option><option value="conferida"' + (invoice.status === 'conferida' ? ' selected' : '') + '>Conferida</option><option value="pendente"' + (invoice.status === 'pendente' ? ' selected' : '') + '>Pendente</option><option value="divergente"' + (invoice.status === 'divergente' ? ' selected' : '') + '>Divergente</option><option value="cancelada"' + (invoice.status === 'cancelada' ? ' selected' : '') + '>Cancelada</option></select></div>'
+      + '<div><label class="label">Número</label><input class="input" id="fiNumber" value="' + esc(invoice.number) + '"></div><div><label class="label">Série</label><input class="input" id="fiSeries" value="' + esc(invoice.series) + '"></div>'
+      + '<div><label class="label">Emissão</label><input type="date" class="input" id="fiIssue" value="' + esc(inputDate(invoice.issue_date)) + '"></div><div><label class="label">Entrada</label><input type="date" class="input" id="fiEntry" value="' + esc(inputDate(invoice.entry_date)) + '"></div>'
+      + '<div><label class="label">Natureza da operação</label><input class="input" id="fiOperation" value="' + esc(invoice.operation_type) + '"></div><div><label class="label">CFOP</label><input class="input" id="fiCfop" value="' + esc(invoice.cfop) + '"></div>'
+      + '<div><label class="label">Pedido de compra</label><select class="input" id="fiPurchaseOrder">' + purchaseOrderOptions(invoice.purchase_order_id) + '</select></div><div><label class="label">Status</label><select class="input" id="fiStatus"><option value="conferencia"' + ((invoice.status || 'conferencia') === 'conferencia' ? ' selected' : '') + '>Conferência</option><option value="conferida"' + (invoice.status === 'conferida' ? ' selected' : '') + '>Conferida</option><option value="pendente"' + (invoice.status === 'pendente' ? ' selected' : '') + '>Pendente</option><option value="divergente"' + (invoice.status === 'divergente' ? ' selected' : '') + '>Divergente</option><option value="cancelada"' + (invoice.status === 'cancelada' ? ' selected' : '') + '>Cancelada</option></select></div>'
       + '<div><label class="label">Total produtos</label><input type="number" step="0.01" class="input" id="fiProducts" value="' + esc(invoice.total_products || 0) + '"></div><div><label class="label">Total da nota</label><input type="number" step="0.01" class="input" id="fiTotal" value="' + esc(invoice.total_invoice || 0) + '"></div>'
       + '<div><label class="label">Frete</label><input type="number" step="0.01" class="input" id="fiFreight" value="' + esc(invoice.freight_value || 0) + '"></div><div><label class="label">Desconto</label><input type="number" step="0.01" class="input" id="fiDiscount" value="' + esc(invoice.discount_value || 0) + '"></div>'
       + '<div><label class="label">Base ICMS</label><input type="number" step="0.01" class="input" id="fiIcmsBase" value="' + esc(invoice.icms_base || 0) + '"></div><div><label class="label">ICMS</label><input type="number" step="0.01" class="input" id="fiIcms" value="' + esc(invoice.icms_value || 0) + '"></div>'
       + '<div><label class="label">IPI</label><input type="number" step="0.01" class="input" id="fiIpi" value="' + esc(invoice.ipi_value || 0) + '"></div><div><label class="label">PIS</label><input type="number" step="0.01" class="input" id="fiPis" value="' + esc(invoice.pis_value || 0) + '"></div>'
       + '<div><label class="label">COFINS</label><input type="number" step="0.01" class="input" id="fiCofins" value="' + esc(invoice.cofins_value || 0) + '"></div>'
-      + '<div><label class="label">Destinat&aacute;rio</label><input class="input" id="fiClientName" value="' + esc(invoice.client_name) + '"></div><div><label class="label">CNPJ destinat&aacute;rio</label><input class="input" id="fiClientCnpj" value="' + esc(invoice.client_cnpj) + '"></div>'
+      + '<div><label class="label">Destinatário</label><input class="input" id="fiClientName" value="' + esc(invoice.client_name) + '"></div><div><label class="label">CNPJ destinatário</label><input class="input" id="fiClientCnpj" value="' + esc(invoice.client_cnpj) + '"></div>'
       + '<div class="fiscal-form-full"><label class="label">Chave de acesso</label><input class="input" id="fiKey" value="' + esc(invoice.access_key) + '"></div>'
-      + '<div class="fiscal-form-full"><label class="label">Observa&ccedil;&otilde;es</label><textarea class="input" id="fiNotes" rows="3">' + esc(invoice.notes) + '</textarea></div></div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary">Salvar nota</button></div></form></div>');
+      + '<div class="fiscal-form-full"><label class="label">Observações</label><textarea class="input" id="fiNotes" rows="3">' + esc(invoice.notes) + '</textarea></div></div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary">Salvar nota</button></div></form></div>');
   };
   window.editFiscalInvoice = function (id) { openFiscalInvoiceModal(id); };
   window.saveFiscalInvoice = async function (event, id) {
@@ -600,7 +648,7 @@
     } catch (err) { showToast('Erro: ' + err.message, 'error'); }
   };
   window.deleteFiscalInvoice = async function (id) {
-    if (!confirm('Excluir esta nota fiscal?')) return;
+    if (!confirm('Excluir esta nota fiscalê')) return;
     try {
       await API.fiscal.delete(id);
       await refreshData(); await renderPage(); showToast('Nota excluida', 'success');

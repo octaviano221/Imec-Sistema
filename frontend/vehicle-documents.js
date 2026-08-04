@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   'use strict';
 
   function icon(name) {
@@ -56,17 +56,17 @@
   function statusOf(value, alertDays) {
     if (typeof calcStatus === 'function') return calcStatus(value, alertDays || 30);
     var d = days(value);
-    if (d == null) return 'valido';
+    if (d == null) return 'válido';
     if (d < 0) return 'vencido';
     if (d <= (alertDays || 30)) return 'vencendo';
-    return 'valido';
+    return 'válido';
   }
 
   function chip(status, label) {
     var map = {
       vencido: ['#dc2626', '#fee2e2', 'Vencido'],
       vencendo: ['#d97706', '#fef3c7', 'Vencendo'],
-      valido: ['#168844', '#dcfce7', 'V&aacute;lido']
+      válido: ['#168844', '#dcfce7', 'Válido']
     };
     var item = map[status] || ['#1269ff', '#eaf2ff', label || status || 'OK'];
     return '<span class="vehicle-chip" style="--tone:' + item[0] + ';--soft:' + item[1] + '">' + (label || item[2]) + '</span>';
@@ -90,7 +90,7 @@
 
   function vehicleName(id) {
     var eq = (db().equipment || []).find(function (item) { return same(item.id, id); });
-    return eq ? (eq.name + (eq.plate ? ' - ' + eq.plate : '')) : 'Ve&iacute;culo';
+    return eq ? (eq.name + (eq.plate ? ' - ' + eq.plate : '')) : 'Veículo';
   }
 
   function queueItems() {
@@ -104,7 +104,7 @@
   function documentPreviewItems() {
     var queue = queueItems();
     if (queue.length) {
-      return { title: 'Fila de vencimentos', hint: 'Prioridade autom&aacute;tica por prazo.', items: queue, isQueue: true };
+      return { title: 'Fila de vencimentos', hint: 'Prioridade automática por prazo.', items: queue, isQueue: true };
     }
     var docs = vehicleDocs().slice().sort(function (a, b) {
       var ad = days(a.expiration_date);
@@ -114,7 +114,7 @@
       if (bd == null) return -1;
       return ad - bd;
     }).slice(0, 5);
-    return { title: 'Documentos cadastrados', hint: 'Sem vencimento pr&oacute;ximo; exibindo os documentos ativos.', items: docs, isQueue: false };
+    return { title: 'Documentos cadastrados', hint: 'Sem vencimento próximo; exibindo os documentos ativos.', items: docs, isQueue: false };
   }
 
   function metricCard(label, value, iconName, tone) {
@@ -134,9 +134,9 @@
 
   function vehicleStatusLabel(eq) {
     var status = eq.status || 'ativo';
-    if (status === 'manutencao') return chip('vencendo', 'Manuten&ccedil;&atilde;o');
+    if (status === 'manutencao') return chip('vencendo', 'Manutenção');
     if (status === 'inativo') return chip('outro', 'Inativo');
-    return chip('valido', 'Operacional');
+    return chip('válido', 'Operacional');
   }
 
   function queueRow(doc, isQueue) {
@@ -144,8 +144,8 @@
     var status = statusOf(doc.expiration_date, ((db().settings || {}).expiration_alert_days || 30));
     var tone = status === 'vencido' ? '#dc2626' : status === 'vencendo' ? '#d97706' : '#168844';
     var label = d == null ? 'Sem prazo' : (d < 0 ? Math.abs(d) + ' dias vencido' : d + ' dias');
-    if (!isQueue && status === 'valido') label = doc.file_url ? 'PDF anexado' : 'Cadastrado';
-    return '<div class="vehicle-queue-item"><div class="vehicle-queue-icon" style="--tone:' + tone + '">' + icon(status === 'vencido' ? 'warning' : status === 'valido' ? 'shield' : 'calendar') + '</div><div><div class="vehicle-title">' + esc(doc.title || doc.document_type) + '</div><div class="vehicle-sub">' + vehicleName(doc.equipment_id) + ' &bull; validade ' + fmt(doc.expiration_date) + '</div></div>' + chip(status, label) + '</div>';
+    if (!isQueue && status === 'válido') label = doc.file_url ? 'PDF anexado' : 'Cadastrado';
+    return '<div class="vehicle-queue-item"><div class="vehicle-queue-icon" style="--tone:' + tone + '">' + icon(status === 'vencido' ? 'warning' : status === 'válido' ? 'shield' : 'calendar') + '</div><div><div class="vehicle-title">' + esc(doc.title || doc.document_type) + '</div><div class="vehicle-sub">' + vehicleName(doc.equipment_id) + ' - validade ' + fmt(doc.expiration_date) + '</div></div>' + chip(status, label) + '</div>';
   }
 
   function tableRow(doc) {
@@ -189,7 +189,7 @@
   function confidenceLabel(value) {
     var score = Math.round((Number(value) || 0) * 100);
     var tone = score >= 80 ? 'ok' : score >= 55 ? 'warn' : 'low';
-    return '<span class="vehicle-ai-confidence ' + tone + '">' + score + '% de confian&ccedil;a</span>';
+    return '<span class="vehicle-ai-confidence ' + tone + '">' + score + '% de confiança</span>';
   }
 
   function vehicleCard(eq) {
@@ -204,7 +204,7 @@
       return ad - bd;
     })[0];
     var next = nextDoc ? (esc(nextDoc.document_type || 'Documento') + ' vence ' + fmt(nextDoc.expiration_date)) : 'Sem documento cadastrado';
-    return '<article class="vehicle-card"><div class="vehicle-card-icon">' + icon(isCapacity ? 'crane' : 'car') + '</div><div><h3>' + esc(eq.name || 'Ve&iacute;culo') + '</h3><p>' + esc(eq.type || 'Ve&iacute;culo da frota') + (eq.plate ? ' &bull; ' + esc(eq.plate) : '') + '</p><span>' + esc(eq.brand || '') + ' ' + esc(eq.model || '') + (eq.capacity ? ' &bull; Cap. ' + esc(eq.capacity) : '') + '</span><small>' + next + '</small></div><div class="vehicle-card-actions">' + vehicleStatusLabel(eq) + '<button class="btn btn-outline btn-sm" onclick="openVehicleRegister(\'' + esc(eq.id) + '\')">Editar</button><button class="btn btn-primary btn-sm" onclick="openCapacityReport(\'' + esc(eq.id) + '\')">Laudo</button></div></article>';
+    return '<article class="vehicle-card"><div class="vehicle-card-icon">' + icon(isCapacity ? 'crane' : 'car') + '</div><div><h3>' + esc(eq.name || 'Veículo') + '</h3><p>' + esc(eq.type || 'Veículo da frota') + (eq.plate ? ' - ' + esc(eq.plate) : '') + '</p><span>' + esc(eq.brand || '') + ' ' + esc(eq.model || '') + (eq.capacity ? ' - Cap. ' + esc(eq.capacity) : '') + '</span><small>' + next + '</small></div><div class="vehicle-card-actions">' + vehicleStatusLabel(eq) + '<button class="btn btn-outline btn-sm" onclick="openVehicleRegister(\'' + esc(eq.id) + '\')">Editar</button><button class="btn btn-primary btn-sm" onclick="openCapacityReport(\'' + esc(eq.id) + '\')">Laudo</button></div></article>';
   }
 
   function renderVehicleDocuments() {
@@ -214,19 +214,19 @@
     var expired = docs.filter(function (doc) { return statusOf(doc.expiration_date, ((db().settings || {}).expiration_alert_days || 30)) === 'vencido'; }).length;
     var expiring = docs.filter(function (doc) { return statusOf(doc.expiration_date, ((db().settings || {}).expiration_alert_days || 30)) === 'vencendo'; }).length;
     var capacity = vehicles().filter(isCapacityEquipment);
-    var vehicleCards = vehicles().length ? vehicles().map(vehicleCard).join('') : '<div class="vehicle-empty">Cadastre o primeiro carro, caminh&atilde;o ou guindaste da empresa.</div>';
-    return '<div class="vehicle-docs fade-in"><section class="vehicle-hero"><div><p class="vehicle-kicker">Controle de frota</p><h2>Frota, ve&iacute;culos e laudos de capacidade</h2><p>Cadastre carros, caminh&otilde;es, guindastes e Munck, anexe CRLV/IPVA/licenciamento e controle o vencimento dos laudos de capacidade.</p></div><div class="vehicle-actions"><button class="btn btn-outline" onclick="openVehicleRegister()">Cadastrar ve&iacute;culo</button><button class="btn btn-outline" onclick="openCapacityReport()">' + icon('crane') + 'Laudo de capacidade</button><button class="btn btn-outline vehicle-ai-button" onclick="openVehicleAi()">' + icon('spark') + 'Ler PDF offline</button><button class="btn btn-primary" onclick="openVehicleDoc()">' + icon('plus') + 'Novo documento</button></div></section>'
-      + '<div class="vehicle-kpis">' + metricCard('Ve&iacute;culos ativos', activeVehicles.length, 'car', '#1269ff') + metricCard('Laudos capacidade', laudoDocs().length, 'crane', '#7c3aed') + metricCard('Documentos', docs.length, 'doc', '#1269ff') + metricCard('Vencendo', expiring, 'calendar', '#d97706') + metricCard('Vencidos', expired, 'warning', '#dc2626') + '</div>'
-      + '<section class="vehicle-section"><div class="vehicle-section-head"><div><h2>Cadastro da frota</h2><p>Carros, caminh&otilde;es, guindastes e Munck da empresa com placa, capacidade e status operacional.</p></div><button class="btn btn-primary btn-sm" onclick="openVehicleRegister()">' + icon('plus') + 'Novo ve&iacute;culo</button></div><div class="vehicle-card-grid">' + vehicleCards + '</div></section>'
-      + '<div class="vehicle-grid"><section class="vehicle-section"><div class="vehicle-section-head"><div><h2>' + preview.title + '</h2><p>' + preview.hint + '</p></div></div><div class="vehicle-queue">' + (preview.items.length ? preview.items.map(function (doc) { return queueRow(doc, preview.isQueue); }).join('') : '<div class="vehicle-empty">Nenhum documento de ve&iacute;culo cadastrado ainda.</div>') + '</div></section>'
-      + '<section class="vehicle-section"><div class="vehicle-section-head"><div><h2>Controle documental</h2><p>Consulte, filtre e atualize os documentos da frota.</p></div><button class="btn btn-outline btn-sm" onclick="exportVehicleDocsCSV()">Exportar CSV</button></div><div class="vehicle-filterbar"><div class="search-box flex-1 min-w-[240px]">' + icon('search') + '<input class="input" id="vehicleDocSearch" placeholder="Buscar ve&iacute;culo, placa ou documento..." onkeyup="filterVehicleDocs()"></div><select class="input w-auto" id="vehicleDocStatus" onchange="filterVehicleDocs()"><option value="">Todos os status</option><option value="vencido">Vencidos</option><option value="vencendo">Vencendo</option><option value="valido">V&aacute;lidos</option></select></div><div class="vehicle-table-wrap"><table class="vehicle-table" id="vehicleDocsTable"><thead><tr><th>Documento</th><th>Ve&iacute;culo</th><th>N&uacute;mero</th><th>Emiss&atilde;o</th><th>Vencimento</th><th>Status</th><th>Anexo</th><th>A&ccedil;&otilde;es</th></tr></thead><tbody>' + (docs.length ? docs.map(tableRow).join('') : '<tr><td colspan="8"><div class="vehicle-empty">Cadastre o primeiro IPVA ou licenciamento.</div></td></tr>') + '</tbody></table></div></section></div></div>';
+    var vehicleCards = vehicles().length ? vehicles().map(vehicleCard).join('') : '<div class="vehicle-empty">Cadastre o primeiro carro, caminhão ou guindaste da empresa.</div>';
+    return '<div class="vehicle-docs fade-in"><section class="vehicle-hero"><div><p class="vehicle-kicker">Controle de frota</p><h2>Frota, veículos e laudos de capacidade</h2><p>Cadastre carros, caminhões, guindastes e Munck, anexe CRLV/IPVA/licenciamento e controle o vencimento dos laudos de capacidade.</p></div><div class="vehicle-actions"><button class="btn btn-outline" onclick="openVehicleRegister()">Cadastrar veículo</button><button class="btn btn-outline" onclick="openCapacityReport()">' + icon('crane') + 'Laudo de capacidade</button><button class="btn btn-outline vehicle-ai-button" onclick="openVehicleAi()">' + icon('spark') + 'Ler PDF offline</button><button class="btn btn-primary" onclick="openVehicleDoc()">' + icon('plus') + 'Novo documento</button></div></section>'
+      + '<div class="vehicle-kpis">' + metricCard('Veículos ativos', activeVehicles.length, 'car', '#1269ff') + metricCard('Laudos capacidade', laudoDocs().length, 'crane', '#7c3aed') + metricCard('Documentos', docs.length, 'doc', '#1269ff') + metricCard('Vencendo', expiring, 'calendar', '#d97706') + metricCard('Vencidos', expired, 'warning', '#dc2626') + '</div>'
+      + '<section class="vehicle-section"><div class="vehicle-section-head"><div><h2>Cadastro da frota</h2><p>Carros, caminhões, guindastes e Munck da empresa com placa, capacidade e status operacional.</p></div><button class="btn btn-primary btn-sm" onclick="openVehicleRegister()">' + icon('plus') + 'Novo veículo</button></div><div class="vehicle-card-grid">' + vehicleCards + '</div></section>'
+      + '<div class="vehicle-grid"><section class="vehicle-section"><div class="vehicle-section-head"><div><h2>' + preview.title + '</h2><p>' + preview.hint + '</p></div></div><div class="vehicle-queue">' + (preview.items.length ? preview.items.map(function (doc) { return queueRow(doc, preview.isQueue); }).join('') : '<div class="vehicle-empty">Nenhum documento de veículo cadastrado ainda.</div>') + '</div></section>'
+      + '<section class="vehicle-section"><div class="vehicle-section-head"><div><h2>Controle documental</h2><p>Consulte, filtre e atualize os documentos da frota.</p></div><button class="btn btn-outline btn-sm" onclick="exportVehicleDocsCSV()">Exportar CSV</button></div><div class="vehicle-filterbar"><div class="search-box flex-1 min-w-[240px]">' + icon('search') + '<input class="input" id="vehicleDocSearch" placeholder="Buscar veículo, placa ou documento..." onkeyup="filterVehicleDocs()"></div><select class="input w-auto" id="vehicleDocStatus" onchange="filterVehicleDocs()"><option value="">Todos os status</option><option value="vencido">Vencidos</option><option value="vencendo">Vencendo</option><option value="válido">Válidos</option></select></div><div class="vehicle-table-wrap"><table class="vehicle-table" id="vehicleDocsTable"><thead><tr><th>Documento</th><th>Veículo</th><th>Número</th><th>Emissão</th><th>Vencimento</th><th>Status</th><th>Anexo</th><th>Ações</th></tr></thead><tbody>' + (docs.length ? docs.map(tableRow).join('') : '<tr><td colspan="8"><div class="vehicle-empty">Cadastre o primeiro IPVA ou licenciamento.</div></td></tr>') + '</tbody></table></div></section></div></div>';
   }
 
   window.openVehicleAi = function () {
-    var html = '<div class="p-6 vehicle-ai-modal"><div class="vehicle-ai-head">' + icon('spark') + '<div><h2>Leitura inteligente de documento</h2><p>Envie o PDF digital do Detran. O leitor offline preenche os campos e voc&ecirc; confere antes de salvar.</p></div></div>'
+    var html = '<div class="p-6 vehicle-ai-modal"><div class="vehicle-ai-head">' + icon('spark') + '<div><h2>Leitura inteligente de documento</h2><p>Envie o PDF digital do Detran. O leitor offline preenche os campos e você confere antes de salvar.</p></div></div>'
       + '<form onsubmit="analyzeVehicleDocument(event)">'
-      + '<label class="vehicle-ai-drop" for="vehicleAiFile"><span>' + icon('paperclip') + '</span><strong>Selecionar PDF do Detran</strong><small>PDF digital at&eacute; 10 MB. O arquivo tamb&eacute;m fica anexado ao cadastro.</small><input type="file" id="vehicleAiFile" accept="application/pdf,.pdf" required></label>'
-      + '<div class="vehicle-ai-note"><b>Como funciona:</b> para PDF oficial baixado do Detran, o sistema l&ecirc; localmente placa, RENAVAM, marca/modelo, propriet&aacute;rio, tipo do documento e emiss&atilde;o. Campos incertos ficam para confer&ecirc;ncia manual.</div>'
+      + '<label class="vehicle-ai-drop" for="vehicleAiFile"><span>' + icon('paperclip') + '</span><strong>Selecionar PDF do Detran</strong><small>PDF digital até 10 MB. O arquivo também fica anexado ao cadastro.</small><input type="file" id="vehicleAiFile" accept="application/pdf,.pdf" required></label>'
+      + '<div class="vehicle-ai-note"><b>Como funciona:</b> para PDF oficial baixado do Detran, o sistema lê localmente placa, RENAVAM, marca/modelo, proprietário, tipo do documento e emissão. Campos incertos ficam para conferência manual.</div>'
       + '<div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" type="submit">' + icon('spark') + 'Ler PDF</button></div>'
       + '</form></div>';
     if (typeof openModal === 'function') openModal(html);
@@ -252,7 +252,7 @@
       var result = await API.vehicleAi.analyze(fd);
       openVehicleAiReview(result);
     } catch (err) {
-      showToast('Leitor: ' + (err.message || 'n&atilde;o foi poss&iacute;vel ler o documento'), 'error');
+      showToast('Leitor: ' + (err.message || 'não foi possível ler o documento'), 'error');
     } finally {
       if (button) {
         button.disabled = false;
@@ -266,8 +266,8 @@
     var vehicle = extraction.vehicle || {};
     var doc = extraction.document || {};
     var match = vehicleByPlate(vehicle.plate);
-    var vehicleTypes = ['Carro', 'Caminh&atilde;o', 'Caminh&atilde;o Munck', 'Guindaste', 'Van', 'Pickup', 'Outro'].map(decodeEntities);
-    var docTypes = ['CRLV', 'Licenciamento', 'IPVA', 'Seguro', 'ANTT', 'Tac&oacute;grafo', 'Laudo de capacidade', 'Inspe&ccedil;&atilde;o de guindaste', 'Inspe&ccedil;&atilde;o de caminh&atilde;o Munck', 'Outro'].map(decodeEntities);
+    var vehicleTypes = ['Carro', 'Caminhão', 'Caminhão Munck', 'Guindaste', 'Van', 'Pickup', 'Outro'].map(decodeEntities);
+    var docTypes = ['CRLV', 'Licenciamento', 'IPVA', 'Seguro', 'ANTT', 'Tacógrafo', 'Laudo de capacidade', 'Inspeção de guindaste', 'Inspeção de caminhão Munck', 'Outro'].map(decodeEntities);
     if (vehicle.type === 'Caminhao') vehicle.type = 'Caminh\u00e3o';
     if (vehicle.type === 'Caminhao Munck') vehicle.type = 'Caminh\u00e3o Munck';
     var warnings = extraction.warnings && extraction.warnings.length ? '<div class="vehicle-ai-warnings"><strong>Conferir:</strong><ul>' + extraction.warnings.map(function (item) { return '<li>' + esc(item) + '</li>'; }).join('') + '</ul></div>' : '';
@@ -275,32 +275,32 @@
     var selectedDocType = docTypes.indexOf(doc.type) >= 0 ? doc.type : 'CRLV';
     var suggestedName = vehicle.name || [vehicle.brand, vehicle.model, vehicle.plate].filter(Boolean).join(' - ') || 'Veiculo da frota';
     var selectedStatus = match && match.status ? match.status : 'ativo';
-    var html = '<div class="p-6 vehicle-ai-modal"><div class="vehicle-ai-head">' + icon('spark') + '<div><h2>Conferir veículo e documento</h2><p>Revise os dados. Ao salvar, o sistema cadastra ou atualiza o ve&iacute;culo e j&aacute; anexa o documento nele.</p></div>' + confidenceLabel(extraction.confidence) + '</div>' + warnings
+    var html = '<div class="p-6 vehicle-ai-modal"><div class="vehicle-ai-head">' + icon('spark') + '<div><h2>Conferir veículo e documento</h2><p>Revise os dados. Ao salvar, o sistema cadastra ou atualiza o veículo e já anexa o documento nele.</p></div>' + confidenceLabel(extraction.confidence) + '</div>' + warnings
       + '<form onsubmit="saveVehicleAiResult(event)">'
       + '<input type="hidden" id="aiFileUrl" value="' + esc(result && result.file_url) + '">'
       + '<div class="vehicle-ai-review">'
-      + '<section><h3>1. Cadastro do ve&iacute;culo</h3><div class="grid md:grid-cols-2 gap-4">'
-      + '<div class="md:col-span-2"><label class="label">A&ccedil;&atilde;o do cadastro</label><select class="input" id="aiExistingVehicle"><option value="">Criar novo ve&iacute;culo automaticamente</option>' + vehicleOptions(match && match.id) + '</select><p class="vehicle-file-hint">' + (match ? 'Encontramos um ve&iacute;culo com essa placa. Ele ser&aacute; atualizado e o documento ficar&aacute; vinculado nele.' : 'Se este ve&iacute;culo j&aacute; existe, selecione-o aqui. Se deixar como novo, ele ser&aacute; cadastrado junto com o documento.') + '</p></div>'
+      + '<section><h3>1. Cadastro do veículo</h3><div class="grid md:grid-cols-2 gap-4">'
+      + '<div class="md:col-span-2"><label class="label">Ação do cadastro</label><select class="input" id="aiExistingVehicle"><option value="">Criar novo veículo automaticamente</option>' + vehicleOptions(match && match.id) + '</select><p class="vehicle-file-hint">' + (match ? 'Encontramos um veículo com essa placa. Ele será atualizado e o documento ficará vinculado nele.' : 'Se este veículo já existe, selecione-o aqui. Se deixar como novo, ele será cadastrado junto com o documento.') + '</p></div>'
       + '<div><label class="label">Nome *</label><input class="input" id="aiFleetName" value="' + esc(suggestedName) + '" required></div>'
       + '<div><label class="label">Tipo *</label><select class="input" id="aiFleetType" required>' + optionList(vehicleTypes, selectedVehicleType) + '</select></div>'
       + '<div><label class="label">Marca</label><input class="input" id="aiFleetBrand" value="' + esc(vehicle.brand) + '"></div>'
       + '<div><label class="label">Modelo</label><input class="input" id="aiFleetModel" value="' + esc(vehicle.model) + '"></div>'
       + '<div><label class="label">Placa</label><input class="input" id="aiFleetPlate" value="' + esc(vehicle.plate) + '"></div>'
       + '<div><label class="label">Ano</label><input class="input" id="aiFleetYear" value="' + esc(vehicle.year) + '"></div>'
-      + '<div><label class="label">Chassi / s&eacute;rie</label><input class="input" id="aiFleetSerial" value="' + esc(vehicle.serial_number) + '"></div>'
+      + '<div><label class="label">Chassi / série</label><input class="input" id="aiFleetSerial" value="' + esc(vehicle.serial_number) + '"></div>'
       + '<div><label class="label">Capacidade</label><input class="input" id="aiFleetCapacity" value="' + esc(vehicle.capacity) + '" placeholder="Ex.: 10.000 kgf.m"></div>'
-      + '<div><label class="label">Patrim&ocirc;nio</label><input class="input" id="aiFleetAsset" value="' + esc(vehicle.asset_number) + '"></div>'
-      + '<div><label class="label">Propriet&aacute;rio</label><input class="input" id="aiFleetOwner" value="' + esc(vehicle.owner) + '"></div>'
-      + '<div><label class="label">Status</label><select class="input" id="aiFleetStatus"><option value="ativo"' + (selectedStatus === 'ativo' ? ' selected' : '') + '>Ativo / Operacional</option><option value="manutencao"' + (selectedStatus === 'manutencao' ? ' selected' : '') + '>Manuten&ccedil;&atilde;o</option><option value="inativo"' + (selectedStatus === 'inativo' ? ' selected' : '') + '>Inativo</option></select></div>'
+      + '<div><label class="label">Patrimônio</label><input class="input" id="aiFleetAsset" value="' + esc(vehicle.asset_number) + '"></div>'
+      + '<div><label class="label">Proprietário</label><input class="input" id="aiFleetOwner" value="' + esc(vehicle.owner) + '"></div>'
+      + '<div><label class="label">Status</label><select class="input" id="aiFleetStatus"><option value="ativo"' + (selectedStatus === 'ativo' ? ' selected' : '') + '>Ativo / Operacional</option><option value="manutencao"' + (selectedStatus === 'manutencao' ? ' selected' : '') + '>Manutenção</option><option value="inativo"' + (selectedStatus === 'inativo' ? ' selected' : '') + '>Inativo</option></select></div>'
       + '</div></section>'
       + '<section><h3>2. Documento vinculado</h3><div class="grid md:grid-cols-2 gap-4">'
       + '<div><label class="label">Tipo *</label><select class="input" id="aiDocType" required>' + optionList(docTypes, selectedDocType) + '</select></div>'
-      + '<div><label class="label">N&uacute;mero / refer&ecirc;ncia</label><input class="input" id="aiDocNumber" value="' + esc(doc.number || doc.exercise_year) + '"></div>'
-      + '<div><label class="label">Data de emiss&atilde;o</label><input type="date" class="input" id="aiDocIssue" value="' + esc(doc.issue_date || '') + '"></div>'
+      + '<div><label class="label">Número / refer?ncia</label><input class="input" id="aiDocNumber" value="' + esc(doc.number || doc.exercise_year) + '"></div>'
+      + '<div><label class="label">Data de emissão</label><input type="date" class="input" id="aiDocIssue" value="' + esc(doc.issue_date || '') + '"></div>'
       + '<div><label class="label">Data de vencimento *</label><input type="date" class="input" id="aiDocExp" value="' + esc(doc.expiration_date || '') + '" required></div>'
-      + '<div><label class="label">Respons&aacute;vel</label><input class="input" id="aiDocResponsible" value=""></div>'
+      + '<div><label class="label">Responsável</label><input class="input" id="aiDocResponsible" value=""></div>'
       + '<div><label class="label">Arquivo</label><a class="vehicle-download vehicle-ai-file" href="' + esc(result && result.file_url) + '" target="_blank" download>' + icon('download') + 'Baixar anexo</a></div>'
-      + '<div class="md:col-span-2"><label class="label">Observa&ccedil;&otilde;es</label><textarea class="input" rows="3" id="aiDocNotes">' + esc(doc.notes) + '</textarea></div>'
+      + '<div class="md:col-span-2"><label class="label">Observações</label><textarea class="input" rows="3" id="aiDocNotes">' + esc(doc.notes) + '</textarea></div>'
       + '</div></section></div>'
       + '<div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="openVehicleAi()">Voltar</button><button class="btn btn-primary" type="submit">Cadastrar tudo junto</button></div></form></div>';
     if (typeof openModal === 'function') openModal(html);
@@ -369,7 +369,7 @@
       await refreshData();
       closeModal();
       await renderPage();
-      showToast(existingDoc ? 'Ve&iacute;culo atualizado e documento revisado!' : 'Ve&iacute;culo e documento cadastrados juntos!', 'success');
+      showToast(existingDoc ? 'Veículo atualizado e documento revisado!' : 'Veículo e documento cadastrados juntos!', 'success');
     } catch (err) {
       showToast('Erro ao salvar: ' + err.message, 'error');
     }
@@ -379,16 +379,16 @@
     var doc = id ? vehicleDocs().find(function (item) { return same(item.id, id); }) : null;
     var type = doc ? doc.document_type : 'Licenciamento';
     var selectedType = function (value) { return type === value ? ' selected' : ''; };
-    var currentFile = doc && doc.file_url ? '<div class="vehicle-file-current">' + icon('paperclip') + '<div><strong>PDF anexado</strong><span>O arquivo atual ser&aacute; mantido se voc&ecirc; n&atilde;o enviar outro.</span></div><a href="' + esc(doc.file_url) + '" target="_blank" download>Baixar</a></div>' : '<div class="vehicle-file-current vehicle-file-empty">' + icon('paperclip') + '<div><strong>Nenhum PDF anexado</strong><span>Anexe o IPVA, licenciamento, CRLV ou outro documento em PDF.</span></div></div>';
-    var html = '<div class="p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">' + (doc ? 'Editar' : 'Novo') + ' documento de ve&iacute;culo</h2><p class="text-sm text-slate-500 mb-5">Controle IPVA, licenciamento e demais documentos da frota.</p><form onsubmit="saveVehicleDoc(event,\'' + (id || '') + '\')"><div class="grid md:grid-cols-2 gap-4">'
-      + '<div><label class="label">Ve&iacute;culo *</label><select class="input" id="vehEquipment" required>' + vehicleOptions(doc && doc.equipment_id) + '</select></div>'
-      + '<div><label class="label">Tipo *</label><select class="input" id="vehType" required><option' + selectedType('IPVA') + '>IPVA</option><option' + selectedType('Licenciamento') + '>Licenciamento</option><option' + selectedType('CRLV') + '>CRLV</option><option' + selectedType('Seguro') + '>Seguro</option><option' + selectedType('ANTT') + '>ANTT</option><option' + selectedType('Tac&oacute;grafo') + '>Tac&oacute;grafo</option><option' + selectedType('Laudo de capacidade') + '>Laudo de capacidade</option><option' + selectedType('Inspe&ccedil;&atilde;o de guindaste') + '>Inspe&ccedil;&atilde;o de guindaste</option><option' + selectedType('Inspe&ccedil;&atilde;o de caminh&atilde;o Munck') + '>Inspe&ccedil;&atilde;o de caminh&atilde;o Munck</option><option' + selectedType('Outro') + '>Outro</option></select></div>'
-      + '<div><label class="label">N&uacute;mero / Refer&ecirc;ncia</label><input class="input" id="vehNumber" value="' + esc(doc && doc.document_number) + '"></div>'
-      + '<div><label class="label">Respons&aacute;vel</label><input class="input" id="vehResponsible" value="' + esc(doc && doc.responsible_name) + '"></div>'
-      + '<div><label class="label">Data de emiss&atilde;o</label><input type="date" class="input" id="vehIssue" value="' + (typeof inputDate === 'function' ? inputDate(doc && doc.issue_date) : '') + '"></div>'
+    var currentFile = doc && doc.file_url ? '<div class="vehicle-file-current">' + icon('paperclip') + '<div><strong>PDF anexado</strong><span>O arquivo atual será mantido se você não enviar outro.</span></div><a href="' + esc(doc.file_url) + '" target="_blank" download>Baixar</a></div>' : '<div class="vehicle-file-current vehicle-file-empty">' + icon('paperclip') + '<div><strong>Nenhum PDF anexado</strong><span>Anexe o IPVA, licenciamento, CRLV ou outro documento em PDF.</span></div></div>';
+    var html = '<div class="p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">' + (doc ? 'Editar' : 'Novo') + ' documento de veículo</h2><p class="text-sm text-slate-500 mb-5">Controle IPVA, licenciamento e demais documentos da frota.</p><form onsubmit="saveVehicleDoc(event,\'' + (id || '') + '\')"><div class="grid md:grid-cols-2 gap-4">'
+      + '<div><label class="label">Veículo *</label><select class="input" id="vehEquipment" required>' + vehicleOptions(doc && doc.equipment_id) + '</select></div>'
+      + '<div><label class="label">Tipo *</label><select class="input" id="vehType" required><option' + selectedType('IPVA') + '>IPVA</option><option' + selectedType('Licenciamento') + '>Licenciamento</option><option' + selectedType('CRLV') + '>CRLV</option><option' + selectedType('Seguro') + '>Seguro</option><option' + selectedType('ANTT') + '>ANTT</option><option' + selectedType('Tacógrafo') + '>Tacógrafo</option><option' + selectedType('Laudo de capacidade') + '>Laudo de capacidade</option><option' + selectedType('Inspeção de guindaste') + '>Inspeção de guindaste</option><option' + selectedType('Inspeção de caminhão Munck') + '>Inspeção de caminhão Munck</option><option' + selectedType('Outro') + '>Outro</option></select></div>'
+      + '<div><label class="label">Número / Referência</label><input class="input" id="vehNumber" value="' + esc(doc && doc.document_number) + '"></div>'
+      + '<div><label class="label">Responsável</label><input class="input" id="vehResponsible" value="' + esc(doc && doc.responsible_name) + '"></div>'
+      + '<div><label class="label">Data de emissão</label><input type="date" class="input" id="vehIssue" value="' + (typeof inputDate === 'function' ? inputDate(doc && doc.issue_date) : '') + '"></div>'
       + '<div><label class="label">Data de vencimento *</label><input type="date" class="input" id="vehExp" value="' + (typeof inputDate === 'function' ? inputDate(doc && doc.expiration_date) : '') + '" required></div>'
-      + '<div class="md:col-span-2"><label class="label">PDF do documento</label>' + currentFile + '<input type="file" class="input vehicle-file-input" id="vehFile" accept="application/pdf,.pdf"><p class="vehicle-file-hint">Aceita PDF at&eacute; 10 MB. Depois de salvar, o arquivo aparecer&aacute; para baixar na tabela.</p></div>'
-      + '<div class="md:col-span-2"><label class="label">Observa&ccedil;&otilde;es</label><textarea class="input" rows="3" id="vehNotes">' + esc(doc && doc.notes) + '</textarea></div>'
+      + '<div class="md:col-span-2"><label class="label">PDF do documento</label>' + currentFile + '<input type="file" class="input vehicle-file-input" id="vehFile" accept="application/pdf,.pdf"><p class="vehicle-file-hint">Aceita PDF até 10 MB. Depois de salvar, o arquivo aparecerá para baixar na tabela.</p></div>'
+      + '<div class="md:col-span-2"><label class="label">Observações</label><textarea class="input" rows="3" id="vehNotes">' + esc(doc && doc.notes) + '</textarea></div>'
       + '</div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" type="submit">Salvar documento</button></div></form></div>';
     if (typeof openModal === 'function') openModal(html);
   };
@@ -396,16 +396,16 @@
   window.openCapacityReport = function (equipmentId) {
     var preferred = equipmentId || '';
     var type = 'Laudo de capacidade';
-    var currentFile = '<div class="vehicle-file-current vehicle-file-empty">' + icon('paperclip') + '<div><strong>Anexe o laudo assinado em PDF</strong><span>Use para laudo de capacidade de guindaste, caminh&atilde;o Munck ou inspe&ccedil;&atilde;o t&eacute;cnica.</span></div></div>';
-    var html = '<div class="p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Novo laudo de capacidade</h2><p class="text-sm text-slate-500 mb-5">Controle vencimento e anexo do laudo t&eacute;cnico do equipamento.</p><form onsubmit="saveVehicleDoc(event,\'\')"><input type="hidden" id="vehType" value="' + type + '"><div class="grid md:grid-cols-2 gap-4">'
+    var currentFile = '<div class="vehicle-file-current vehicle-file-empty">' + icon('paperclip') + '<div><strong>Anexe o laudo assinado em PDF</strong><span>Use para laudo de capacidade de guindaste, caminhão Munck ou inspeção técnica.</span></div></div>';
+    var html = '<div class="p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Novo laudo de capacidade</h2><p class="text-sm text-slate-500 mb-5">Controle vencimento e anexo do laudo técnico do equipamento.</p><form onsubmit="saveVehicleDoc(event,\'\')"><input type="hidden" id="vehType" value="' + type + '"><div class="grid md:grid-cols-2 gap-4">'
       + '<div><label class="label">Equipamento *</label><select class="input" id="vehEquipment" required>' + vehicleOptions(preferred) + '</select></div>'
-      + '<div><label class="label">N&uacute;mero do laudo</label><input class="input" id="vehNumber" placeholder="Ex.: LAUDO-CAP-2026-001"></div>'
-      + '<div><label class="label">Respons&aacute;vel / Engenheiro</label><input class="input" id="vehResponsible" placeholder="Nome do respons&aacute;vel t&eacute;cnico"></div>'
+      + '<div><label class="label">Número do laudo</label><input class="input" id="vehNumber" placeholder="Ex.: LAUDO-CAP-2026-001"></div>'
+      + '<div><label class="label">Responsável / Engenheiro</label><input class="input" id="vehResponsible" placeholder="Nome do responsável técnico"></div>'
       + '<div><label class="label">Capacidade avaliada</label><input class="input" id="vehCapacityNote" placeholder="Ex.: 12 t / 20 t.m"></div>'
-      + '<div><label class="label">Data de emiss&atilde;o</label><input type="date" class="input" id="vehIssue" value="' + (typeof today === 'function' ? today() : '') + '"></div>'
+      + '<div><label class="label">Data de emissão</label><input type="date" class="input" id="vehIssue" value="' + (typeof today === 'function' ? today() : '') + '"></div>'
       + '<div><label class="label">Data de vencimento *</label><input type="date" class="input" id="vehExp" required></div>'
-      + '<div class="md:col-span-2"><label class="label">PDF do laudo *</label>' + currentFile + '<input type="file" class="input vehicle-file-input" id="vehFile" accept="application/pdf,.pdf" required><p class="vehicle-file-hint">Depois de salvar, o laudo aparecer&aacute; na fila de vencimentos e na tabela para baixar.</p></div>'
-      + '<div class="md:col-span-2"><label class="label">Observa&ccedil;&otilde;es</label><textarea class="input" rows="3" id="vehNotes" placeholder="Condi&ccedil;&otilde;es avaliadas, recomenda&ccedil;&otilde;es ou restri&ccedil;&otilde;es."></textarea></div>'
+      + '<div class="md:col-span-2"><label class="label">PDF do laudo *</label>' + currentFile + '<input type="file" class="input vehicle-file-input" id="vehFile" accept="application/pdf,.pdf" required><p class="vehicle-file-hint">Depois de salvar, o laudo aparecerá na fila de vencimentos e na tabela para baixar.</p></div>'
+      + '<div class="md:col-span-2"><label class="label">Observações</label><textarea class="input" rows="3" id="vehNotes" placeholder="Condições avaliadas, recomendações ou restrições."></textarea></div>'
       + '</div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" type="submit">Salvar laudo</button></div></form></div>';
     if (typeof openModal === 'function') openModal(html);
   };
@@ -414,20 +414,20 @@
     var eq = id ? (db().equipment || []).find(function (item) { return same(item.id, id); }) : null;
     var selectedType = function (value) { return eq && eq.type === value ? ' selected' : ''; };
     var selectedStatus = function (value) { return (eq ? eq.status : 'ativo') === value ? ' selected' : ''; };
-    var html = '<div class="p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">' + (eq ? 'Editar' : 'Novo') + ' ve&iacute;culo / equipamento</h2><p class="text-sm text-slate-500 mb-5">Cadastre carros, caminh&otilde;es, guindastes e equipamentos da frota.</p><form onsubmit="saveVehicleRegister(event,\'' + (id || '') + '\')"><div class="grid md:grid-cols-2 gap-4">'
-      + '<div><label class="label">Nome *</label><input class="input" id="fleetName" value="' + esc(eq && eq.name) + '" placeholder="Ex.: Caminh&atilde;o Munck 01" required></div>'
-      + '<div><label class="label">Tipo *</label><select class="input" id="fleetType" required><option' + selectedType('Carro') + '>Carro</option><option' + selectedType('Caminh&atilde;o') + '>Caminh&atilde;o</option><option' + selectedType('Caminh&atilde;o Munck') + '>Caminh&atilde;o Munck</option><option' + selectedType('Guindaste') + '>Guindaste</option><option' + selectedType('Van') + '>Van</option><option' + selectedType('Pickup') + '>Pickup</option><option' + selectedType('Outro') + '>Outro</option></select></div>'
+    var html = '<div class="p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">' + (eq ? 'Editar' : 'Novo') + ' veículo / equipamento</h2><p class="text-sm text-slate-500 mb-5">Cadastre carros, caminhões, guindastes e equipamentos da frota.</p><form onsubmit="saveVehicleRegister(event,\'' + (id || '') + '\')"><div class="grid md:grid-cols-2 gap-4">'
+      + '<div><label class="label">Nome *</label><input class="input" id="fleetName" value="' + esc(eq && eq.name) + '" placeholder="Ex.: Caminhão Munck 01" required></div>'
+      + '<div><label class="label">Tipo *</label><select class="input" id="fleetType" required><option' + selectedType('Carro') + '>Carro</option><option' + selectedType('Caminhão') + '>Caminhão</option><option' + selectedType('Caminhão Munck') + '>Caminhão Munck</option><option' + selectedType('Guindaste') + '>Guindaste</option><option' + selectedType('Van') + '>Van</option><option' + selectedType('Pickup') + '>Pickup</option><option' + selectedType('Outro') + '>Outro</option></select></div>'
       + '<div><label class="label">Marca</label><input class="input" id="fleetBrand" value="' + esc(eq && eq.brand) + '"></div>'
       + '<div><label class="label">Modelo</label><input class="input" id="fleetModel" value="' + esc(eq && eq.model) + '"></div>'
       + '<div><label class="label">Placa</label><input class="input" id="fleetPlate" value="' + esc(eq && eq.plate) + '" placeholder="ABC1D23"></div>'
       + '<div><label class="label">Ano</label><input class="input" id="fleetYear" value="' + esc(eq && eq.year) + '" placeholder="2026"></div>'
       + '<div><label class="label">Capacidade</label><input class="input" id="fleetCapacity" value="' + esc(eq && eq.capacity) + '" placeholder="Ex.: 12 t / 20 t.m"></div>'
-      + '<div><label class="label">N&ordm; s&eacute;rie / chassi</label><input class="input" id="fleetSerial" value="' + esc(eq && eq.serial_number) + '"></div>'
-      + '<div><label class="label">Patrim&ocirc;nio</label><input class="input" id="fleetAsset" value="' + esc(eq && eq.asset_number) + '"></div>'
-      + '<div><label class="label">Propriet&aacute;rio</label><input class="input" id="fleetOwner" value="' + esc(eq && eq.owner) + '" placeholder="IMEC"></div>'
-      + '<div><label class="label">Status</label><select class="input" id="fleetStatus"><option value="ativo"' + selectedStatus('ativo') + '>Ativo / Operacional</option><option value="manutencao"' + selectedStatus('manutencao') + '>Manuten&ccedil;&atilde;o</option><option value="inativo"' + selectedStatus('inativo') + '>Inativo</option></select></div>'
-      + '<div class="md:col-span-2"><label class="label">Observa&ccedil;&otilde;es</label><textarea class="input" rows="3" id="fleetNotes">' + esc(eq && eq.notes) + '</textarea></div>'
-      + '</div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" type="submit">Salvar ve&iacute;culo</button></div></form></div>';
+      + '<div><label class="label">Nº série / chassi</label><input class="input" id="fleetSerial" value="' + esc(eq && eq.serial_number) + '"></div>'
+      + '<div><label class="label">Patrimônio</label><input class="input" id="fleetAsset" value="' + esc(eq && eq.asset_number) + '"></div>'
+      + '<div><label class="label">Proprietário</label><input class="input" id="fleetOwner" value="' + esc(eq && eq.owner) + '" placeholder="IMEC"></div>'
+      + '<div><label class="label">Status</label><select class="input" id="fleetStatus"><option value="ativo"' + selectedStatus('ativo') + '>Ativo / Operacional</option><option value="manutencao"' + selectedStatus('manutencao') + '>Manutenção</option><option value="inativo"' + selectedStatus('inativo') + '>Inativo</option></select></div>'
+      + '<div class="md:col-span-2"><label class="label">Observações</label><textarea class="input" rows="3" id="fleetNotes">' + esc(eq && eq.notes) + '</textarea></div>'
+      + '</div><div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" type="submit">Salvar veículo</button></div></form></div>';
     if (typeof openModal === 'function') openModal(html);
   };
 
@@ -455,7 +455,7 @@
       await refreshData();
       closeModal();
       await renderPage();
-      showToast(id ? 'Ve&iacute;culo atualizado!' : 'Ve&iacute;culo cadastrado!', 'success');
+      showToast(id ? 'Veículo atualizado!' : 'Veículo cadastrado!', 'success');
     } catch (err) {
       showToast('Erro: ' + err.message, 'error');
     }
@@ -505,7 +505,7 @@
   };
 
   window.deleteVehicleDoc = async function (id) {
-    if (!confirm('Excluir este documento de veiculo?')) return;
+    if (!confirm('Excluir este documento de veículo?')) return;
     try {
       await API.equipmentDocs.delete(id);
       await refreshData();
@@ -553,7 +553,7 @@
     link.className = 'sidebar-link';
     link.setAttribute('data-page', 'vehicleDocuments');
     link.setAttribute('onclick', "navigate('vehicleDocuments')");
-    link.innerHTML = icon('car') + 'Docs. Ve&iacute;culos';
+    link.innerHTML = icon('car') + 'Docs. Veículos';
     cranes.insertAdjacentElement('afterend', link);
   }
 

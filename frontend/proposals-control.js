@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   'use strict';
 
   function icon(name) {
@@ -63,7 +63,7 @@
     var map = {
       rascunho: ['#64748b', '#f1f5f9', 'Rascunho'],
       enviada: ['#1269ff', '#eaf2ff', 'Enviada'],
-      negociacao: ['#d97706', '#fef3c7', 'Negocia&ccedil;&atilde;o'],
+      negociacao: ['#d97706', '#fef3c7', 'Negociação'],
       aprovada: ['#16a34a', '#dcfce7', 'Aprovada'],
       perdida: ['#dc2626', '#fee2e2', 'Perdida']
     };
@@ -77,10 +77,10 @@
 
   function typeLabel(type) {
     var map = {
-      locacao_equipamento: 'Loca&ccedil;&atilde;o de equipamento',
-      manutencao_industrial: 'Manuten&ccedil;&atilde;o industrial',
+      locacao_equipamento: 'Locação de equipamento',
+      manutencao_industrial: 'Manutenção industrial',
       caldeiraria: 'Caldeiraria / reforma',
-      laudo_inspecao: 'Laudo / inspe&ccedil;&atilde;o'
+      laudo_inspecao: 'Laudo / inspeção'
     };
     return map[type] || esc(type || 'Proposta');
   }
@@ -105,51 +105,51 @@
 
   var proposalGuides = {
     locacao_equipamento: {
-      label: 'Loca&ccedil;&atilde;o Munck / Guindaste',
-      hint: 'Para propostas de apoio operacional, movimenta&ccedil;&atilde;o de cargas e loca&ccedil;&atilde;o com operador.',
+      label: 'Locação Munck / Guindaste',
+      hint: 'Para propostas de apoio operacional, movimentação de cargas e locação com operador.',
       checklist: [
         'Equipamento, capacidade e modelo',
-        'Per&iacute;odo, jornada, di&aacute;ria ou horas m&iacute;nimas',
-        'Operador incluso e habilita&ccedil;&otilde;es',
-        'Mobiliza&ccedil;&atilde;o, deslocamento, refei&ccedil;&atilde;o e hospedagem',
-        'Responsabilidades do cliente: acesso, terreno, apoio e libera&ccedil;&otilde;es',
+        'Período, jornada, diária ou horas mínimas',
+        'Operador incluso e habilitações',
+        'Mobilização, deslocamento, refeição e hospedagem',
+        'Responsabilidades do cliente: acesso, terreno, apoio e liberações',
         'Valor, prazo de pagamento e validade da proposta'
       ]
     },
     manutencao_industrial: {
-      label: 'Manuten&ccedil;&atilde;o Industrial NR-13',
-      hint: 'Para servi&ccedil;os com escopo t&eacute;cnico, desmontagem, montagem, reforma e adequa&ccedil;&otilde;es.',
+      label: 'Manutenção Industrial NR-13',
+      hint: 'Para serviços com escopo técnico, desmontagem, montagem, reforma e adequações.',
       checklist: [
         'Objetivo e equipamento atendido',
-        'Escopo t&eacute;cnico detalhado por etapa',
+        'Escopo técnico detalhado por etapa',
         'Normas envolvidas: NR-13, NR-33, NR-35 ou outras',
         'Materiais inclusos e materiais por conta do cliente',
-        'Prazo, garantia e condi&ccedil;&otilde;es de parada',
+        'Prazo, garantia e condições de parada',
         'Responsabilidades da contratada e contratante'
       ]
     },
     caldeiraria: {
       label: 'Caldeiraria / Reforma',
-      hint: 'Para fabrica&ccedil;&atilde;o, reforma, solda, montagem e adequa&ccedil;&atilde;o de componentes.',
+      hint: 'Para fabricação, reforma, solda, montagem e adequação de componentes.',
       checklist: [
         'Medidas, desenhos, croquis ou fotos recebidas',
         'Tipo de material, espessuras e quantidade',
-        'Servi&ccedil;os de corte, dobra, solda, montagem e acabamento',
-        'Inspe&ccedil;&otilde;es, ensaios ou registros exigidos',
-        'Transporte, instala&ccedil;&atilde;o e libera&ccedil;&otilde;es de campo',
-        'Condi&ccedil;&otilde;es comerciais e prazo de execu&ccedil;&atilde;o'
+        'Serviços de corte, dobra, solda, montagem e acabamento',
+        'Inspeções, ensaios ou registros exigidos',
+        'Transporte, instalação e liberações de campo',
+        'Condições comerciais e prazo de execução'
       ]
     },
     laudo_inspecao: {
-      label: 'Laudo / Inspe&ccedil;&atilde;o',
-      hint: 'Para laudo de capacidade, inspe&ccedil;&atilde;o de munck, guindaste, caminh&atilde;o e equipamento.',
+      label: 'Laudo / Inspeção',
+      hint: 'Para laudo de capacidade, inspeção de munck, guindaste, caminhão e equipamento.',
       checklist: [
-        'Identifica&ccedil;&atilde;o do equipamento: marca, modelo, placa, s&eacute;rie e patrim&ocirc;nio',
-        'Capacidade nominal e condi&ccedil;&atilde;o operacional',
-        'Documentos recebidos: CRLV, ART, manual, certificados e manuten&ccedil;&otilde;es',
-        'Fotos e evid&ecirc;ncias t&eacute;cnicas',
-        'Respons&aacute;vel t&eacute;cnico, prazo e validade do laudo',
-        'Restri&ccedil;&otilde;es, recomenda&ccedil;&otilde;es e conclus&atilde;o'
+        'Identificação do equipamento: marca, modelo, placa, série e patrimônio',
+        'Capacidade nominal e condição operacional',
+        'Documentos recebidos: CRLV, ART, manual, certificados e manutenções',
+        'Fotos e evidências técnicas',
+        'Responsável técnico, prazo e validade do laudo',
+        'Restrições, recomendações e conclusão'
       ]
     }
   };
@@ -199,7 +199,7 @@
       return '<div class="proposal-card"><div class="proposal-card-icon">' + icon('upload') + '</div><div><h3>Comece pela biblioteca comercial</h3><p>Cadastre o PDF ou Word oficial, informe cliente, valor, status e acompanhe tudo pelo sistema.</p></div><button class="btn btn-primary btn-sm" onclick="openProposalModal()">' + icon('plus') + ' Nova</button></div>';
     }
     return '<div class="proposal-card-list">' + rows.map(function (p) {
-      return '<div class="proposal-card"><div class="proposal-card-icon">' + icon('proposal') + '</div><div><h3>' + esc(p.title || p.proposal_number) + '</h3><p>' + esc(p.client_name || 'Sem cliente') + ' &bull; ' + typeLabel(p.proposal_type) + ' &bull; ' + fmt(p.proposal_date) + '</p></div><div>' + chip(p.status) + '</div></div>';
+      return '<div class="proposal-card"><div class="proposal-card-icon">' + icon('proposal') + '</div><div><h3>' + esc(p.title || p.proposal_number) + '</h3><p>' + esc(p.client_name || 'Sem cliente') + ' - ' + typeLabel(p.proposal_type) + ' - ' + fmt(p.proposal_date) + '</p></div><div>' + chip(p.status) + '</div></div>';
     }).join('') + '</div>';
   }
 
@@ -224,11 +224,11 @@
   function renderProposals() {
     var m = metrics();
     return '<div class="proposal-suite">'
-      + '<section class="proposal-hero"><div><p class="proposal-kicker">Centro comercial executivo</p><h2>Propostas T&eacute;cnicas e Comerciais</h2><p>Centralize PDFs, Word, revis&otilde;es, valores e status sem alterar o modelo oficial que voc&ecirc;s j&aacute; usam.</p></div><div class="proposal-actions"><button class="btn btn-outline" onclick="openProposalAssistant()">' + icon('spark') + ' Checklist</button><button class="btn btn-outline" onclick="openProposalImportPreview()">' + icon('upload') + ' Importar pasta</button><button class="btn btn-primary" onclick="openProposalModal()">' + icon('plus') + ' Nova proposta</button></div></section>'
-      + '<div class="proposal-kpis">' + renderKpi('Propostas cadastradas', m.total, 'proposal', '#1269ff', 'hist&oacute;rico comercial') + renderKpi('Em aberto', m.open, 'brief', '#d97706', 'enviadas/negocia&ccedil;&atilde;o') + renderKpi('Aprovadas', m.approved, 'chart', '#16a34a', 'ganhas') + renderKpi('Valor aprovado', money(m.approvedValue), 'money', '#0f766e', 'resultado acumulado') + '</div>'
-      + '<section class="proposal-section"><div class="proposal-section-head"><div><h2>Pipeline comercial</h2><p>Vis&atilde;o r&aacute;pida por etapa da proposta.</p></div></div><div class="proposal-section-body">' + renderPipeline() + '</div></section>'
-      + '<div class="proposal-grid"><section class="proposal-section"><div class="proposal-section-head"><div><h2>Propostas recentes</h2><p>&Uacute;ltimos documentos oficiais cadastrados.</p></div></div><div class="proposal-section-body">' + renderTopCards() + '</div></section><section class="proposal-section"><div class="proposal-section-head"><div><h2>Checklists por tipo</h2><p>Guia pr&aacute;tico para n&atilde;o esquecer informa&ccedil;&otilde;es importantes antes de anexar a proposta final.</p></div></div><div class="proposal-section-body">' + renderTemplates() + '</div></section></div>'
-      + '<section class="proposal-section"><div class="proposal-section-head"><div><h2>Biblioteca de propostas</h2><p>Busque por cliente, n&uacute;mero, servi&ccedil;o, status ou anexo.</p></div><div class="proposal-actions"><div class="search-box" style="min-width:280px">' + icon('search') + '<input id="proposalSearch" oninput="filterProposals()" placeholder="Buscar proposta..."></div><select id="proposalStatusFilter" class="input" onchange="filterProposals()" style="width:190px"><option value="">Todos os status</option><option value="rascunho">Rascunho</option><option value="enviada">Enviada</option><option value="negociacao">Negocia&ccedil;&atilde;o</option><option value="aprovada">Aprovada</option><option value="perdida">Perdida</option></select></div></div><div class="proposal-table-wrap"><table class="proposal-table" id="proposalTable"><thead><tr><th>N&uacute;mero</th><th>Proposta</th><th>Cliente</th><th>Data</th><th>Valor</th><th>Status</th><th>Anexo</th><th>A&ccedil;&otilde;es</th></tr></thead><tbody>' + renderRows() + '</tbody></table></div></section>'
+      + '<section class="proposal-hero"><div><p class="proposal-kicker">Centro comercial executivo</p><h2>Propostas Técnicas e Comerciais</h2><p>Centralize PDFs, Word, revisões, valores e status sem alterar o modelo oficial que vocês já usam.</p></div><div class="proposal-actions"><button class="btn btn-outline" onclick="openProposalAssistant()">' + icon('spark') + ' Checklist</button><button class="btn btn-outline" onclick="openProposalImportPreview()">' + icon('upload') + ' Importar pasta</button><button class="btn btn-primary" onclick="openProposalModal()">' + icon('plus') + ' Nova proposta</button></div></section>'
+      + '<div class="proposal-kpis">' + renderKpi('Propostas cadastradas', m.total, 'proposal', '#1269ff', 'histórico comercial') + renderKpi('Em aberto', m.open, 'brief', '#d97706', 'enviadas/negociação') + renderKpi('Aprovadas', m.approved, 'chart', '#16a34a', 'ganhas') + renderKpi('Valor aprovado', money(m.approvedValue), 'money', '#0f766e', 'resultado acumulado') + '</div>'
+      + '<section class="proposal-section"><div class="proposal-section-head"><div><h2>Pipeline comercial</h2><p>Visão rápida por etapa da proposta.</p></div></div><div class="proposal-section-body">' + renderPipeline() + '</div></section>'
+      + '<div class="proposal-grid"><section class="proposal-section"><div class="proposal-section-head"><div><h2>Propostas recentes</h2><p>Últimos documentos oficiais cadastrados.</p></div></div><div class="proposal-section-body">' + renderTopCards() + '</div></section><section class="proposal-section"><div class="proposal-section-head"><div><h2>Checklists por tipo</h2><p>Guia prático para não esquecer informações importantes antes de anexar a proposta final.</p></div></div><div class="proposal-section-body">' + renderTemplates() + '</div></section></div>'
+      + '<section class="proposal-section"><div class="proposal-section-head"><div><h2>Biblioteca de propostas</h2><p>Busque por cliente, número, serviço, status ou anexo.</p></div><div class="proposal-actions"><div class="search-box" style="min-width:280px">' + icon('search') + '<input id="proposalSearch" oninput="filterProposals()" placeholder="Buscar proposta..."></div><select id="proposalStatusFilter" class="input" onchange="filterProposals()" style="width:190px"><option value="">Todos os status</option><option value="rascunho">Rascunho</option><option value="enviada">Enviada</option><option value="negociacao">Negociação</option><option value="aprovada">Aprovada</option><option value="perdida">Perdida</option></select></div></div><div class="proposal-table-wrap"><table class="proposal-table" id="proposalTable"><thead><tr><th>Número</th><th>Proposta</th><th>Cliente</th><th>Data</th><th>Valor</th><th>Status</th><th>Anexo</th><th>Ações</th></tr></thead><tbody>' + renderRows() + '</tbody></table></div></section>'
       + '</div>';
   }
 
@@ -248,18 +248,18 @@
     var title = p ? (duplicate ? 'Duplicar proposta' : 'Editar proposta') : 'Nova proposta';
     var proposalNumber = duplicate ? '' : (p ? p.proposal_number : '');
     var html = '<div class="proposal-modal p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">' + title + '</h2><p class="text-sm text-gray-500 mb-6">Controle do documento oficial: cadastre o resumo, anexe o arquivo final e acompanhe o status comercial.</p><form onsubmit="saveProposal(event, \'' + (duplicate ? '' : (id || '')) + '\')"><div class="proposal-form-grid">'
-      + '<div><label class="label">Tipo de proposta</label><select class="input" id="proposalModel" onchange="updateProposalChecklist(this.value)"><option value="locacao_equipamento"' + (model === 'locacao_equipamento' ? ' selected' : '') + '>Loca&ccedil;&atilde;o Munck / Guindaste</option><option value="manutencao_industrial"' + (model === 'manutencao_industrial' ? ' selected' : '') + '>Manuten&ccedil;&atilde;o industrial</option><option value="caldeiraria"' + (model === 'caldeiraria' ? ' selected' : '') + '>Caldeiraria / reforma</option><option value="laudo_inspecao"' + (model === 'laudo_inspecao' ? ' selected' : '') + '>Laudo / inspe&ccedil;&atilde;o</option></select></div>'
-      + '<div><label class="label">Status</label><select class="input" id="proposalStatus"><option value="rascunho"' + (p && p.status === 'rascunho' ? ' selected' : '') + '>Rascunho</option><option value="enviada"' + (p && p.status === 'enviada' ? ' selected' : '') + '>Enviada</option><option value="negociacao"' + (p && p.status === 'negociacao' ? ' selected' : '') + '>Em negocia&ccedil;&atilde;o</option><option value="aprovada"' + (p && p.status === 'aprovada' ? ' selected' : '') + '>Aprovada</option><option value="perdida"' + (p && p.status === 'perdida' ? ' selected' : '') + '>Perdida</option></select></div>'
+      + '<div><label class="label">Tipo de proposta</label><select class="input" id="proposalModel" onchange="updateProposalChecklist(this.value)"><option value="locacao_equipamento"' + (model === 'locacao_equipamento' ? ' selected' : '') + '>Locação Munck / Guindaste</option><option value="manutencao_industrial"' + (model === 'manutencao_industrial' ? ' selected' : '') + '>Manutenção industrial</option><option value="caldeiraria"' + (model === 'caldeiraria' ? ' selected' : '') + '>Caldeiraria / reforma</option><option value="laudo_inspecao"' + (model === 'laudo_inspecao' ? ' selected' : '') + '>Laudo / inspeção</option></select></div>'
+      + '<div><label class="label">Status</label><select class="input" id="proposalStatus"><option value="rascunho"' + (p && p.status === 'rascunho' ? ' selected' : '') + '>Rascunho</option><option value="enviada"' + (p && p.status === 'enviada' ? ' selected' : '') + '>Enviada</option><option value="negociacao"' + (p && p.status === 'negociacao' ? ' selected' : '') + '>Em negociação</option><option value="aprovada"' + (p && p.status === 'aprovada' ? ' selected' : '') + '>Aprovada</option><option value="perdida"' + (p && p.status === 'perdida' ? ' selected' : '') + '>Perdida</option></select></div>'
       + '<div class="span-2" id="proposalChecklistHint">' + checklistHtml(model) + '</div>'
-      + '<div><label class="label">N&uacute;mero</label><input class="input" id="proposalNumber" value="' + esc(proposalNumber) + '" placeholder="2851"></div><div><label class="label">Revis&atilde;o</label><input class="input" id="proposalRevision" value="' + esc(p && !duplicate ? p.revision : 'R00') + '"></div>'
-      + '<div class="span-2"><label class="label">T&iacute;tulo *</label><input class="input" id="proposalTitle" value="' + esc(p && !duplicate ? p.title : '') + '" placeholder="' + currentGuide.label + ' - Cliente / servi&ccedil;o" required></div>'
+      + '<div><label class="label">Número</label><input class="input" id="proposalNumber" value="' + esc(proposalNumber) + '" placeholder="2851"></div><div><label class="label">Revisão</label><input class="input" id="proposalRevision" value="' + esc(p && !duplicate ? p.revision : 'R00') + '"></div>'
+      + '<div class="span-2"><label class="label">Título *</label><input class="input" id="proposalTitle" value="' + esc(p && !duplicate ? p.title : '') + '" placeholder="' + currentGuide.label + ' - Cliente / serviço" required></div>'
       + '<div><label class="label">Cliente</label><select class="input" id="proposalClient">' + clientOptions(p && !duplicate ? p.client_id : '') + '</select></div><div><label class="label">Obra vinculada</label><select class="input" id="proposalProject">' + projectOptions(p && !duplicate ? p.project_id : '') + '</select></div>'
-      + '<div><label class="label">Contato</label><input class="input" id="proposalContact" value="' + esc(p && !duplicate ? p.contact_name : '') + '"></div><div><label class="label">&Aacute;rea / setor</label><input class="input" id="proposalArea" value="' + esc(p && !duplicate ? p.contact_area : '') + '"></div>'
+      + '<div><label class="label">Contato</label><input class="input" id="proposalContact" value="' + esc(p && !duplicate ? p.contact_name : '') + '"></div><div><label class="label">Área / setor</label><input class="input" id="proposalArea" value="' + esc(p && !duplicate ? p.contact_area : '') + '"></div>'
       + '<div><label class="label">Data da proposta</label><input type="date" class="input" id="proposalDate" value="' + esc(p && !duplicate ? inputDateValue(p.proposal_date) : todayValue()) + '"></div><div><label class="label">Validade</label><input type="date" class="input" id="proposalValidity" value="' + esc(p && !duplicate ? inputDateValue(p.validity_date) : addMonthsValue(todayValue(), 1)) + '"></div>'
       + '<div><label class="label">Valor total</label><input type="number" step="0.01" class="input" id="proposalValue" value="' + esc(p && !duplicate ? (p.total_value || '') : '') + '"></div><div><label class="label">Local</label><input class="input" id="proposalLocation" value="' + esc(p && !duplicate ? p.location : '') + '"></div>'
-      + '<div class="span-2"><label class="label">Resumo r&aacute;pido para busca</label><textarea class="input" rows="2" id="proposalSummary" placeholder="Ex.: Loca&ccedil;&atilde;o de munck 10 ton para apoio em manuten&ccedil;&atilde;o...">' + esc(p && !duplicate ? p.scope_summary : '') + '</textarea></div>'
-      + '<div class="span-2"><label class="label">Equipamento / servi&ccedil;o principal</label><textarea class="input" rows="2" id="proposalEquipment" placeholder="Ex.: Munck 10 ton, guindaste 30 ton, coluna A-2600, laudo de capacidade...">' + esc(p && !duplicate ? p.equipment_description : '') + '</textarea></div>'
-      + '<div><label class="label">Condi&ccedil;&otilde;es comerciais principais</label><textarea class="input" rows="3" id="proposalCommercial" placeholder="Valor, forma de medi&ccedil;&atilde;o, observa&ccedil;&otilde;es comerciais importantes...">' + esc(p && !duplicate ? p.commercial_terms : '') + '</textarea></div><div><label class="label">Pagamento / prazo</label><textarea class="input" rows="3" id="proposalPayment" placeholder="Ex.: 20 dias ap&oacute;s execu&ccedil;&atilde;o, entrada + medi&ccedil;&otilde;es, prazo de entrega...">' + esc(p && !duplicate ? p.payment_terms : '') + '</textarea></div>'
+      + '<div class="span-2"><label class="label">Resumo rápido para busca</label><textarea class="input" rows="2" id="proposalSummary" placeholder="Ex.: Locação de munck 10 ton para apoio em manutenção...">' + esc(p && !duplicate ? p.scope_summary : '') + '</textarea></div>'
+      + '<div class="span-2"><label class="label">Equipamento / serviço principal</label><textarea class="input" rows="2" id="proposalEquipment" placeholder="Ex.: Munck 10 ton, guindaste 30 ton, coluna A-2600, laudo de capacidade...">' + esc(p && !duplicate ? p.equipment_description : '') + '</textarea></div>'
+      + '<div><label class="label">Condições comerciais principais</label><textarea class="input" rows="3" id="proposalCommercial" placeholder="Valor, forma de medição, observações comerciais importantes...">' + esc(p && !duplicate ? p.commercial_terms : '') + '</textarea></div><div><label class="label">Pagamento / prazo</label><textarea class="input" rows="3" id="proposalPayment" placeholder="Ex.: 20 dias após execução, entrada + medições, prazo de entrega...">' + esc(p && !duplicate ? p.payment_terms : '') + '</textarea></div>'
       + '<input type="hidden" id="proposalTechnical" value="' + esc(p && !duplicate ? p.technical_scope : '') + '"><input type="hidden" id="proposalContracted" value="' + esc(p && !duplicate ? p.contracted_obligations : '') + '"><input type="hidden" id="proposalClientObligations" value="' + esc(p && !duplicate ? p.client_obligations : '') + '"><input type="hidden" id="proposalDelivery" value="' + esc(p && !duplicate ? p.delivery_time : '') + '"><input type="hidden" id="proposalWarranty" value="' + esc(p && !duplicate ? p.warranty_terms : '') + '">'
       + '<div class="span-2 proposal-upload-box"><label class="label">Documento oficial da proposta (PDF, Word ou Excel)</label><input type="file" class="input" id="proposalFile" accept=".pdf,.doc,.docx,.xls,.xlsx"><input type="hidden" id="proposalFileUrl" value="' + esc(p && !duplicate ? p.file_url : '') + '">' + (p && p.file_url && !duplicate ? '<p class="mt-2 text-xs"><a class="text-imec-blue font-bold" href="' + esc(p.file_url) + '" target="_blank" rel="noopener">Arquivo oficial cadastrado</a></p>' : '<p class="mt-2 text-xs text-gray-500">Anexe aqui a proposta final exatamente como foi enviada ao cliente.</p>') + '</div>'
       + '<div class="span-2"><label class="label">Notas internas</label><textarea class="input" rows="2" id="proposalNotes">' + esc(p && !duplicate ? p.notes : '') + '</textarea></div>'
@@ -357,7 +357,7 @@
 
   window.openProposalAssistant = function (selectedType) {
     var selected = selectedType || 'locacao_equipamento';
-    var html = '<div class="proposal-modal p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Checklist de proposta</h2><p class="text-sm text-gray-500 mb-5">Use como confer&ecirc;ncia antes de anexar o documento oficial. O sistema n&atilde;o altera o texto da proposta.</p><div class="proposal-form-grid"><div><label class="label">Tipo de proposta</label><select class="input" onchange="updateProposalChecklist(this.value)"><option value="locacao_equipamento"' + (selected === 'locacao_equipamento' ? ' selected' : '') + '>Loca&ccedil;&atilde;o Munck / Guindaste</option><option value="manutencao_industrial"' + (selected === 'manutencao_industrial' ? ' selected' : '') + '>Manuten&ccedil;&atilde;o industrial</option><option value="caldeiraria"' + (selected === 'caldeiraria' ? ' selected' : '') + '>Caldeiraria / Reforma</option><option value="laudo_inspecao"' + (selected === 'laudo_inspecao' ? ' selected' : '') + '>Laudo / inspe&ccedil;&atilde;o</option></select></div><div style="display:flex;align-items:end"><button class="btn btn-primary" onclick="openProposalModal(null, document.querySelector(\'.proposal-modal select\').value)">' + icon('plus') + ' Cadastrar proposta</button></div><div class="span-2"><div id="proposalAssistantPreview">' + checklistHtml(selected) + '</div></div></div><div class="flex justify-end mt-6"><button class="btn btn-outline" onclick="closeModal()">Fechar</button></div></div>';
+    var html = '<div class="proposal-modal p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Checklist de proposta</h2><p class="text-sm text-gray-500 mb-5">Use como conferência antes de anexar o documento oficial. O sistema não altera o texto da proposta.</p><div class="proposal-form-grid"><div><label class="label">Tipo de proposta</label><select class="input" onchange="updateProposalChecklist(this.value)"><option value="locacao_equipamento"' + (selected === 'locacao_equipamento' ? ' selected' : '') + '>Locação Munck / Guindaste</option><option value="manutencao_industrial"' + (selected === 'manutencao_industrial' ? ' selected' : '') + '>Manutenção industrial</option><option value="caldeiraria"' + (selected === 'caldeiraria' ? ' selected' : '') + '>Caldeiraria / Reforma</option><option value="laudo_inspecao"' + (selected === 'laudo_inspecao' ? ' selected' : '') + '>Laudo / inspeção</option></select></div><div style="display:flex;align-items:end"><button class="btn btn-primary" onclick="openProposalModal(null, document.querySelector(\'.proposal-modal select\').value)">' + icon('plus') + ' Cadastrar proposta</button></div><div class="span-2"><div id="proposalAssistantPreview">' + checklistHtml(selected) + '</div></div></div><div class="flex justify-end mt-6"><button class="btn btn-outline" onclick="closeModal()">Fechar</button></div></div>';
     openModal(html);
   };
 
@@ -365,7 +365,7 @@
     if (!items || !items.length) {
       return '<div class="proposal-import-empty">Nenhum PDF encontrado na pasta configurada.</div>';
     }
-    return '<div class="proposal-import-table-wrap"><table class="proposal-import-table"><thead><tr><th>Arquivo</th><th>Cliente</th><th>Proposta</th><th>Revis&atilde;o</th><th>Confian&ccedil;a</th></tr></thead><tbody>' + items.map(function (item) {
+    return '<div class="proposal-import-table-wrap"><table class="proposal-import-table"><thead><tr><th>Arquivo</th><th>Cliente</th><th>Proposta</th><th>Revisão</th><th>Confiança</th></tr></thead><tbody>' + items.map(function (item) {
       var tone = item.warnings && item.warnings.length ? 'warn' : 'ok';
       return '<tr><td><strong>' + esc(item.original_name) + '</strong><br><small>' + esc(item.relative_path) + '</small></td><td>' + esc(item.client && item.client.name) + '</td><td>' + esc(item.proposal && item.proposal.proposal_number) + '<br><small>' + esc(item.proposal && item.proposal.title) + '</small></td><td>' + esc(item.proposal && item.proposal.revision) + '</td><td><span class="proposal-import-score ' + tone + '">' + Math.round(Number(item.confidence || 0) * 100) + '%</span>' + (item.warnings && item.warnings.length ? '<small>' + esc(item.warnings.join(' ')) + '</small>' : '') + '</td></tr>';
     }).join('') + '</tbody></table></div>';
@@ -375,28 +375,28 @@
     try {
       showToast('Lendo pasta de propostas...', 'info');
       var preview = await API.technicalProposals.importPreview(80);
-      var html = '<div class="proposal-modal proposal-import-modal p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Importa&ccedil;&atilde;o em lote de propostas</h2><p class="text-sm text-gray-500 mb-5">O sistema l&ecirc; a pasta configurada no servidor, cadastra clientes sem repetir e anexa cada PDF &agrave; proposta.</p>'
+      var html = '<div class="proposal-modal proposal-import-modal p-6"><h2 class="font-display text-xl font-bold text-imec-dark mb-2">Importação em lote de propostas</h2><p class="text-sm text-gray-500 mb-5">O sistema lê a pasta configurada no servidor, cadastra clientes sem repetir e anexa cada PDF à proposta.</p>'
         + '<div class="proposal-import-summary"><div><span>Pasta</span><strong>' + esc(preview.sourceDir) + '</strong></div><div><span>PDFs encontrados</span><strong>' + esc(preview.totalFiles) + '</strong></div><div><span>Reconhecidos</span><strong>' + esc(preview.recognized) + '</strong></div><div><span>Revisar</span><strong>' + esc(preview.reviewNeeded) + '</strong></div></div>'
         + '<div class="proposal-import-clients"><h3>Clientes mais encontrados</h3><div>' + (preview.clients || []).slice(0, 18).map(function (client) { return '<span>' + esc(client.name) + ' <b>' + esc(client.count) + '</b></span>'; }).join('') + '</div></div>'
         + renderImportItems(preview.items)
-        + '<div class="proposal-import-note">Antes de importar tudo, use o bot&atilde;o de teste para gravar apenas 20 propostas. Se ficar certo, rode a importa&ccedil;&atilde;o completa.</div>'
+        + '<div class="proposal-import-note">Antes de importar tudo, use o botão de teste para gravar apenas 20 propostas. Se ficar certo, rode a importação completa.</div>'
         + '<div class="flex justify-end gap-3 mt-6"><button type="button" class="btn btn-outline" onclick="closeModal()">Fechar</button><button type="button" class="btn btn-outline" onclick="runProposalBulkImport(20)">Importar teste 20</button><button type="button" class="btn btn-primary" onclick="runProposalBulkImport()">Importar tudo</button></div></div>';
       openModal(html);
     } catch (err) {
-      showToast('Erro na pr&eacute;via: ' + err.message, 'error');
+      showToast('Erro na prévia: ' + err.message, 'error');
     }
   };
 
   window.runProposalBulkImport = async function (limit) {
     var label = limit ? ('Importar ' + limit + ' propostas de teste?') : 'Importar todas as propostas da pasta?';
-    if (!confirm(label + ' Clientes duplicados e arquivos j&aacute; importados ser&atilde;o ignorados.')) return;
+    if (!confirm(label + ' Clientes duplicados e arquivos já importados seráo ignorados.')) return;
     try {
       showToast('Importando propostas, aguarde...', 'info');
       var result = await API.technicalProposals.importRun(limit ? { limit: limit } : {});
       await refreshData();
       closeModal();
       await renderPage();
-      showToast('Importa&ccedil;&atilde;o conclu&iacute;da: ' + result.imported + ' importadas, ' + result.skipped + ' ignoradas.', 'success');
+      showToast('Importação concluída: ' + result.imported + ' importadas, ' + result.skipped + ' ignoradas.', 'success');
     } catch (err) {
       showToast('Erro ao importar: ' + err.message, 'error');
     }

@@ -6,6 +6,7 @@
 .fiscal-hero,
 .fiscal-panel,
 .fiscal-kpi,
+.fiscal-workflow-board,
 .fiscal-table-wrap {
   background: rgba(255, 255, 255, 0.94);
   border: 1px solid rgba(148, 163, 184, 0.28);
@@ -44,6 +45,30 @@
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.fiscal-hero-main {
+  max-width: 760px;
+}
+
+.fiscal-hero-actions {
+  display: grid;
+  gap: 10px;
+  justify-items: end;
+  min-width: 300px;
+}
+
+.fiscal-hero-primary,
+.fiscal-toolbox {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.fiscal-toolbox .btn {
+  min-height: 38px;
 }
 
 .fiscal-kpis {
@@ -156,6 +181,169 @@
 .fiscal-chip.warn { background: #fff7ed; color: #c2410c; }
 .fiscal-chip.info { background: #eaf2ff; color: #0b63f6; }
 .fiscal-chip.danger { background: #fee2e2; color: #b91c1c; }
+.fiscal-chip.neutral { background: #f1f5f9; color: #475569; }
+
+.fiscal-next-action {
+  background: #f8fbff;
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  border-radius: 8px;
+  min-width: 176px;
+  padding: 9px 11px;
+}
+
+.fiscal-next-action b {
+  color: #061b3d;
+  display: block;
+  font-size: 13px;
+}
+
+.fiscal-next-action small {
+  color: #64748b;
+  display: block;
+  font-size: 11px;
+  margin-top: 3px;
+}
+
+.fiscal-next-action.ok {
+  background: #f0fdf4;
+  border-color: rgba(22, 163, 74, 0.22);
+}
+
+.fiscal-next-action.warn {
+  background: #fff7ed;
+  border-color: rgba(245, 158, 11, 0.28);
+}
+
+.fiscal-next-action.info {
+  background: #eff6ff;
+  border-color: rgba(37, 99, 235, 0.22);
+}
+
+.fiscal-next-action.neutral {
+  background: #f8fafc;
+  border-color: rgba(100, 116, 139, 0.24);
+}
+
+.fiscal-flow-mini {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.fiscal-flow-mini .fiscal-chip {
+  font-size: 11px;
+  padding: 6px 9px;
+}
+
+.fiscal-workflow-board {
+  border-radius: 8px;
+  padding: 20px;
+  background:
+    linear-gradient(135deg, rgba(248, 251, 255, 0.96), rgba(255, 255, 255, 0.98)),
+    radial-gradient(circle at 95% 0%, rgba(37, 99, 235, 0.12), transparent 34%);
+}
+
+.fiscal-workflow-head {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.fiscal-workflow-head h3 {
+  color: #052757;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.fiscal-workflow-head span {
+  color: #64748b;
+  display: block;
+  margin-top: 4px;
+}
+
+.fiscal-workflow-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.fiscal-workflow-card {
+  appearance: none;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 8px;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
+  cursor: pointer;
+  display: grid;
+  gap: 8px;
+  min-height: 138px;
+  padding: 16px;
+  text-align: left;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.fiscal-workflow-card:hover {
+  border-color: rgba(37, 99, 235, 0.42);
+  box-shadow: 0 18px 44px rgba(37, 99, 235, 0.13);
+  transform: translateY(-2px);
+}
+
+.fiscal-workflow-icon {
+  align-items: center;
+  background: #eaf2ff;
+  border-radius: 8px;
+  color: #0b63f6;
+  display: inline-flex;
+  height: 40px;
+  justify-content: center;
+  width: 40px;
+}
+
+.fiscal-workflow-card span {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.fiscal-workflow-card strong {
+  color: #061b3d;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.fiscal-workflow-card small {
+  color: #64748b;
+  font-weight: 700;
+  min-height: 34px;
+}
+
+.fiscal-workflow-card b {
+  color: #0b63f6;
+  font-size: 13px;
+}
+
+.fiscal-workflow-card.ok {
+  border-color: rgba(22, 163, 74, 0.22);
+}
+
+.fiscal-workflow-card.warn {
+  background:
+    linear-gradient(135deg, rgba(255, 247, 237, 0.9), rgba(255, 255, 255, 0.96));
+  border-color: rgba(245, 158, 11, 0.32);
+}
+
+.fiscal-workflow-card.info {
+  border-color: rgba(37, 99, 235, 0.25);
+}
+
+.fiscal-workflow-card.neutral {
+  border-color: rgba(100, 116, 139, 0.25);
+}
 
 .fiscal-insights {
   display: grid;
@@ -806,6 +994,7 @@
   .fiscal-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .fiscal-grid { grid-template-columns: 1fr; }
   .fiscal-insights,
+  .fiscal-workflow-grid,
   .fiscal-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .fiscal-flow-grid,
   .fiscal-report-grid,
@@ -816,9 +1005,26 @@
 
 @media (max-width: 720px) {
   .fiscal-hero { align-items: flex-start; flex-direction: column; }
+  .fiscal-hero-actions,
+  .fiscal-hero-primary,
+  .fiscal-toolbox {
+    justify-content: stretch;
+    justify-items: stretch;
+    min-width: 0;
+    width: 100%;
+  }
+  .fiscal-hero-primary .btn,
+  .fiscal-toolbox .btn {
+    flex: 1 1 100%;
+  }
   .fiscal-kpis { grid-template-columns: 1fr; }
   .fiscal-insights,
+  .fiscal-workflow-grid,
   .fiscal-detail-grid { grid-template-columns: 1fr; }
+  .fiscal-workflow-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
   .fiscal-flow-grid,
   .fiscal-report-grid,
   .fiscal-integration-head,
@@ -830,6 +1036,7 @@
   .fiscal-form-grid { grid-template-columns: 1fr; }
   .fiscal-sefaz-grid { grid-template-columns: 1fr; }
   .fiscal-table-wrap { overflow-x: auto; }
+  .fiscal-table { min-width: 1040px; }
   .fiscal-action-strip { justify-content: flex-start; }
   .fiscal-modal-wide { max-width: calc(100vw - 24px); }
   .fiscal-stock-cell { min-width: 260px; }
